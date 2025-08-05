@@ -53,6 +53,7 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&StepAction{},
 		&StepActionList{},
 		&TaskTest{},
+		&TaskTestSuite{},
 		&TaskTestRun{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)

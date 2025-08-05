@@ -1,0 +1,84 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: tasktestsuites.tekton.dev
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+    pipeline.tekton.dev/release: "devel"
+    version: "devel"
+spec:
+  group: tekton.dev
+  preserveUnknownFields: false
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      "schema":
+        "openAPIV3Schema":
+          description: |-
+            TaskTestSuite represents a collection of test cases for verifying the
+            functional requirements of one or more Tasks. TaskTestSuites execute when
+            TaskTestSuiteRuns are created, which provide the input and output resources
+            the TaskTest requires.
+          type: object
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: Spec holds the desired state of the TaskTestSuite from the client
+              type: object
+              required:
+                - executionMode
+                - taskTests
+              properties:
+                executionMode:
+                  type: string
+                taskTests:
+                  description: |-
+                    TaskTests is a list of references to the TaskTests, which make up the
+                    suite.
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - name
+                      - taskTestRef
+                    properties:
+                      name:
+                        type: string
+                      onError:
+                        description: OnError defaults to StopAndFail if unset
+                        type: string
+                      taskTestRef:
+                        type: object
+                        properties:
+                          name:
+                            description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                            type: string
+                  x-kubernetes-list-map-keys:
+                    - name
+                  x-kubernetes-list-type: map
+  names:
+    kind: TaskTestSuite
+    plural: tasktestsuites
+    singular: tasktestsuite
+    categories:
+      - tekton
+      - tekton-pipelines
+  scope: Namespaced

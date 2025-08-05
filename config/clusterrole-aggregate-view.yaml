@@ -27,6 +27,7 @@ rules:
   - tasks
   - taskruns
   - tasktests
+  - tasktestsuites
   - tasktestruns
   - pipelines
   - pipelineruns
