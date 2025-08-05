@@ -32,6 +32,7 @@ type TektonV1alpha1Interface interface {
 	StepActionsGetter
 	TaskTestsGetter
 	TaskTestRunsGetter
+	TaskTestSuitesGetter
 	VerificationPoliciesGetter
 }
 
@@ -54,6 +55,10 @@ func (c *TektonV1alpha1Client) TaskTests(namespace string) TaskTestInterface {
 
 func (c *TektonV1alpha1Client) TaskTestRuns(namespace string) TaskTestRunInterface {
 	return newTaskTestRuns(c, namespace)
+}
+
+func (c *TektonV1alpha1Client) TaskTestSuites(namespace string) TaskTestSuiteInterface {
+	return newTaskTestSuites(c, namespace)
 }
 
 func (c *TektonV1alpha1Client) VerificationPolicies(namespace string) VerificationPolicyInterface {
