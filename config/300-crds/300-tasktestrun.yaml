@@ -945,6 +945,8 @@ spec:
                     TaskRunStatus is the status of the TaskRun responsible for executing this
                     test's Tasks.
                   type: object
+                  required:
+                    - podName
                   properties:
                     annotations:
                       description: |-

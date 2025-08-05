@@ -30,6 +30,8 @@ type TektonV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	RunsGetter
 	StepActionsGetter
+	TaskTestsGetter
+	TaskTestRunsGetter
 	VerificationPoliciesGetter
 }
 
@@ -44,6 +46,14 @@ func (c *TektonV1alpha1Client) Runs(namespace string) RunInterface {
 
 func (c *TektonV1alpha1Client) StepActions(namespace string) StepActionInterface {
 	return newStepActions(c, namespace)
+}
+
+func (c *TektonV1alpha1Client) TaskTests(namespace string) TaskTestInterface {
+	return newTaskTests(c, namespace)
+}
+
+func (c *TektonV1alpha1Client) TaskTestRuns(namespace string) TaskTestRunInterface {
+	return newTaskTestRuns(c, namespace)
 }
 
 func (c *TektonV1alpha1Client) VerificationPolicies(namespace string) VerificationPolicyInterface {

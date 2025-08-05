@@ -34,6 +34,22 @@ type StepActionListerExpansion interface{}
 // StepActionNamespaceLister.
 type StepActionNamespaceListerExpansion interface{}
 
+// TaskTestListerExpansion allows custom methods to be added to
+// TaskTestLister.
+type TaskTestListerExpansion interface{}
+
+// TaskTestNamespaceListerExpansion allows custom methods to be added to
+// TaskTestNamespaceLister.
+type TaskTestNamespaceListerExpansion interface{}
+
+// TaskTestRunListerExpansion allows custom methods to be added to
+// TaskTestRunLister.
+type TaskTestRunListerExpansion interface{}
+
+// TaskTestRunNamespaceListerExpansion allows custom methods to be added to
+// TaskTestRunNamespaceLister.
+type TaskTestRunNamespaceListerExpansion interface{}
+
 // VerificationPolicyListerExpansion allows custom methods to be added to
 // VerificationPolicyLister.
 type VerificationPolicyListerExpansion interface{}

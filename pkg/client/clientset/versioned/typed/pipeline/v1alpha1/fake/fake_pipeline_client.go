@@ -36,6 +36,14 @@ func (c *FakeTektonV1alpha1) StepActions(namespace string) v1alpha1.StepActionIn
 	return newFakeStepActions(c, namespace)
 }
 
+func (c *FakeTektonV1alpha1) TaskTests(namespace string) v1alpha1.TaskTestInterface {
+	return newFakeTaskTests(c, namespace)
+}
+
+func (c *FakeTektonV1alpha1) TaskTestRuns(namespace string) v1alpha1.TaskTestRunInterface {
+	return newFakeTaskTestRuns(c, namespace)
+}
+
 func (c *FakeTektonV1alpha1) VerificationPolicies(namespace string) v1alpha1.VerificationPolicyInterface {
 	return newFakeVerificationPolicies(c, namespace)
 }

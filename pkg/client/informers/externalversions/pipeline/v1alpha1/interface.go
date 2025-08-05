@@ -28,6 +28,10 @@ type Interface interface {
 	Runs() RunInformer
 	// StepActions returns a StepActionInformer.
 	StepActions() StepActionInformer
+	// TaskTests returns a TaskTestInformer.
+	TaskTests() TaskTestInformer
+	// TaskTestRuns returns a TaskTestRunInformer.
+	TaskTestRuns() TaskTestRunInformer
 	// VerificationPolicies returns a VerificationPolicyInformer.
 	VerificationPolicies() VerificationPolicyInformer
 }
@@ -51,6 +55,16 @@ func (v *version) Runs() RunInformer {
 // StepActions returns a StepActionInformer.
 func (v *version) StepActions() StepActionInformer {
 	return &stepActionInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// TaskTests returns a TaskTestInformer.
+func (v *version) TaskTests() TaskTestInformer {
+	return &taskTestInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// TaskTestRuns returns a TaskTestRunInformer.
+func (v *version) TaskTestRuns() TaskTestRunInformer {
+	return &taskTestRunInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // VerificationPolicies returns a VerificationPolicyInformer.

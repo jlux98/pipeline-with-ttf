@@ -196,6 +196,79 @@
         }
       }
     },
+    "v1alpha1.ExpectedOutcomes": {
+      "type": "object",
+      "properties": {
+        "env": {
+          "description": "List of environment variables with expected values to be checked for in all of the Task's Steps.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.EnvVar"
+          },
+          "x-kubernetes-list-type": "atomic",
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "fileSystemContents": {
+          "description": "FileSystemContents is a list step names, each one paired with a list of expected file system objects.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.StepFileSystemContent"
+          },
+          "x-kubernetes-list-map-keys": [
+            "stepName"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.TaskResult"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "stepEnvs": {
+          "description": "List of Step environments, where expected values for environment variables can be individually set for all of the Task's Steps.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.StepEnv"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "successReason": {
+          "description": "SuccessReason is the reason, with which the TaskRuns initiated by this test are expected to be marked upon completion.",
+          "type": "string"
+        },
+        "successStatus": {
+          "description": "SuccessStatus reports, whether the TaskRuns initiated by this test are expected to succeed. This is useful for testing cases in which the Task is supposed to fail because of a faulty input.",
+          "type": "boolean"
+        }
+      }
+    },
+    "v1alpha1.FileSystemObject": {
+      "type": "object",
+      "required": [
+        "path",
+        "type"
+      ],
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string",
+          "default": ""
+        },
+        "type": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
     "v1alpha1.KeyRef": {
       "description": "KeyRef defines the reference to a public key",
       "type": "object",
@@ -215,6 +288,170 @@
         "secretRef": {
           "description": "SecretRef sets a reference to a secret with the key.",
           "$ref": "#/definitions/v1.SecretReference"
+        }
+      }
+    },
+    "v1alpha1.ObservedEnvVar": {
+      "type": "object",
+      "properties": {
+        "diff": {
+          "type": "string"
+        },
+        "got": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "want": {
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.ObservedFileSystemObject": {
+      "type": "object",
+      "properties": {
+        "diff": {
+          "description": "Diff describes, how Want and Got differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
+          "type": "string"
+        },
+        "got": {
+          "description": "Got describes the file system object the test found at Path",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.FileSystemObject"
+        },
+        "want": {
+          "description": "Want describes the file system object the test expected to find at Path",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.FileSystemObject"
+        }
+      }
+    },
+    "v1alpha1.ObservedOutcomes": {
+      "type": "object",
+      "properties": {
+        "env": {
+          "description": "listMapKey=name",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.ObservedEnvVar"
+          },
+          "x-kubernetes-list-type": "map"
+        },
+        "fileSystemObjects": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.ObservedFileSystemObject"
+        },
+        "results": {
+          "description": "listMapKey=name",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.ObservedResults"
+          },
+          "x-kubernetes-list-type": "map"
+        },
+        "stepEnvs": {
+          "description": "listMapKey=stepName",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.ObservedStepEnv"
+          },
+          "x-kubernetes-list-type": "map"
+        },
+        "successReason": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.ObservedSuccessReason"
+        },
+        "successStatus": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.ObservedSuccessStatus"
+        }
+      }
+    },
+    "v1alpha1.ObservedResults": {
+      "type": "object",
+      "properties": {
+        "diff": {
+          "type": "string"
+        },
+        "got": {
+          "default": {},
+          "$ref": "#/definitions/v1.TaskResult"
+        },
+        "name": {
+          "type": "string"
+        },
+        "want": {
+          "default": {},
+          "$ref": "#/definitions/v1.TaskResult"
+        }
+      }
+    },
+    "v1alpha1.ObservedStepEnv": {
+      "type": "object",
+      "properties": {
+        "env": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.ObservedEnvVar"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
+        "stepName": {
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.ObservedStepFileSystemContent": {
+      "type": "object",
+      "properties": {
+        "objects": {
+          "description": "Objects is a list of Observed File System Objects (currently possible: text files, binary files and empty directories), which were expected to be in the container's file system after the step had finished executing",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.ObservedFileSystemObject"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
+        "stepName": {
+          "description": "StepName is the name of the step, whose file system was checked.",
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.ObservedSuccessReason": {
+      "type": "object",
+      "properties": {
+        "diff": {
+          "type": "string"
+        },
+        "got": {
+          "type": "string"
+        },
+        "want": {
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.ObservedSuccessStatus": {
+      "type": "object",
+      "properties": {
+        "got": {
+          "type": "boolean"
+        },
+        "want": {
+          "type": "boolean"
         }
       }
     },
@@ -473,6 +710,360 @@
         }
       }
     },
+    "v1alpha1.StepEnv": {
+      "type": "object",
+      "properties": {
+        "env": {
+          "description": "List of environment variables to set in all of the Task's Steps.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.EnvVar"
+          },
+          "x-kubernetes-list-type": "atomic",
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge"
+        }
+      }
+    },
+    "v1alpha1.StepFileSystemContent": {
+      "type": "object",
+      "properties": {
+        "objects": {
+          "description": "Objects is a list of File System Objects (currently possible: text files, binary files and empty directories), which are expected to be in the container's file system after the step has finished executing",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.FileSystemObject"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
+        "stepName": {
+          "description": "StepName is the name of the step, whose file system will be checked for the objects in FileSystemObject.",
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.TaskTest": {
+      "description": "TaskTest represents a test case for verifying the functional requirements of a Task that is run either on its own or as part of a TaskTestSuite. TaskTests execute when TaskTestRuns are created that provide the input parameters and resources and output resources the TaskTest requires.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec holds the desired state of the TaskTest from the client",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestSpec"
+        }
+      }
+    },
+    "v1alpha1.TaskTestInputs": {
+      "type": "object",
+      "properties": {
+        "env": {
+          "description": "List of environment variables to set in all of the Task's Steps.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.EnvVar"
+          },
+          "x-kubernetes-list-type": "atomic",
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "params": {
+          "description": "Parameters declares parameters passed to the task under test.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Param"
+          }
+        },
+        "stepEnvs": {
+          "description": "List of Step environment, where environment variables can be individually set for all of the Task's Steps.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.StepEnv"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
+        "workspaceContents": {
+          "description": "List of Workspaces with preset values, which will be initialized for any runs of the TaskTest.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.WorkspaceContentDeclaration"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        }
+      }
+    },
+    "v1alpha1.TaskTestList": {
+      "description": "TaskTestList contains a list of TaskTests",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.TaskTest"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1alpha1.TaskTestRef": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names",
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.TaskTestRun": {
+      "description": "TaskTestRun represents the execution of a test case for verifying the functional requirements of a Task that is run either on its own or as part of a TaskTestSuite. TaskTests execute when TaskTestRuns are created that provide the input parameters and resources and output resources the TaskTest requires.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec holds the desired state of the TaskTest from the client",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestRunSpec"
+        },
+        "status": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestRunStatus"
+        }
+      }
+    },
+    "v1alpha1.TaskTestRunList": {
+      "description": "TaskTestRunList contains a list of TaskTestRuns",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.TaskTestRun"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1alpha1.TaskTestRunSpec": {
+      "description": "TaskTestRunSpec defines the desired state of TaskTest.",
+      "type": "object",
+      "required": [
+        "taskTestRef"
+      ],
+      "properties": {
+        "allTriesMustSucceed": {
+          "description": "The default behavior is that if out of all the tries at least one succeeds then the TaskTestRun is marked as successful. But if the field allTriesMustSucceed is set to true then the TaskTestRun is marked as successful if and only if all of its tries come up successful.",
+          "type": "boolean"
+        },
+        "computeResources": {
+          "description": "Compute resources to use for this TaskRun",
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
+        "retries": {
+          "description": "Retries represents how many times this TaskTestRun should be retried in the event of test failure.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "serviceAccountName": {
+          "type": "string",
+          "default": ""
+        },
+        "status": {
+          "description": "Used for cancelling a TaskTestRun (and maybe more later on)",
+          "type": "string"
+        },
+        "statusMessage": {
+          "description": "Status message for cancellation.",
+          "type": "string"
+        },
+        "taskTestRef": {
+          "description": "TaskTestRef is a reference to a task test definition.",
+          "$ref": "#/definitions/v1alpha1.TaskTestRef"
+        },
+        "timeout": {
+          "description": "Time after which one retry attempt times out. Defaults to 1 hour. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "$ref": "#/definitions/v1.Duration"
+        },
+        "workspaces": {
+          "description": "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.WorkspaceBinding"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1alpha1.TaskTestRunStatus": {
+      "type": "object",
+      "required": [
+        "taskRunName",
+        "taskRunStatus",
+        "outcomes"
+      ],
+      "properties": {
+        "annotations": {
+          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "completionTime": {
+          "description": "CompletionTime is the time the test completed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "conditions": {
+          "description": "Conditions the latest available observations of a resource's current state.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/knative.Condition"
+          },
+          "x-kubernetes-patch-merge-key": "type",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "outcomes": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.ObservedOutcomes"
+        },
+        "taskRunName": {
+          "description": "TaskRunName is the name of the TaskRun responsible for executing this test's Tasks.",
+          "type": "string",
+          "default": ""
+        },
+        "taskRunStatus": {
+          "description": "TaskRunStatus is the status of the TaskRun responsible for executing this test's Tasks.",
+          "default": {},
+          "$ref": "#/definitions/v1.TaskRunStatus"
+        }
+      }
+    },
+    "v1alpha1.TaskTestRunStatusFields": {
+      "type": "object",
+      "required": [
+        "taskRunName",
+        "taskRunStatus",
+        "outcomes"
+      ],
+      "properties": {
+        "completionTime": {
+          "description": "CompletionTime is the time the test completed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "outcomes": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.ObservedOutcomes"
+        },
+        "taskRunName": {
+          "description": "TaskRunName is the name of the TaskRun responsible for executing this test's Tasks.",
+          "type": "string",
+          "default": ""
+        },
+        "taskRunStatus": {
+          "description": "TaskRunStatus is the status of the TaskRun responsible for executing this test's Tasks.",
+          "default": {},
+          "$ref": "#/definitions/v1.TaskRunStatus"
+        }
+      }
+    },
+    "v1alpha1.TaskTestSpec": {
+      "description": "TaskTestSpec defines the desired state of TaskTest.",
+      "type": "object",
+      "required": [
+        "taskRef",
+        "inputs"
+      ],
+      "properties": {
+        "expected": {
+          "description": "Expected contains the data, which the TaskTestRun controller will use to check, whether a TaskTestRun was successful or not. If this field is left empty, then the TaskTestRun is deemed successful, if the TaskRun completes without a failure occurring.",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.ExpectedOutcomes"
+        },
+        "inputs": {
+          "description": "Inputs represents the test data for executing the test case.",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestInputs"
+        },
+        "taskRef": {
+          "description": "TaskRef is a reference to a task definition.",
+          "$ref": "#/definitions/v1.TaskRef"
+        }
+      }
+    },
     "v1alpha1.VerificationPolicy": {
       "description": "VerificationPolicy defines the rules to verify Tekton resources. VerificationPolicy can config the mapping from resources to a list of public keys, so when verifying the resources we can use the corresponding public keys.",
       "type": "object",
@@ -554,6 +1145,32 @@
             "default": {},
             "$ref": "#/definitions/v1alpha1.ResourcePattern"
           }
+        }
+      }
+    },
+    "v1alpha1.WorkspaceContentDeclaration": {
+      "description": "WorkspaceContentDeclaration describes how a workspace passed into the pipeline should be mapped to a task's declared workspace.",
+      "type": "object",
+      "required": [
+        "name",
+        "objects"
+      ],
+      "properties": {
+        "name": {
+          "description": "Name is the name of the workspace as declared by the task",
+          "type": "string",
+          "default": ""
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.FileSystemObject"
+          },
+          "x-kubernetes-list-map-keys": [
+            "path"
+          ],
+          "x-kubernetes-list-type": "map"
         }
       }
     }

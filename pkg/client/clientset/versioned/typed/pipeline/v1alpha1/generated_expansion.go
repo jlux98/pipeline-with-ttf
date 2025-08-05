@@ -22,4 +22,8 @@ type RunExpansion interface{}
 
 type StepActionExpansion interface{}
 
+type TaskTestExpansion interface{}
+
+type TaskTestRunExpansion interface{}
+
 type VerificationPolicyExpansion interface{}

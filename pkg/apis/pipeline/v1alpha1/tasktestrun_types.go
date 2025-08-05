@@ -8,7 +8,6 @@ import (
 )
 
 // +genclient
-// +genclient:noStatus
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
