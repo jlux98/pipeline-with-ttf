@@ -34,6 +34,8 @@ type Interface interface {
 	TaskTestRuns() TaskTestRunInformer
 	// TaskTestSuites returns a TaskTestSuiteInformer.
 	TaskTestSuites() TaskTestSuiteInformer
+	// TaskTestSuiteRuns returns a TaskTestSuiteRunInformer.
+	TaskTestSuiteRuns() TaskTestSuiteRunInformer
 	// VerificationPolicies returns a VerificationPolicyInformer.
 	VerificationPolicies() VerificationPolicyInformer
 }
@@ -72,6 +74,11 @@ func (v *version) TaskTestRuns() TaskTestRunInformer {
 // TaskTestSuites returns a TaskTestSuiteInformer.
 func (v *version) TaskTestSuites() TaskTestSuiteInformer {
 	return &taskTestSuiteInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// TaskTestSuiteRuns returns a TaskTestSuiteRunInformer.
+func (v *version) TaskTestSuiteRuns() TaskTestSuiteRunInformer {
+	return &taskTestSuiteRunInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // VerificationPolicies returns a VerificationPolicyInformer.

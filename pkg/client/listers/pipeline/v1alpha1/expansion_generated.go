@@ -58,6 +58,14 @@ type TaskTestSuiteListerExpansion interface{}
 // TaskTestSuiteNamespaceLister.
 type TaskTestSuiteNamespaceListerExpansion interface{}
 
+// TaskTestSuiteRunListerExpansion allows custom methods to be added to
+// TaskTestSuiteRunLister.
+type TaskTestSuiteRunListerExpansion interface{}
+
+// TaskTestSuiteRunNamespaceListerExpansion allows custom methods to be added to
+// TaskTestSuiteRunNamespaceLister.
+type TaskTestSuiteRunNamespaceListerExpansion interface{}
+
 // VerificationPolicyListerExpansion allows custom methods to be added to
 // VerificationPolicyLister.
 type VerificationPolicyListerExpansion interface{}

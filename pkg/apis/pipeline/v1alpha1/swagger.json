@@ -747,6 +747,118 @@
         }
       }
     },
+    "v1alpha1.SuiteTaskObservedOutcomes": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "env": {
+          "description": "listMapKey=name",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.ObservedEnvVar"
+          },
+          "x-kubernetes-list-type": "map"
+        },
+        "fileSystemObjects": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.ObservedFileSystemObject"
+        },
+        "name": {
+          "type": "string",
+          "default": ""
+        },
+        "results": {
+          "description": "listMapKey=name",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.ObservedResults"
+          },
+          "x-kubernetes-list-type": "map"
+        },
+        "stepEnvs": {
+          "description": "listMapKey=stepName",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.ObservedStepEnv"
+          },
+          "x-kubernetes-list-type": "map"
+        },
+        "successReason": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.ObservedSuccessReason"
+        },
+        "successStatus": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.ObservedSuccessStatus"
+        }
+      }
+    },
+    "v1alpha1.SuiteTaskTestRunStatus": {
+      "type": "object",
+      "required": [
+        "name",
+        "taskTestRunName",
+        "taskTestRunStatus"
+      ],
+      "properties": {
+        "name": {
+          "description": "Name is the identifier given to a TaskTest in the context of the suite",
+          "type": "string",
+          "default": ""
+        },
+        "taskTestRunName": {
+          "description": "TaskTestRunName is the identifier given to the TaskTestRun responsible for executing this specific TaskTest",
+          "type": "string",
+          "default": ""
+        },
+        "taskTestRunStatus": {
+          "description": "Status is the status field of the TaskTestRun responsible for executing this specific TaskTest",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestRunStatus"
+        }
+      }
+    },
+    "v1alpha1.SuiteTaskTestRunTemplate": {
+      "type": "object",
+      "required": [
+        "name",
+        "spec"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "default": ""
+        },
+        "spec": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestRunTemplate"
+        }
+      }
+    },
+    "v1alpha1.SuiteTaskTestSpec": {
+      "type": "object",
+      "required": [
+        "name",
+        "spec"
+      ],
+      "properties": {
+        "name": {
+          "description": "Name is the identifier given to the TaskTest in the context of the suite",
+          "type": "string",
+          "default": ""
+        },
+        "spec": {
+          "description": "Spec is the spec field of the TaskTest being executed in this suite.",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestSpec"
+        }
+      }
+    },
     "v1alpha1.SuiteTest": {
       "type": "object",
       "required": [
@@ -1061,6 +1173,40 @@
         }
       }
     },
+    "v1alpha1.TaskTestRunTemplate": {
+      "type": "object",
+      "properties": {
+        "allTriesMustSucceed": {
+          "description": "The default behavior is that if out of all the tries at least one succeeds then the TaskTestRun is marked as successful. But if the field allTriesMustSucceed is set to true then the TaskTestRun is marked as successful if and only if all of its tries come up successful.",
+          "type": "boolean"
+        },
+        "computeResources": {
+          "description": "Compute resources to use for this TaskRun",
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
+        "retries": {
+          "description": "Retries represents how many times this TaskTestRun should be retried in the event of test failure.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "serviceAccountName": {
+          "type": "string"
+        },
+        "timeout": {
+          "description": "Time after which one retry attempt times out. Defaults to 1 hour. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "$ref": "#/definitions/v1.Duration"
+        },
+        "workspaces": {
+          "description": "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.WorkspaceBinding"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
     "v1alpha1.TaskTestSpec": {
       "description": "TaskTestSpec defines the desired state of TaskTest.",
       "type": "object",
@@ -1133,6 +1279,229 @@
         "metadata": {
           "default": {},
           "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1alpha1.TaskTestSuiteRef": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "v1alpha1.TaskTestSuiteRun": {
+      "description": "TaskTestSuiteRun represents the execution of all the test cases in a TaskTestSuite. TaskTestSuites execute when TaskTestRuns are created that provide the input and output resources the TaskTestSuite requires.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec holds the desired state of the TaskTest from the client",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestSuiteRunSpec"
+        },
+        "status": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestSuiteRunStatus"
+        }
+      }
+    },
+    "v1alpha1.TaskTestSuiteRunList": {
+      "description": "TaskTestRunList contains a list of TaskTestRuns",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.TaskTestSuiteRun"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1alpha1.TaskTestSuiteRunSpec": {
+      "type": "object",
+      "required": [
+        "taskTestSuiteRef"
+      ],
+      "properties": {
+        "defaultTaskTestRunTemplate": {
+          "description": "DefaultTaskTestRunTemplate defines the template after which the TaskTestRuns for the tests in this suite are generated. It supports the same fields as the Spec of a TaskTestRun with the exception of TaskTestRef and the SpecStatus fields. This field must be filled unless there is a TaskTestRunTemplate specified for every TaskTest in the suite.",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestRunTemplate"
+        },
+        "status": {
+          "description": "Used for cancelling a TaskTestRun (and maybe more later on)",
+          "type": "string"
+        },
+        "statusMessage": {
+          "description": "Status message for cancellation.",
+          "type": "string"
+        },
+        "taskTestRunSpecs": {
+          "description": "TaskTestRunSpecs is a list of TaskTestRunSpecs (except for the TaskTestRef and the SpecStatus fields), with each one being assigned to a specific SuiteTaskTest. If every test in the referenced suite has a spec defined in this list, then defaultTaskTestRunTemplate can be omitted.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.SuiteTaskTestRunTemplate"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
+        "taskTestSuiteRef": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestSuiteRef"
+        }
+      }
+    },
+    "v1alpha1.TaskTestSuiteRunStatus": {
+      "type": "object",
+      "required": [
+        "taskTestRunSpecs",
+        "taskTestRunStatuses"
+      ],
+      "properties": {
+        "annotations": {
+          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "completionTime": {
+          "description": "CompletionTime is the time the test completed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "conditions": {
+          "description": "Conditions the latest available observations of a resource's current state.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/knative.Condition"
+          },
+          "x-kubernetes-patch-merge-key": "type",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "outcomes": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.SuiteTaskObservedOutcomes"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
+        "taskTestRunSpecs": {
+          "description": "TaskTestRunSpecs is the list containing the spec fields of the TaskTests being executed in this suite.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.SuiteTaskTestSpec"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
+        "taskTestRunStatuses": {
+          "description": "TaskTestRunStatuses is the list containing the status fields of the TaskTestRuns responsible for executing this suite's TasksTests.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.SuiteTaskTestRunStatus"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        }
+      }
+    },
+    "v1alpha1.TaskTestSuiteRunStatusFields": {
+      "type": "object",
+      "required": [
+        "taskTestRunSpecs",
+        "taskTestRunStatuses"
+      ],
+      "properties": {
+        "completionTime": {
+          "description": "CompletionTime is the time the test completed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "outcomes": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.SuiteTaskObservedOutcomes"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
+        "taskTestRunSpecs": {
+          "description": "TaskTestRunSpecs is the list containing the spec fields of the TaskTests being executed in this suite.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.SuiteTaskTestSpec"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
+        "taskTestRunStatuses": {
+          "description": "TaskTestRunStatuses is the list containing the status fields of the TaskTestRuns responsible for executing this suite's TasksTests.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.SuiteTaskTestRunStatus"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
         }
       }
     },

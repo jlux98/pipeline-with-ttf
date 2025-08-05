@@ -28,4 +28,6 @@ type TaskTestRunExpansion interface{}
 
 type TaskTestSuiteExpansion interface{}
 
+type TaskTestSuiteRunExpansion interface{}
+
 type VerificationPolicyExpansion interface{}

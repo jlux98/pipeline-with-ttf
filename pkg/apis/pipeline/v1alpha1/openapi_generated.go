@@ -52,6 +52,10 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepActionSpec":                schema_pkg_apis_pipeline_v1alpha1_StepActionSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepEnv":                       schema_pkg_apis_pipeline_v1alpha1_StepEnv(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepFileSystemContent":         schema_pkg_apis_pipeline_v1alpha1_StepFileSystemContent(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskObservedOutcomes":     schema_pkg_apis_pipeline_v1alpha1_SuiteTaskObservedOutcomes(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskTestRunStatus":        schema_pkg_apis_pipeline_v1alpha1_SuiteTaskTestRunStatus(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskTestRunTemplate":      schema_pkg_apis_pipeline_v1alpha1_SuiteTaskTestRunTemplate(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskTestSpec":             schema_pkg_apis_pipeline_v1alpha1_SuiteTaskTestSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTest":                     schema_pkg_apis_pipeline_v1alpha1_SuiteTest(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTest":                      schema_pkg_apis_pipeline_v1alpha1_TaskTest(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestInputs":                schema_pkg_apis_pipeline_v1alpha1_TaskTestInputs(ref),
@@ -62,9 +66,16 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestRunSpec":               schema_pkg_apis_pipeline_v1alpha1_TaskTestRunSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestRunStatus":             schema_pkg_apis_pipeline_v1alpha1_TaskTestRunStatus(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestRunStatusFields":       schema_pkg_apis_pipeline_v1alpha1_TaskTestRunStatusFields(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestRunTemplate":           schema_pkg_apis_pipeline_v1alpha1_TaskTestRunTemplate(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSpec":                  schema_pkg_apis_pipeline_v1alpha1_TaskTestSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuite":                 schema_pkg_apis_pipeline_v1alpha1_TaskTestSuite(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuiteList":             schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteList(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuiteRef":              schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRef(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuiteRun":              schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRun(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuiteRunList":          schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunList(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuiteRunSpec":          schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunSpec(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuiteRunStatus":        schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunStatus(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuiteRunStatusFields":  schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunStatusFields(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuiteSpec":             schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.VerificationPolicy":            schema_pkg_apis_pipeline_v1alpha1_VerificationPolicy(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.VerificationPolicyList":        schema_pkg_apis_pipeline_v1alpha1_VerificationPolicyList(ref),
@@ -1502,6 +1513,199 @@ func schema_pkg_apis_pipeline_v1alpha1_StepFileSystemContent(ref common.Referenc
 	}
 }
 
+func schema_pkg_apis_pipeline_v1alpha1_SuiteTaskObservedOutcomes(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+					"fileSystemObjects": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedFileSystemObject"),
+						},
+					},
+					"results": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "listMapKey=name",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedResults"),
+									},
+								},
+							},
+						},
+					},
+					"env": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "listMapKey=name",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedEnvVar"),
+									},
+								},
+							},
+						},
+					},
+					"stepEnvs": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "listMapKey=stepName",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedStepEnv"),
+									},
+								},
+							},
+						},
+					},
+					"successStatus": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessStatus"),
+						},
+					},
+					"successReason": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessReason"),
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedEnvVar", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedFileSystemObject", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedResults", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedStepEnv", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessReason", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessStatus"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1alpha1_SuiteTaskTestRunStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the identifier given to a TaskTest in the context of the suite",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"taskTestRunName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TaskTestRunName is the identifier given to the TaskTestRun responsible for executing this specific TaskTest",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"taskTestRunStatus": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Status is the status field of the TaskTestRun responsible for executing this specific TaskTest",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestRunStatus"),
+						},
+					},
+				},
+				Required: []string{"name", "taskTestRunName", "taskTestRunStatus"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestRunStatus"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1alpha1_SuiteTaskTestRunTemplate(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestRunTemplate"),
+						},
+					},
+				},
+				Required: []string{"name", "spec"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestRunTemplate"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1alpha1_SuiteTaskTestSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the identifier given to the TaskTest in the context of the suite",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Spec is the spec field of the TaskTest being executed in this suite.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSpec"),
+						},
+					},
+				},
+				Required: []string{"name", "spec"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSpec"},
+	}
+}
+
 func schema_pkg_apis_pipeline_v1alpha1_SuiteTest(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2052,6 +2256,71 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunStatusFields(ref common.Refere
 	}
 }
 
+func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunTemplate(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"workspaces": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceBinding"),
+									},
+								},
+							},
+						},
+					},
+					"timeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Time after which one retry attempt times out. Defaults to 1 hour. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
+					"retries": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Retries represents how many times this TaskTestRun should be retried in the event of test failure.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"allTriesMustSucceed": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The default behavior is that if out of all the tries at least one succeeds then the TaskTestRun is marked as successful. But if the field allTriesMustSucceed is set to true then the TaskTestRun is marked as successful if and only if all of its tries come up successful.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"serviceAccountName": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"computeResources": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Compute resources to use for this TaskRun",
+							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceBinding", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+	}
+}
+
 func schema_pkg_apis_pipeline_v1alpha1_TaskTestSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2176,6 +2445,402 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteList(ref common.ReferenceCal
 		},
 		Dependencies: []string{
 			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuite", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRef(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRun(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TaskTestSuiteRun represents the execution of all the test cases in a TaskTestSuite. TaskTestSuites execute when TaskTestRuns are created that provide the input and output resources the TaskTestSuite requires.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Spec holds the desired state of the TaskTest from the client",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuiteRunSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuiteRunStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuiteRunSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuiteRunStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TaskTestRunList contains a list of TaskTestRuns",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuiteRun"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuiteRun", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"taskTestSuiteRef": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuiteRef"),
+						},
+					},
+					"defaultTaskTestRunTemplate": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DefaultTaskTestRunTemplate defines the template after which the TaskTestRuns for the tests in this suite are generated. It supports the same fields as the Spec of a TaskTestRun with the exception of TaskTestRef and the SpecStatus fields. This field must be filled unless there is a TaskTestRunTemplate specified for every TaskTest in the suite.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestRunTemplate"),
+						},
+					},
+					"taskTestRunSpecs": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"name",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "TaskTestRunSpecs is a list of TaskTestRunSpecs (except for the TaskTestRef and the SpecStatus fields), with each one being assigned to a specific SuiteTaskTest. If every test in the referenced suite has a spec defined in this list, then defaultTaskTestRunTemplate can be omitted.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskTestRunTemplate"),
+									},
+								},
+							},
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Used for cancelling a TaskTestRun (and maybe more later on)",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"statusMessage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Status message for cancellation.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"taskTestSuiteRef"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskTestRunTemplate", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestRunTemplate", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuiteRef"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"observedGeneration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"conditions": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-patch-merge-key": "type",
+								"x-kubernetes-patch-strategy":  "merge",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Conditions the latest available observations of a resource's current state.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("knative.dev/pkg/apis.Condition"),
+									},
+								},
+							},
+						},
+					},
+					"annotations": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"taskTestRunSpecs": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"name",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "TaskTestRunSpecs is the list containing the spec fields of the TaskTests being executed in this suite.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskTestSpec"),
+									},
+								},
+							},
+						},
+					},
+					"taskTestRunStatuses": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"name",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "TaskTestRunStatuses is the list containing the status fields of the TaskTestRuns responsible for executing this suite's TasksTests.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskTestRunStatus"),
+									},
+								},
+							},
+						},
+					},
+					"completionTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CompletionTime is the time the test completed.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"outcomes": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"name",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskObservedOutcomes"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"taskTestRunSpecs", "taskTestRunStatuses"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskObservedOutcomes", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskTestRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskTestSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Time", "knative.dev/pkg/apis.Condition"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunStatusFields(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"taskTestRunSpecs": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"name",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "TaskTestRunSpecs is the list containing the spec fields of the TaskTests being executed in this suite.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskTestSpec"),
+									},
+								},
+							},
+						},
+					},
+					"taskTestRunStatuses": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"name",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "TaskTestRunStatuses is the list containing the status fields of the TaskTestRuns responsible for executing this suite's TasksTests.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskTestRunStatus"),
+									},
+								},
+							},
+						},
+					},
+					"completionTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CompletionTime is the time the test completed.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"outcomes": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"name",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskObservedOutcomes"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"taskTestRunSpecs", "taskTestRunStatuses"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskObservedOutcomes", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskTestRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskTestSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 

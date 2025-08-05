@@ -48,6 +48,10 @@ func (c *FakeTektonV1alpha1) TaskTestSuites(namespace string) v1alpha1.TaskTestS
 	return newFakeTaskTestSuites(c, namespace)
 }
 
+func (c *FakeTektonV1alpha1) TaskTestSuiteRuns(namespace string) v1alpha1.TaskTestSuiteRunInterface {
+	return newFakeTaskTestSuiteRuns(c, namespace)
+}
+
 func (c *FakeTektonV1alpha1) VerificationPolicies(namespace string) v1alpha1.VerificationPolicyInterface {
 	return newFakeVerificationPolicies(c, namespace)
 }
