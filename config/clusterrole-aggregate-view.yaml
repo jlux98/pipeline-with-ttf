@@ -26,6 +26,8 @@ rules:
   resources:
   - tasks
   - taskruns
+  - tasktests
+  - tasktestruns
   - pipelines
   - pipelineruns
   - runs
