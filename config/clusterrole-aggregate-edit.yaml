@@ -30,6 +30,7 @@ rules:
   - tasktests
   - tasktestsuites
   - tasktestruns
+  - tasktestsuiteruns
   - pipelines
   - pipelineruns
   - runs

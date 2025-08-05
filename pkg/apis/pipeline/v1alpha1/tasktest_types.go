@@ -110,10 +110,11 @@ type FileSystemObject struct {
 type FileSystemObjectType string
 
 const (
-	TextFile   FileSystemObjectType = "TextFile"
-	EmptyDir   FileSystemObjectType = "EmptyDir"
-	BinaryFile FileSystemObjectType = "BinaryFile" // currently only supported for expected objects, not inputs
-	None       FileSystemObjectType = "None"       // only meant for TaskTestRunStatus if an expected object can't be found
+	TextFile    FileSystemObjectType = "TextFile"
+	EmptyDir    FileSystemObjectType = "EmptyDir"
+	BinaryFile  FileSystemObjectType = "BinaryFile"  // only for expected objects
+	AnyFileType FileSystemObjectType = "AnyFileType" // only for expected objects
+	None        FileSystemObjectType = "None"        // only meant for TaskTestRunStatus if an expected object can't be found
 )
 
 type ExpectedOutcomes struct {
