@@ -18,7 +18,7 @@ spec:
         "openAPIV3Schema":
           description: |-
             TaskTest represents a test case for verifying the functional requirements of
-            a Task that is run either on its own or as part of a TaskTestSuite. TaskTests
+            a Task that is run either on its own or as part of a TaskTestSuiteRun. TaskTests
             execute when TaskTestRuns are created that provide the input parameters and
             resources and output resources the TaskTest requires.
           type: object
@@ -173,25 +173,44 @@ spec:
                         file system objects.
                       type: array
                       items:
+                        description: |-
+                          ExpectedStepFileSystemContent contains the name of a step as declared in the
+                          Task under Test and a list of file system objects.
+
+                          The rules for these file system objects are as follows: If the Type is
+                          not set it will default to "AnyObjectType". If Type is set to a type other
+                          than "TextFile", then Content must be left empty. Path value must be an
+                          absolute path, variable substitution for workspace paths is possible.
                         type: object
                         properties:
                           objects:
                             description: |-
-                              Objects is a list of File System Objects (currently possible:
-                              text files, binary files and empty directories), which are expected to be
-                              in the container's file system after the step has finished executing
+                              Objects is a list of File System Objects, which are expected to be
+                              in the container's file system after the step has finished executing (or
+                              in the case of Type being set to "None" expected to not be there). If
+                              this field is left empty, then it will default to "AnyObjectType".
                             type: array
                             items:
+                              description: |-
+                                FileSystemObject describes a file system object by giving a path to the
+                                object, the type of the object and in case it is a text file the contents of
+                                that text file. Path value must be an absolute path, variable substitution for workspace paths is possible.
                               type: object
                               required:
                                 - path
-                                - type
                               properties:
                                 content:
+                                  description: |-
+                                    The content of the file system object. Setting this value is only
+                                    acceptable, if the field Type is set to 'TextFile'.
                                   type: string
                                 path:
+                                  description: Path is the path to this file system object
                                   type: string
                                 type:
+                                  description: |-
+                                    Type is the type of this file system object. The values, which are
+                                    acceptable for this field, are defined in the enum FileSystemObjectType
                                   type: string
                             x-kubernetes-list-map-keys:
                               - name
@@ -205,6 +224,10 @@ spec:
                         - stepName
                       x-kubernetes-list-type: map
                     results:
+                      description: |-
+                        Results is a list of Results declared in the Task under test and the
+                        values the Task is expected to fill these Results with given the input
+                        data.
                       type: array
                       items:
                         description: TaskResult used to describe the results of a task
@@ -242,13 +265,18 @@ spec:
                     stepEnvs:
                       description: |-
                         List of Step environments, where expected values for environment
-                        variables can be individually set for all of the Task's Steps.
+                        variables can be individually declared for all of the Task's Steps.
                       type: array
                       items:
+                        description: |-
+                          StepEnv contains the name of a step as defined the manifest of the Task under
+                          test and a list of environment variable declarations to be set for this step.
                         type: object
+                        required:
+                          - name
                         properties:
                           env:
-                            description: List of environment variables to set in all of the Task's Steps.
+                            description: List of environment variables to set for this step.
                             type: array
                             items:
                               description: EnvVar represents an environment variable present in a Container.
@@ -357,6 +385,9 @@ spec:
                                           type: boolean
                                       x-kubernetes-map-type: atomic
                             x-kubernetes-list-type: atomic
+                          name:
+                            description: Name is the name of the step for whom these environment variables will be set.
+                            type: string
                       x-kubernetes-list-type: atomic
                     successReason:
                       description: |-
@@ -500,14 +531,19 @@ spec:
                       x-kubernetes-list-type: atomic
                     stepEnvs:
                       description: |-
-                        List of Step environment, where environment variables can be individually
-                        set for all of the Task's Steps.
+                        List of Step environments, where environment variables can be individually
+                        set for each one of the Task's Steps.
                       type: array
                       items:
+                        description: |-
+                          StepEnv contains the name of a step as defined the manifest of the Task under
+                          test and a list of environment variable declarations to be set for this step.
                         type: object
+                        required:
+                          - name
                         properties:
                           env:
-                            description: List of environment variables to set in all of the Task's Steps.
+                            description: List of environment variables to set for this step.
                             type: array
                             items:
                               description: EnvVar represents an environment variable present in a Container.
@@ -616,39 +652,60 @@ spec:
                                           type: boolean
                                       x-kubernetes-map-type: atomic
                             x-kubernetes-list-type: atomic
+                          name:
+                            description: Name is the name of the step for whom these environment variables will be set.
+                            type: string
                       x-kubernetes-list-map-keys:
                         - name
                       x-kubernetes-list-type: map
                     workspaceContents:
                       description: |-
                         List of Workspaces with preset values, which will be initialized for any
-                        runs of the TaskTest.
+                        runs of the task under test.
                       type: array
                       items:
                         description: |-
-                          WorkspaceContentDeclaration describes how a workspace passed into the pipeline should be
-                          mapped to a task's declared workspace.
+                          InitialWorkspaceContents describes the desired contents of a workspace
+                          declared in the Task under Test before starting the test.
                         type: object
                         required:
                           - name
                           - objects
                         properties:
                           name:
-                            description: Name is the name of the workspace as declared by the task
+                            description: Name is the name of the workspace as declared by the Task under test.
                             type: string
                           objects:
+                            description: |-
+                              Objects is a list of file system objects to be placed in the specified
+                              workspace. Relative paths are interpreted from the root of the workspace,
+                              and for absolute paths the leading '/' denotes the root of the workspace.
+                              If the type chosen for the object is 'Directory', then an empty directory
+                              will be created at the location denoted by Path and Content must not be
+                              fille. I the type chosen for the object is 'TextFile', then a text file
+                              with Content as its content will be created at that location.
                             type: array
                             items:
+                              description: |-
+                                InputFileSystemObject describes a file system object to be placed when
+                                setting up a workspace for testing a Task by giving a path to the object, the
+                                type of the object and in case it is a text file the contents of that text
+                                file.
                               type: object
                               required:
                                 - path
                                 - type
                               properties:
                                 content:
+                                  description: |-
+                                    The content of the file system object. Setting this value is only
+                                    acceptable, if the field Type is set to 'TextFile'.
                                   type: string
                                 path:
+                                  description: Path is the path to this file system object
                                   type: string
                                 type:
+                                  description: Type is the type of this file system object.
                                   type: string
                             x-kubernetes-list-map-keys:
                               - path
@@ -657,7 +714,9 @@ spec:
                         - name
                       x-kubernetes-list-type: map
                 taskRef:
-                  description: TaskRef is a reference to a task definition.
+                  description: |-
+                    TaskRef is a reference to a task definition, which must be in the same
+                    namespace as the this test.
                   type: object
                   properties:
                     apiVersion:

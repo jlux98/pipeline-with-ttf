@@ -9,7 +9,19 @@ import (
 var _ apis.Defaultable = (*TaskTest)(nil)
 
 // SetDefaults implements apis.Defaultable.
-func (in *TaskTest) SetDefaults(context.Context) {
-	// FIXME(jlux98) implement this
-	panic("unimplemented")
+func (tt *TaskTest) SetDefaults(ctx context.Context) {
+	tt.Spec.SetDefaults(ctx)
+}
+
+// FIXME(jlux98) implement this
+// SetDefaults set any defaults for the task test spec
+func (tts *TaskTestSpec) SetDefaults(ctx context.Context) {
+	// cfg := config.FromContextOrDefaults(ctx)
+	for _, fc := range tts.Expected.FileSystemContents {
+		for i := range fc.Objects {
+			if fc.Objects[i].Type == "" {
+				fc.Objects[i].Type = AnyObjectType
+			}
+		}
+	}
 }
