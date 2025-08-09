@@ -13,7 +13,7 @@ import (
 
 // TaskTestRun represents the execution of a test case for verifying the functional
 // requirements of a Task that is run either on its own or as part of a
-// TaskTestSuite. TaskTests execute when TaskTestRuns are created that provide
+// TaskTestSuiteRun. TaskTests execute when TaskTestRuns are created that provide
 // the input parameters and resources and output resources the TaskTest
 // requires.
 //
@@ -46,9 +46,21 @@ type TaskTestRunList struct {
 // TaskTestRunSpec defines the desired state of TaskTest.
 type TaskTestRunSpec struct {
 	// TaskTestRef is a reference to a task test definition.
+	// Either this or TaskTestSpec must be set, if neither or both are set then
+	// validation of this TaskTestRun fails.
+	//
+	// +optional
 	TaskTestRef *TaskTestRef `json:"taskTestRef"`
 
+	// TaskTestSpec is a task test definition.
+	// Either this or TaskTestRef must be set, if neither or both are set then
+	// validation of this TaskTestRun fails.
+	//
+	// +optional
+	TaskTestSpec *TaskTestSpec `json:"taskTestSpec"`
+
 	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
+	//
 	// +optional
 	// +listType=atomic
 	Workspaces []v1.WorkspaceBinding `json:"workspaces,omitempty"`
@@ -68,10 +80,10 @@ type TaskTestRunSpec struct {
 	// allTriesMustSucceed is set to true then the TaskTestRun is marked as
 	// successful if and only if all of its tries come up successful.
 	// +optional
-	AllTriesMustSucceed bool `json:"allTriesMustSucceed,omitempty"`
+	AllTriesMustSucceed *bool `json:"allTriesMustSucceed,omitempty"`
 
 	// +optional
-	ServiceAccountName string `json:"serviceAccountName"`
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	// Used for cancelling a TaskTestRun (and maybe more later on)
 	// +optional
@@ -82,6 +94,7 @@ type TaskTestRunSpec struct {
 	StatusMessage TaskTestRunSpecStatusMessage `json:"statusMessage,omitempty"`
 
 	// Compute resources to use for this TaskRun
+	// +optional
 	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
 }
 
@@ -112,6 +125,12 @@ type TaskTestRunStatus struct {
 }
 
 type TaskTestRunStatusFields struct {
+	// TaskTestSpec is a copy of the Spec of the referenced TaskTest.
+	// TODO(jlu98) decide, whether to also populate this field when TaskTests are defined inline
+	//
+	// +optional
+	TaskTestSpec NamedTaskTestSpec `json:"taskTestSpec,omitempty"`
+
 	// TaskRunName is the name of the TaskRun responsible for executing this
 	// test's Tasks.
 	TaskRunName string `json:"taskRunName"`

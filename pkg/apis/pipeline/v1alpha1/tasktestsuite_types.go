@@ -1,7 +1,6 @@
 package v1alpha1
 
 import (
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -37,30 +36,70 @@ type TaskTestSuiteList struct {
 }
 
 type TaskTestSuiteSpec struct {
-	ExecutionMode TestSuiteExecutionMode `json:"executionMode"`
-
-	// TaskTests is a list of references to the TaskTests, which make up the
-	// suite.
-	// +listType=map
-	// +listMapKey=name
+	// TaskTests is a list of the TaskTests, which make up the
+	// suite. TaskTests can be added to this list by reference or be defined
+	// directly inside the list.
+	//
+	// +listType=atomic
 	TaskTests []SuiteTest `json:"taskTests"`
 }
 
-type TestSuiteExecutionMode string
-
-// N2H Maybe a compromise in the form of a "Staggered" execution mode would
-// be interesting, where a delay can be defined so that the runner doesn't
-// always wait until the previous test has finished executing but still
-// doesn't overwhelm the cluster with too many test being triggered at the
-// same time.
-const (
-	Parallel   TestSuiteExecutionMode = "Parallel"
-	Sequential TestSuiteExecutionMode = "Sequential"
-)
-
 type SuiteTest struct {
-	Name        string      `json:"name"`
-	TaskTestRef TaskTestRef `json:"taskTestRef"`
-	// OnError defaults to StopAndFail if unset
-	OnError v1.OnErrorType `json:"onError,omitempty"`
+	// Name is the identifier for a test in the context of this suite.
+	Name string `json:"name"`
+	// TaskTestRef is a reference to an existing Task
+	//
+	// +optional
+	TaskTestRef *TaskTestRef `json:"taskTestRef"`
+
+	// TaskTestSpec is a specification of a task test
+	//
+	// +optional
+	TaskTestSpec *TaskTestSpec `json:"taskTestSpec"`
+
+	// OnError specifies, how the suite will behave, if this test fails.
+	// "StopSchedulingAndFail" means, that no new test will be scheduled but
+	// tests already running will be able to finish, after which the suite
+	// execution is marked as a failure. "CancelRunningAndFail"
+	// means, that all other unfinished tests will be cancelled immediately and
+	// the suite execution is marked as a failure. "Continue" means, that if the
+	// test fails the
+	// suite is still executed as if the test succeeded. This field defaults to "CancelRunningAndFail" if unset
+	OnError OnTestErrorType `json:"onError,omitempty"`
+
+	// Retries represents how many times this TaskTestRun should be retried in
+	// the event of test failure.
+	//
+	// +optional
+	Retries int `json:"retries,omitempty"`
+
+	// The default behavior is that if out of all the tries at least one
+	// succeeds then the TaskTestRun is marked as successful. But if the field
+	// allTriesMustSucceed is set to true then the TaskTestRun is marked as
+	// successful if and only if all of its tries come up successful.
+	//
+	// +optional
+	AllTriesMustSucceed *bool `json:"allTriesMustSucceed,omitempty"`
+
+	// Time after which one retry attempt times out. Defaults to 1 hour.
+	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
+	//
+	// +optional
+	Timeout *metav1.Duration `json:"timeout,omitempty"`
 }
+
+func (st SuiteTest) GetName() string {
+	return st.Name
+}
+
+// OnErrorType defines a list of supported exiting behavior of a container on error
+type OnTestErrorType string
+
+const (
+	// StopAndFail indicates exit the taskRun if the container exits with non-zero exit code
+	StopSchedulingAndFail OnTestErrorType = "StopSchedulingAndFail"
+	// StopAndFail indicates exit the taskRun if the container exits with non-zero exit code
+	CancelRunningAndFail OnTestErrorType = "CancelRunningAndFail"
+	// Continue indicates continue executing the rest of the steps irrespective of the container exit code
+	Continue OnTestErrorType = "Continue"
+)

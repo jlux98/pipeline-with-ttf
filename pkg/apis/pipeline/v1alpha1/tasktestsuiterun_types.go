@@ -11,9 +11,7 @@ import (
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// TaskTestSuiteRun represents the execution of all the test cases in a
-// TaskTestSuite. TaskTestSuites execute when TaskTestRuns are created that
-// provide the input and output resources the TaskTestSuite requires.
+// TaskTestSuiteRun represents the execution of a list of test cases.
 //
 // +k8s:openapi-gen=true
 type TaskTestSuiteRun struct {
@@ -41,72 +39,94 @@ type TaskTestSuiteRunList struct {
 
 // Spec and its resources start here
 
+// TaskTestSuiteRunSpec
 type TaskTestSuiteRunSpec struct {
-	TaskTestSuiteRef TaskTestSuiteRef `json:"taskTestSuiteRef"`
+	// TaskTestSuiteRef is a reference to a task test suite definition.
+	TaskTestSuiteRef *TaskTestSuiteRef `json:"taskTestSuiteRef"`
 
-	// DefaultTaskTestRunTemplate defines the template after which the
+	// TaskTestSuiteSpec is a definition of a task test suite.
+	TaskTestSuiteSpec *TaskTestSuiteSpec `json:"taskTestSuiteSpec"`
+
+	// ExecutionMode specifies, whether the tests in this run will be executed
+	// in parallel or sequentially. Valid values for this field are "Parallel"
+	// and "Sequential".
+	ExecutionMode TestSuiteExecutionMode `json:"executionMode"`
+
+	// DefaultRunSpecTemplate defines the template after which the
 	// TaskTestRuns for the tests in this suite are generated. It supports the
 	// same fields as the Spec of a TaskTestRun with the exception of
-	// TaskTestRef and the SpecStatus fields. This field must be filled unless
-	// there is a TaskTestRunTemplate specified for every TaskTest in the suite.
+	// TaskTestRef and the SpecStatus fields.
 	//
 	// +optional
-	DefaultTaskTestRunTemplate TaskTestRunTemplate `json:"defaultTaskTestRunTemplate"`
+	DefaultRunSpecTemplate TaskTestRunTemplate `json:"defaultRunSpecTemplate"`
 
-	// TaskTestRunSpecs is a list of TaskTestRunSpecs (except for the
-	// TaskTestRef and the SpecStatus fields), with each one being assigned to a
-	// specific SuiteTaskTest. If every test in the referenced suite has a spec
-	// defined in this list, then defaultTaskTestRunTemplate can be omitted.
+	// RunSpecs is a list of RunSpecs, except that the
+	// SpecStatus fields are not allowed. It contains all the tests that will be
+	// executed by this run, in addition to providing the option of configuring
+	// them on a case-by-case basis. Configurations made in this field overwrite
+	// the default template.
 	//
 	// +optional
 	// +listType=map
 	// +listMapKey=name
-	TaskTestRunSpecs []SuiteTaskTestRunTemplate `json:"taskTestRunSpecs"`
-	// Used for cancelling a TaskTestRun (and maybe more later on)
+	RunSpecs []SuiteTaskTestRun `json:"runSpecs"`
+
+	// Used for cancelling a TaskTestSuiteRun
+	//
 	// +optional
 	Status TaskTestRunSpecStatus `json:"status,omitempty"`
+
 	// Status message for cancellation.
+	//
 	// +optional
 	StatusMessage TaskTestRunSpecStatusMessage `json:"statusMessage,omitempty"`
+
+	// Time after which the suite run times out. Defaults to 1 hour.
+	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
+	//
+	// +optional
+	Timeout *metav1.Duration `json:"timeout,omitempty"`
 }
 
 type TaskTestSuiteRef struct {
 	Name string `json:"name"`
 }
 
+type TestSuiteExecutionMode string
+
+// N2H: Maybe a compromise in the form of a "Staggered" execution mode would
+// be interesting, where a delay can be defined so that the runner doesn't
+// always wait until the previous test has finished executing but still
+// doesn't overwhelm the cluster with too many test being triggered at the
+// same time.
+const (
+	Parallel   TestSuiteExecutionMode = "Parallel"
+	Sequential TestSuiteExecutionMode = "Sequential"
+)
+
 type TaskTestRunTemplate struct {
 	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
+	//
 	// +optional
 	// +listType=atomic
 	Workspaces []v1.WorkspaceBinding `json:"workspaces,omitempty"`
-
-	// Time after which one retry attempt times out. Defaults to 1 hour.
-	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
-	// +optional
-	Timeout *metav1.Duration `json:"timeout,omitempty"`
-
-	// Retries represents how many times this TaskTestRun should be retried in
-	// the event of test failure.
-	// +optional
-	Retries int `json:"retries,omitempty"`
-
-	// The default behavior is that if out of all the tries at least one
-	// succeeds then the TaskTestRun is marked as successful. But if the field
-	// allTriesMustSucceed is set to true then the TaskTestRun is marked as
-	// successful if and only if all of its tries come up successful.
-	// +optional
-	AllTriesMustSucceed bool `json:"allTriesMustSucceed,omitempty"`
 
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	// Compute resources to use for this TaskRun
+	//
+	// +optional
 	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
 }
 
-type SuiteTaskTestRunTemplate struct {
-	Name string              `json:"name"`
-	Spec TaskTestRunTemplate `json:"spec"`
+type SuiteTaskTestRun struct {
+	// TaskTestRef is a reference to a task test definition. If a task test
+	// defined inline inside the test suite shares a name with a test defined
+	// outside the suite, then the task defined inside the suite will be chosen.
+	TaskTestRef *TaskTestRef `json:"taskTestRef"`
+
+	TaskTestRunTemplate `json:",inline"`
 }
 
 // Status and its resources start here
@@ -119,12 +139,12 @@ type TaskTestSuiteRunStatus struct {
 }
 
 type TaskTestSuiteRunStatusFields struct {
-	// TaskTestRunSpecs is the list containing the spec fields of the
+	// TaskTestSpecs is the list containing the spec fields of the
 	// TaskTests being executed in this suite.
 	//
 	// +listType=map
 	// +listMapKey=name
-	TaskTestRunSpecs []SuiteTaskTestSpec `json:"taskTestRunSpecs"`
+	TaskTestSpecs []NamedTaskTestSpec `json:"taskTestSpecs"`
 
 	// TaskTestRunStatuses is the list containing the status fields of the
 	// TaskTestRuns responsible for executing this suite's TasksTests.
@@ -135,16 +155,10 @@ type TaskTestSuiteRunStatusFields struct {
 
 	// CompletionTime is the time the test completed.
 	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
-
-	// +listType=map
-	// +listMapKey=name
-	// +optional
-	Outcomes []SuiteTaskObservedOutcomes `json:"outcomes"`
 }
 
-type SuiteTaskTestSpec struct {
-	// Name is the identifier given to the TaskTest in the context of
-	// the suite
+type NamedTaskTestSpec struct {
+	// Name is the name the TaskTest to which the spec belongs
 	Name string `json:"name"`
 
 	// Spec is the spec field of the TaskTest being executed in this suite.
@@ -152,18 +166,10 @@ type SuiteTaskTestSpec struct {
 }
 
 type SuiteTaskTestRunStatus struct {
-	// Name is the identifier given to a TaskTest in the context of
-	// the suite
-	Name string `json:"name"`
 	// TaskTestRunName is the identifier given to the TaskTestRun responsible
 	// for executing this specific TaskTest
 	TaskTestRunName string `json:"taskTestRunName"`
 	// Status is the status field of the TaskTestRun responsible for executing
 	// this specific TaskTest
 	TaskTestRunStatus TaskTestRunStatus `json:"taskTestRunStatus"`
-}
-
-type SuiteTaskObservedOutcomes struct {
-	Name             string `json:"name"`
-	ObservedOutcomes `json:",inline"`
 }

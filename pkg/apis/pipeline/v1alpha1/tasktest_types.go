@@ -87,6 +87,38 @@ type TaskTestInputs struct {
 	WorkspaceContents []InitialWorkspaceContents `json:"workspaceContents,omitempty"`
 }
 
+func extractNamesFromWorkspaceContents(list []InitialWorkspaceContents) []string {
+	result := make([]string, len(list))
+	for i := range list {
+		result[i] = list[i].Name
+	}
+	return result
+}
+
+func extractNamesFromTaskResults(list []v1.TaskResult) []string {
+	result := make([]string, len(list))
+	for i := range list {
+		result[i] = list[i].Name
+	}
+	return result
+}
+
+func extractPathsFromInputFileSystemObjects(list []InputFileSystemObject) []string {
+	result := make([]string, len(list))
+	for i := range list {
+		result[i] = list[i].Path
+	}
+	return result
+}
+
+func extractPathsFromFileSystemObjects(list []FileSystemObject) []string {
+	result := make([]string, len(list))
+	for i := range list {
+		result[i] = list[i].Path
+	}
+	return result
+}
+
 // StepEnv contains the name of a step as defined the manifest of the Task under
 // test and a list of environment variable declarations to be set for this step.
 type StepEnv struct {
@@ -104,6 +136,8 @@ type StepEnv struct {
 
 // InitialWorkspaceContents describes the desired contents of a workspace
 // declared in the Task under Test before starting the test.
+// N2H: it might be useful to be able to populate a workspace with files from a
+// git repo.
 type InitialWorkspaceContents struct {
 	// Name is the name of the workspace as declared by the Task under test.
 	Name string `json:"name"`
@@ -134,6 +168,8 @@ type InputFileSystemObject struct {
 
 	// The content of the file system object. Setting this value is only
 	// acceptable, if the field Type is set to 'TextFile'.
+	// N2H: it might be useful to be able to populate the contents field using
+	// values from a ConfigMap or Secret.
 	//
 	// +optional
 	Content string `json:"content,omitempty"`
@@ -182,6 +218,8 @@ type ExpectedOutcomes struct {
 
 	// SuccessReason is the reason, with which the TaskRuns initiated by this
 	// test are expected to be marked upon completion.
+	//
+	// +optional
 	SuccessReason v1.TaskRunReason `json:"successReason,omitempty"`
 
 	// FileSystemContents is a list step names, each one paired with a list of expected
@@ -231,6 +269,8 @@ type FileSystemObject struct {
 
 	// The content of the file system object. Setting this value is only
 	// acceptable, if the field Type is set to 'TextFile'.
+	// N2H: it might be useful to be able to populate the contents field using
+	// values from a ConfigMap or Secret.
 	//
 	// +optional
 	Content string `json:"content,omitempty"`

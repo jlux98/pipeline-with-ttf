@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"knative.dev/pkg/apis"
 )
@@ -22,21 +23,24 @@ func (tt *TaskTest) Validate(ctx context.Context) *apis.FieldError {
 
 // Validate implements apis.Validatable.
 func (ts *TaskTestSpec) Validate(ctx context.Context) *apis.FieldError {
-	errs := ts.Inputs.Validate().ViaField("inputs")
+	errs := ts.Inputs.Validate(ctx).ViaField("inputs")
 	errs = errs.Also(ts.Expected.Validate(ctx).ViaField("expected"))
 	return errs
 }
 
-func (i *TaskTestInputs) Validate() *apis.FieldError {
+func (tti *TaskTestInputs) Validate(ctx context.Context) *apis.FieldError {
 	var errs *apis.FieldError
-	for i, wc := range i.WorkspaceContents {
-		errs = errs.Also(wc.Validate()).ViaFieldIndex("workspaceContents", i)
+	errs = errs.Also(v1.ValidateParameters(ctx, tti.Params).ViaField("params"))
+	errs = errs.Also(ValidateIdentifierUniqueness(extractNamesFromWorkspaceContents(tti.WorkspaceContents), "name").ViaField("workspaceContents"))
+	for i, wc := range tti.WorkspaceContents {
+		errs = errs.Also(wc.Validate().ViaFieldIndex("workspaceContents", i))
 	}
 	return errs.Also()
 }
 
 func (wc *InitialWorkspaceContents) Validate() *apis.FieldError {
 	var errs *apis.FieldError
+	errs = errs.Also(ValidateIdentifierUniqueness(extractPathsFromInputFileSystemObjects(wc.Objects), "path").ViaField("objects"))
 	for i, wo := range wc.Objects {
 		errs = errs.Also(wo.Validate().ViaFieldIndex("objects", i))
 	}
@@ -71,7 +75,7 @@ var DisallowedInputFileSystemPathEndings []rune = []rune{
 
 func (e *ExpectedOutcomes) Validate(ctx context.Context) *apis.FieldError {
 	var errs *apis.FieldError
-
+	errs = errs.Also(ValidateIdentifierUniqueness(extractNamesFromTaskResults(e.Results), "name").ViaField("results"))
 	for i := range e.FileSystemContents {
 		errs = errs.Also(e.FileSystemContents[i].Validate(ctx).ViaFieldIndex("fileSystemContents", i))
 	}
@@ -81,6 +85,7 @@ func (e *ExpectedOutcomes) Validate(ctx context.Context) *apis.FieldError {
 
 func (fc *ExpectedStepFileSystemContent) Validate(ctx context.Context) *apis.FieldError {
 	var errs *apis.FieldError
+	errs = errs.Also(ValidateIdentifierUniqueness(extractPathsFromFileSystemObjects(fc.Objects), "path").ViaField("objects"))
 	for i := range fc.Objects {
 		errs = errs.Also(fc.Objects[i].Validate(ctx).ViaFieldIndex("objects", i))
 	}

@@ -1,0 +1,1638 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "Tekton Pipeline",
+    "title": "Tekton",
+    "version": "v0.17.2"
+  },
+  "paths": {},
+  "definitions": {
+    "pod.AffinityAssistantTemplate": {
+      "description": "AffinityAssistantTemplate holds pod specific configuration and is a subset of the generic pod Template",
+      "type": "object",
+      "properties": {
+        "imagePullSecrets": {
+          "description": "ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.LocalObjectReference"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "nodeSelector": {
+          "description": "NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "priorityClassName": {
+          "description": "If specified, indicates the pod's priority. \"system-node-critical\" and \"system-cluster-critical\" are two special keywords which indicate the highest priorities with the former being the highest priority. Any other name must be defined by creating a PriorityClass object with that name. If not specified, the pod priority will be default or zero if there is no default.",
+          "type": "string"
+        },
+        "securityContext": {
+          "description": "SecurityContext sets the security context for the pod",
+          "$ref": "#/definitions/v1.PodSecurityContext"
+        },
+        "tolerations": {
+          "description": "If specified, the pod's tolerations.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Toleration"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "pod.Template": {
+      "description": "Template holds pod specific configuration",
+      "type": "object",
+      "properties": {
+        "affinity": {
+          "description": "If specified, the pod's scheduling constraints. See Pod.spec.affinity (API version: v1)",
+          "$ref": "#/definitions/v1.Affinity"
+        },
+        "automountServiceAccountToken": {
+          "description": "AutomountServiceAccountToken indicates whether pods running as this service account should have an API token automatically mounted.",
+          "type": "boolean"
+        },
+        "dnsConfig": {
+          "description": "Specifies the DNS parameters of a pod. Parameters specified here will be merged to the generated DNS configuration based on DNSPolicy.",
+          "$ref": "#/definitions/v1.PodDNSConfig"
+        },
+        "dnsPolicy": {
+          "description": "Set DNS policy for the pod. Defaults to \"ClusterFirst\". Valid values are 'ClusterFirst', 'Default' or 'None'. DNS parameters given in DNSConfig will be merged with the policy selected with DNSPolicy.",
+          "type": "string"
+        },
+        "enableServiceLinks": {
+          "description": "EnableServiceLinks indicates whether information about services should be injected into pod's environment variables, matching the syntax of Docker links. Optional: Defaults to true.",
+          "type": "boolean"
+        },
+        "env": {
+          "description": "List of environment variables that can be provided to the containers belonging to the pod.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.EnvVar"
+          },
+          "x-kubernetes-list-type": "atomic",
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "hostAliases": {
+          "description": "HostAliases is an optional list of hosts and IPs that will be injected into the pod's hosts file if specified. This is only valid for non-hostNetwork pods.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.HostAlias"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "hostNetwork": {
+          "description": "HostNetwork specifies whether the pod may use the node network namespace",
+          "type": "boolean"
+        },
+        "imagePullSecrets": {
+          "description": "ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.LocalObjectReference"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "nodeSelector": {
+          "description": "NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "priorityClassName": {
+          "description": "If specified, indicates the pod's priority. \"system-node-critical\" and \"system-cluster-critical\" are two special keywords which indicate the highest priorities with the former being the highest priority. Any other name must be defined by creating a PriorityClass object with that name. If not specified, the pod priority will be default or zero if there is no default.",
+          "type": "string"
+        },
+        "runtimeClassName": {
+          "description": "RuntimeClassName refers to a RuntimeClass object in the node.k8s.io group, which should be used to run this pod. If no RuntimeClass resource matches the named class, the pod will not be run. If unset or empty, the \"legacy\" RuntimeClass will be used, which is an implicit class with an empty definition that uses the default runtime handler. More info: https://git.k8s.io/enhancements/keps/sig-node/runtime-class.md This is a beta feature as of Kubernetes v1.14.",
+          "type": "string"
+        },
+        "schedulerName": {
+          "description": "SchedulerName specifies the scheduler to be used to dispatch the Pod",
+          "type": "string"
+        },
+        "securityContext": {
+          "description": "SecurityContext holds pod-level security attributes and common container settings. Optional: Defaults to empty.  See type description for default values of each field. See Pod.spec.securityContext (API version: v1)",
+          "$ref": "#/definitions/v1.PodSecurityContext"
+        },
+        "tolerations": {
+          "description": "If specified, the pod's tolerations.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Toleration"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "topologySpreadConstraints": {
+          "description": "TopologySpreadConstraints controls how Pods are spread across your cluster among failure-domains such as regions, zones, nodes, and other user-defined topology domains.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.TopologySpreadConstraint"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "volumes": {
+          "description": "List of volumes that can be mounted by containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes See Pod.spec.volumes (API version: v1)",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Volume"
+          },
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge,retainKeys"
+        }
+      }
+    },
+    "v1alpha1.Authority": {
+      "description": "The Authority block defines the keys for validating signatures.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "key": {
+          "description": "Key contains the public key to validate the resource.",
+          "$ref": "#/definitions/v1alpha1.KeyRef"
+        },
+        "name": {
+          "description": "Name is the name for this authority.",
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "v1alpha1.EmbeddedRunSpec": {
+      "description": "EmbeddedRunSpec allows custom task definitions to be embedded",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1beta1.PipelineTaskMetadata"
+        },
+        "spec": {
+          "description": "Spec is a specification of a custom task",
+          "$ref": "#/definitions/k8s.io.apimachinery.pkg.runtime.RawExtension"
+        }
+      }
+    },
+    "v1alpha1.ExpectedOutcomes": {
+      "description": "ExpectedOutcomes defines the outcomes that should be observed after executing the Task under test.",
+      "type": "object",
+      "properties": {
+        "env": {
+          "description": "List of environment variables with expected values to be checked for in all of the Task's Steps.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.EnvVar"
+          },
+          "x-kubernetes-list-type": "atomic",
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "fileSystemContents": {
+          "description": "FileSystemContents is a list step names, each one paired with a list of expected file system objects.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.ExpectedStepFileSystemContent"
+          },
+          "x-kubernetes-list-map-keys": [
+            "stepName"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
+        "results": {
+          "description": "Results is a list of Results declared in the Task under test and the values the Task is expected to fill these Results with given the input data.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.TaskResult"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "stepEnvs": {
+          "description": "List of Step environments, where expected values for environment variables can be individually declared for all of the Task's Steps.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.StepEnv"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "successReason": {
+          "description": "SuccessReason is the reason, with which the TaskRuns initiated by this test are expected to be marked upon completion.",
+          "type": "string"
+        },
+        "successStatus": {
+          "description": "SuccessStatus reports, whether the TaskRuns initiated by this test are expected to succeed. This is useful for testing cases in which the Task is supposed to fail because of a faulty input.",
+          "type": "boolean"
+        }
+      }
+    },
+    "v1alpha1.ExpectedStepFileSystemContent": {
+      "description": "ExpectedStepFileSystemContent contains the name of a step as declared in the Task under Test and a list of file system objects.\n\nThe rules for these file system objects are as follows: If the Type is not set it will default to \"AnyObjectType\". If Type is set to a type other than \"TextFile\", then Content must be left empty. Path value must be an absolute path, variable substitution for workspace paths is possible.",
+      "type": "object",
+      "properties": {
+        "objects": {
+          "description": "Objects is a list of File System Objects, which are expected to be in the container's file system after the step has finished executing (or in the case of Type being set to \"None\" expected to not be there). If this field is left empty, then it will default to \"AnyObjectType\".",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.FileSystemObject"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
+        "stepName": {
+          "description": "StepName is the name of the step, whose file system will be checked for the objects in FileSystemObject.",
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.FileSystemObject": {
+      "description": "FileSystemObject describes a file system object by giving a path to the object, the type of the object and in case it is a text file the contents of that text file. Path value must be an absolute path, variable substitution for workspace paths is possible.",
+      "type": "object",
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "content": {
+          "description": "The content of the file system object. Setting this value is only acceptable, if the field Type is set to 'TextFile'. N2H: it might be useful to be able to populate the contents field using values from a ConfigMap or Secret.",
+          "type": "string"
+        },
+        "path": {
+          "description": "Path is the path to this file system object",
+          "type": "string",
+          "default": ""
+        },
+        "type": {
+          "description": "Type is the type of this file system object. The values, which are acceptable for this field, are defined in the enum FileSystemObjectType",
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.InitialWorkspaceContents": {
+      "description": "InitialWorkspaceContents describes the desired contents of a workspace declared in the Task under Test before starting the test. N2H: it might be useful to be able to populate a workspace with files from a git repo.",
+      "type": "object",
+      "required": [
+        "name",
+        "objects"
+      ],
+      "properties": {
+        "name": {
+          "description": "Name is the name of the workspace as declared by the Task under test.",
+          "type": "string",
+          "default": ""
+        },
+        "objects": {
+          "description": "Objects is a list of file system objects to be placed in the specified workspace. Relative paths are interpreted from the root of the workspace, and for absolute paths the leading '/' denotes the root of the workspace. If the type chosen for the object is 'Directory', then an empty directory will be created at the location denoted by Path and Content must not be fille. I the type chosen for the object is 'TextFile', then a text file with Content as its content will be created at that location.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.InputFileSystemObject"
+          },
+          "x-kubernetes-list-map-keys": [
+            "path"
+          ],
+          "x-kubernetes-list-type": "map"
+        }
+      }
+    },
+    "v1alpha1.InputFileSystemObject": {
+      "description": "InputFileSystemObject describes a file system object to be placed when setting up a workspace for testing a Task by giving a path to the object, the type of the object and in case it is a text file the contents of that text file.",
+      "type": "object",
+      "required": [
+        "path",
+        "type"
+      ],
+      "properties": {
+        "content": {
+          "description": "The content of the file system object. Setting this value is only acceptable, if the field Type is set to 'TextFile'. N2H: it might be useful to be able to populate the contents field using values from a ConfigMap or Secret.",
+          "type": "string"
+        },
+        "path": {
+          "description": "Path is the path to this file system object",
+          "type": "string",
+          "default": ""
+        },
+        "type": {
+          "description": "Type is the type of this file system object.",
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "v1alpha1.KeyRef": {
+      "description": "KeyRef defines the reference to a public key",
+      "type": "object",
+      "properties": {
+        "data": {
+          "description": "Data contains the inline public key.",
+          "type": "string"
+        },
+        "hashAlgorithm": {
+          "description": "HashAlgorithm always defaults to sha256 if the algorithm hasn't been explicitly set",
+          "type": "string"
+        },
+        "kms": {
+          "description": "KMS contains the KMS url of the public key Supported formats differ based on the KMS system used. One example of a KMS url could be: gcpkms://projects/[PROJECT]/locations/[LOCATION]\u003e/keyRings/[KEYRING]/cryptoKeys/[KEY]/cryptoKeyVersions/[KEY_VERSION] For more examples please refer https://docs.sigstore.dev/cosign/kms_support. Note that the KMS is not supported yet.",
+          "type": "string"
+        },
+        "secretRef": {
+          "description": "SecretRef sets a reference to a secret with the key.",
+          "$ref": "#/definitions/v1.SecretReference"
+        }
+      }
+    },
+    "v1alpha1.NamedTaskTestSpec": {
+      "type": "object",
+      "required": [
+        "name",
+        "spec"
+      ],
+      "properties": {
+        "name": {
+          "description": "Name is the name the TaskTest to which the spec belongs",
+          "type": "string",
+          "default": ""
+        },
+        "spec": {
+          "description": "Spec is the spec field of the TaskTest being executed in this suite.",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestSpec"
+        }
+      }
+    },
+    "v1alpha1.ObservedEnvVar": {
+      "type": "object",
+      "properties": {
+        "diff": {
+          "type": "string"
+        },
+        "got": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "want": {
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.ObservedFileSystemObject": {
+      "type": "object",
+      "properties": {
+        "diff": {
+          "description": "Diff describes, how Want and Got differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
+          "type": "string"
+        },
+        "got": {
+          "description": "Got describes the file system object the test found at Path",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.FileSystemObject"
+        },
+        "want": {
+          "description": "Want describes the file system object the test expected to find at Path",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.FileSystemObject"
+        }
+      }
+    },
+    "v1alpha1.ObservedOutcomes": {
+      "type": "object",
+      "properties": {
+        "env": {
+          "description": "listMapKey=name",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.ObservedEnvVar"
+          },
+          "x-kubernetes-list-type": "map"
+        },
+        "fileSystemObjects": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.ObservedFileSystemObject"
+        },
+        "results": {
+          "description": "listMapKey=name",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.ObservedResults"
+          },
+          "x-kubernetes-list-type": "map"
+        },
+        "stepEnvs": {
+          "description": "listMapKey=stepName",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.ObservedStepEnv"
+          },
+          "x-kubernetes-list-type": "map"
+        },
+        "successReason": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.ObservedSuccessReason"
+        },
+        "successStatus": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.ObservedSuccessStatus"
+        }
+      }
+    },
+    "v1alpha1.ObservedResults": {
+      "type": "object",
+      "properties": {
+        "diff": {
+          "type": "string"
+        },
+        "got": {
+          "default": {},
+          "$ref": "#/definitions/v1.TaskResult"
+        },
+        "name": {
+          "type": "string"
+        },
+        "want": {
+          "default": {},
+          "$ref": "#/definitions/v1.TaskResult"
+        }
+      }
+    },
+    "v1alpha1.ObservedStepEnv": {
+      "type": "object",
+      "properties": {
+        "env": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.ObservedEnvVar"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
+        "stepName": {
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.ObservedStepFileSystemContent": {
+      "type": "object",
+      "properties": {
+        "objects": {
+          "description": "Objects is a list of Observed File System Objects (currently possible: text files, binary files and empty directories), which were expected to be in the container's file system after the step had finished executing",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.ObservedFileSystemObject"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
+        "stepName": {
+          "description": "StepName is the name of the step, whose file system was checked.",
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.ObservedSuccessReason": {
+      "type": "object",
+      "properties": {
+        "diff": {
+          "type": "string"
+        },
+        "got": {
+          "type": "string"
+        },
+        "want": {
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.ObservedSuccessStatus": {
+      "type": "object",
+      "properties": {
+        "got": {
+          "type": "boolean"
+        },
+        "want": {
+          "type": "boolean"
+        }
+      }
+    },
+    "v1alpha1.ResourcePattern": {
+      "description": "ResourcePattern defines the pattern of the resource source",
+      "type": "object",
+      "required": [
+        "pattern"
+      ],
+      "properties": {
+        "pattern": {
+          "description": "Pattern defines a resource pattern. Regex is created to filter resources based on `Pattern` Example patterns: GitHub resource: https://github.com/tektoncd/catalog.git, https://github.com/tektoncd/* Bundle resource: gcr.io/tekton-releases/catalog/upstream/git-clone, gcr.io/tekton-releases/catalog/upstream/* Hub resource: https://artifacthub.io/*,",
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "v1alpha1.Run": {
+      "description": "Run represents a single execution of a Custom Task.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.RunSpec"
+        },
+        "status": {
+          "default": {},
+          "$ref": "#/definitions/github.com.tektoncd.pipeline.pkg.apis.run.v1alpha1.RunStatus"
+        }
+      }
+    },
+    "v1alpha1.RunList": {
+      "description": "RunList contains a list of Run",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.Run"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1alpha1.RunSpec": {
+      "description": "RunSpec defines the desired state of Run",
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.Param"
+          }
+        },
+        "podTemplate": {
+          "description": "PodTemplate holds pod specific configuration",
+          "$ref": "#/definitions/pod.Template"
+        },
+        "ref": {
+          "$ref": "#/definitions/v1beta1.TaskRef"
+        },
+        "retries": {
+          "description": "Used for propagating retries count to custom tasks",
+          "type": "integer",
+          "format": "int32"
+        },
+        "serviceAccountName": {
+          "type": "string",
+          "default": ""
+        },
+        "spec": {
+          "description": "Spec is a specification of a custom task",
+          "$ref": "#/definitions/v1alpha1.EmbeddedRunSpec"
+        },
+        "status": {
+          "description": "Used for cancelling a run (and maybe more later on)",
+          "type": "string"
+        },
+        "statusMessage": {
+          "description": "Status message for cancellation.",
+          "type": "string"
+        },
+        "timeout": {
+          "description": "Time after which the custom-task times out. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "$ref": "#/definitions/v1.Duration"
+        },
+        "workspaces": {
+          "description": "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.WorkspaceBinding"
+          }
+        }
+      }
+    },
+    "v1alpha1.StepAction": {
+      "description": "StepAction represents the actionable components of Step. The Step can only reference it from the cluster or using remote resolution.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec holds the desired state of the Step from the client",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.StepActionSpec"
+        }
+      }
+    },
+    "v1alpha1.StepActionList": {
+      "description": "StepActionList contains a list of StepActions",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.StepAction"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1alpha1.StepActionSpec": {
+      "description": "StepActionSpec contains the actionable components of a step.",
+      "type": "object",
+      "properties": {
+        "args": {
+          "description": "Arguments to the entrypoint. The image's CMD is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will produce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "command": {
+          "description": "Entrypoint array. Not executed within a shell. The image's ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will produce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "description": {
+          "description": "Description is a user-facing description of the stepaction that may be used to populate a UI.",
+          "type": "string"
+        },
+        "env": {
+          "description": "List of environment variables to set in the container. Cannot be updated.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.EnvVar"
+          },
+          "x-kubernetes-list-type": "atomic",
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "image": {
+          "description": "Image reference name to run for this StepAction. More info: https://kubernetes.io/docs/concepts/containers/images",
+          "type": "string"
+        },
+        "params": {
+          "description": "Params is a list of input parameters required to run the stepAction. Params must be supplied as inputs in Steps unless they declare a defaultvalue.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.ParamSpec"
+          }
+        },
+        "results": {
+          "description": "Results are values that this StepAction can output",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.StepResult"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "script": {
+          "description": "Script is the contents of an executable file to execute.\n\nIf Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.",
+          "type": "string"
+        },
+        "securityContext": {
+          "description": "SecurityContext defines the security options the Step should be run with. If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/ The value set in StepAction will take precedence over the value from Task.",
+          "$ref": "#/definitions/v1.SecurityContext"
+        },
+        "volumeMounts": {
+          "description": "Volumes to mount into the Step's filesystem. Cannot be updated.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.VolumeMount"
+          },
+          "x-kubernetes-list-type": "atomic",
+          "x-kubernetes-patch-merge-key": "mountPath",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "workingDir": {
+          "description": "Step's working directory. If not specified, the container runtime's default will be used, which might be configured in the container image. Cannot be updated.",
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.StepEnv": {
+      "description": "StepEnv contains the name of a step as defined the manifest of the Task under test and a list of environment variable declarations to be set for this step.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "env": {
+          "description": "List of environment variables to set for this step.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.EnvVar"
+          },
+          "x-kubernetes-list-type": "atomic",
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "name": {
+          "description": "Name is the name of the step for whom these environment variables will be set.",
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "v1alpha1.SuiteTaskTestRun": {
+      "type": "object",
+      "required": [
+        "taskTestRef"
+      ],
+      "properties": {
+        "computeResources": {
+          "description": "Compute resources to use for this TaskRun",
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
+        "serviceAccountName": {
+          "type": "string"
+        },
+        "taskTestRef": {
+          "description": "TaskTestRef is a reference to a task test definition. If a task test defined inline inside the test suite shares a name with a test defined outside the suite, then the task defined inside the suite will be chosen.",
+          "$ref": "#/definitions/v1alpha1.TaskTestRef"
+        },
+        "workspaces": {
+          "description": "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.WorkspaceBinding"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1alpha1.SuiteTaskTestRunStatus": {
+      "type": "object",
+      "required": [
+        "taskTestRunName",
+        "taskTestRunStatus"
+      ],
+      "properties": {
+        "taskTestRunName": {
+          "description": "TaskTestRunName is the identifier given to the TaskTestRun responsible for executing this specific TaskTest",
+          "type": "string",
+          "default": ""
+        },
+        "taskTestRunStatus": {
+          "description": "Status is the status field of the TaskTestRun responsible for executing this specific TaskTest",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestRunStatus"
+        }
+      }
+    },
+    "v1alpha1.SuiteTest": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "allTriesMustSucceed": {
+          "description": "The default behavior is that if out of all the tries at least one succeeds then the TaskTestRun is marked as successful. But if the field allTriesMustSucceed is set to true then the TaskTestRun is marked as successful if and only if all of its tries come up successful.",
+          "type": "boolean"
+        },
+        "name": {
+          "description": "Name is the identifier for a test in the context of this suite.",
+          "type": "string",
+          "default": ""
+        },
+        "onError": {
+          "description": "OnError specifies, how the suite will behave, if this test fails. \"StopSchedulingAndFail\" means, that no new test will be scheduled but tests already running will be able to finish, after which the suite execution is marked as a failure. \"CancelRunningAndFail\" means, that all other unfinished tests will be cancelled immediately and the suite execution is marked as a failure. \"Continue\" means, that if the test fails the suite is still executed as if the test succeeded. This field defaults to \"CancelRunningAndFail\" if unset",
+          "type": "string"
+        },
+        "retries": {
+          "description": "Retries represents how many times this TaskTestRun should be retried in the event of test failure.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "taskTestRef": {
+          "description": "TaskTestRef is a reference to an existing Task",
+          "$ref": "#/definitions/v1alpha1.TaskTestRef"
+        },
+        "taskTestSpec": {
+          "description": "TaskTestSpec is a specification of a task test",
+          "$ref": "#/definitions/v1alpha1.TaskTestSpec"
+        },
+        "timeout": {
+          "description": "Time after which one retry attempt times out. Defaults to 1 hour. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "$ref": "#/definitions/v1.Duration"
+        }
+      }
+    },
+    "v1alpha1.TaskTest": {
+      "description": "TaskTest represents a test case for verifying the functional requirements of a Task that is run either on its own or as part of a TaskTestSuiteRun. TaskTests execute when TaskTestRuns are created that provide the input parameters and resources and output resources the TaskTest requires.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec holds the desired state of the TaskTest from the client",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestSpec"
+        }
+      }
+    },
+    "v1alpha1.TaskTestInputs": {
+      "description": "TaskTestInputs holds the test data, which the TaskTestRun controller uses to prepare the environments necessary for running the test",
+      "type": "object",
+      "properties": {
+        "env": {
+          "description": "List of environment variables to set in all of the Task's Steps.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.EnvVar"
+          },
+          "x-kubernetes-list-type": "atomic",
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "params": {
+          "description": "Parameters declares parameters passed to the task under test.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Param"
+          }
+        },
+        "stepEnvs": {
+          "description": "List of Step environments, where environment variables can be individually set for each one of the Task's Steps.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.StepEnv"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
+        "workspaceContents": {
+          "description": "List of Workspaces with preset values, which will be initialized for any runs of the task under test.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.InitialWorkspaceContents"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        }
+      }
+    },
+    "v1alpha1.TaskTestList": {
+      "description": "TaskTestList contains a list of TaskTests",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.TaskTest"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1alpha1.TaskTestRef": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names",
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.TaskTestRun": {
+      "description": "TaskTestRun represents the execution of a test case for verifying the functional requirements of a Task that is run either on its own or as part of a TaskTestSuiteRun. TaskTests execute when TaskTestRuns are created that provide the input parameters and resources and output resources the TaskTest requires.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec holds the desired state of the TaskTest from the client",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestRunSpec"
+        },
+        "status": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestRunStatus"
+        }
+      }
+    },
+    "v1alpha1.TaskTestRunList": {
+      "description": "TaskTestRunList contains a list of TaskTestRuns",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.TaskTestRun"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1alpha1.TaskTestRunSpec": {
+      "description": "TaskTestRunSpec defines the desired state of TaskTest.",
+      "type": "object",
+      "properties": {
+        "allTriesMustSucceed": {
+          "description": "The default behavior is that if out of all the tries at least one succeeds then the TaskTestRun is marked as successful. But if the field allTriesMustSucceed is set to true then the TaskTestRun is marked as successful if and only if all of its tries come up successful.",
+          "type": "boolean"
+        },
+        "computeResources": {
+          "description": "Compute resources to use for this TaskRun",
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
+        "retries": {
+          "description": "Retries represents how many times this TaskTestRun should be retried in the event of test failure.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "serviceAccountName": {
+          "type": "string"
+        },
+        "status": {
+          "description": "Used for cancelling a TaskTestRun (and maybe more later on)",
+          "type": "string"
+        },
+        "statusMessage": {
+          "description": "Status message for cancellation.",
+          "type": "string"
+        },
+        "taskTestRef": {
+          "description": "TaskTestRef is a reference to a task test definition. Either this or TaskTestSpec must be set, if neither or both are set then validation of this TaskTestRun fails.",
+          "$ref": "#/definitions/v1alpha1.TaskTestRef"
+        },
+        "taskTestSpec": {
+          "description": "TaskTestSpec is a task test definition. Either this or TaskTestRef must be set, if neither or both are set then validation of this TaskTestRun fails.",
+          "$ref": "#/definitions/v1alpha1.TaskTestSpec"
+        },
+        "timeout": {
+          "description": "Time after which one retry attempt times out. Defaults to 1 hour. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "$ref": "#/definitions/v1.Duration"
+        },
+        "workspaces": {
+          "description": "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.WorkspaceBinding"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1alpha1.TaskTestRunStatus": {
+      "type": "object",
+      "required": [
+        "taskRunName",
+        "taskRunStatus",
+        "outcomes"
+      ],
+      "properties": {
+        "annotations": {
+          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "completionTime": {
+          "description": "CompletionTime is the time the test completed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "conditions": {
+          "description": "Conditions the latest available observations of a resource's current state.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/knative.Condition"
+          },
+          "x-kubernetes-patch-merge-key": "type",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "outcomes": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.ObservedOutcomes"
+        },
+        "taskRunName": {
+          "description": "TaskRunName is the name of the TaskRun responsible for executing this test's Tasks.",
+          "type": "string",
+          "default": ""
+        },
+        "taskRunStatus": {
+          "description": "TaskRunStatus is the status of the TaskRun responsible for executing this test's Tasks.",
+          "default": {},
+          "$ref": "#/definitions/v1.TaskRunStatus"
+        },
+        "taskTestSpec": {
+          "description": "TaskTestSpec is a copy of the Spec of the referenced TaskTest.",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.NamedTaskTestSpec"
+        }
+      }
+    },
+    "v1alpha1.TaskTestRunStatusFields": {
+      "type": "object",
+      "required": [
+        "taskRunName",
+        "taskRunStatus",
+        "outcomes"
+      ],
+      "properties": {
+        "completionTime": {
+          "description": "CompletionTime is the time the test completed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "outcomes": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.ObservedOutcomes"
+        },
+        "taskRunName": {
+          "description": "TaskRunName is the name of the TaskRun responsible for executing this test's Tasks.",
+          "type": "string",
+          "default": ""
+        },
+        "taskRunStatus": {
+          "description": "TaskRunStatus is the status of the TaskRun responsible for executing this test's Tasks.",
+          "default": {},
+          "$ref": "#/definitions/v1.TaskRunStatus"
+        },
+        "taskTestSpec": {
+          "description": "TaskTestSpec is a copy of the Spec of the referenced TaskTest.",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.NamedTaskTestSpec"
+        }
+      }
+    },
+    "v1alpha1.TaskTestRunTemplate": {
+      "type": "object",
+      "properties": {
+        "computeResources": {
+          "description": "Compute resources to use for this TaskRun",
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
+        "serviceAccountName": {
+          "type": "string"
+        },
+        "workspaces": {
+          "description": "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.WorkspaceBinding"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1alpha1.TaskTestSpec": {
+      "description": "TaskTestSpec defines the desired state of TaskTest.",
+      "type": "object",
+      "required": [
+        "taskRef",
+        "inputs"
+      ],
+      "properties": {
+        "expected": {
+          "description": "Expected contains the data, which the TaskTestRun controller will use to check, whether a TaskTestRun was successful or not. If this field is left empty, then the TaskTestRun is deemed successful, if the TaskRun completes without a failure occurring.",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.ExpectedOutcomes"
+        },
+        "inputs": {
+          "description": "Inputs represents the test data for executing the test case.",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestInputs"
+        },
+        "taskRef": {
+          "description": "TaskRef is a reference to a task definition, which must be in the same namespace as the this test.",
+          "$ref": "#/definitions/v1.TaskRef"
+        }
+      }
+    },
+    "v1alpha1.TaskTestSuite": {
+      "description": "TaskTestSuite represents a collection of test cases for verifying the functional requirements of one or more Tasks. TaskTestSuites execute when TaskTestSuiteRuns are created, which provide the input and output resources the TaskTest requires.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec holds the desired state of the TaskTestSuite from the client",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestSuiteSpec"
+        }
+      }
+    },
+    "v1alpha1.TaskTestSuiteList": {
+      "description": "TaskTestList contains a list of TaskTests",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.TaskTestSuite"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1alpha1.TaskTestSuiteRef": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "v1alpha1.TaskTestSuiteRun": {
+      "description": "TaskTestSuiteRun represents the execution of a list of test cases.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec holds the desired state of the TaskTest from the client",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestSuiteRunSpec"
+        },
+        "status": {
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestSuiteRunStatus"
+        }
+      }
+    },
+    "v1alpha1.TaskTestSuiteRunList": {
+      "description": "TaskTestRunList contains a list of TaskTestRuns",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.TaskTestSuiteRun"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1alpha1.TaskTestSuiteRunSpec": {
+      "description": "TaskTestSuiteRunSpec",
+      "type": "object",
+      "required": [
+        "taskTestSuiteRef",
+        "taskTestSuiteSpec",
+        "executionMode"
+      ],
+      "properties": {
+        "defaultRunSpecTemplate": {
+          "description": "DefaultRunSpecTemplate defines the template after which the TaskTestRuns for the tests in this suite are generated. It supports the same fields as the Spec of a TaskTestRun with the exception of TaskTestRef and the SpecStatus fields.",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.TaskTestRunTemplate"
+        },
+        "executionMode": {
+          "description": "ExecutionMode specifies, whether the tests in this run will be executed in parallel or sequentially. Valid values for this field are \"Parallel\" and \"Sequential\".",
+          "type": "string",
+          "default": ""
+        },
+        "runSpecs": {
+          "description": "RunSpecs is a list of RunSpecs, except that the SpecStatus fields are not allowed. It contains all the tests that will be executed by this run, in addition to providing the option of configuring them on a case-by-case basis. Configurations made in this field overwrite the default template.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.SuiteTaskTestRun"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
+        "status": {
+          "description": "Used for cancelling a TaskTestSuiteRun",
+          "type": "string"
+        },
+        "statusMessage": {
+          "description": "Status message for cancellation.",
+          "type": "string"
+        },
+        "taskTestSuiteRef": {
+          "description": "TaskTestSuiteRef is a reference to a task test suite definition.",
+          "$ref": "#/definitions/v1alpha1.TaskTestSuiteRef"
+        },
+        "taskTestSuiteSpec": {
+          "description": "TaskTestSuiteSpec is a definition of a task test suite.",
+          "$ref": "#/definitions/v1alpha1.TaskTestSuiteSpec"
+        },
+        "timeout": {
+          "description": "Time after which the suite run times out. Defaults to 1 hour. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "$ref": "#/definitions/v1.Duration"
+        }
+      }
+    },
+    "v1alpha1.TaskTestSuiteRunStatus": {
+      "type": "object",
+      "required": [
+        "taskTestSpecs",
+        "taskTestRunStatuses"
+      ],
+      "properties": {
+        "annotations": {
+          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "completionTime": {
+          "description": "CompletionTime is the time the test completed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "conditions": {
+          "description": "Conditions the latest available observations of a resource's current state.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/knative.Condition"
+          },
+          "x-kubernetes-patch-merge-key": "type",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "taskTestRunStatuses": {
+          "description": "TaskTestRunStatuses is the list containing the status fields of the TaskTestRuns responsible for executing this suite's TasksTests.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.SuiteTaskTestRunStatus"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
+        "taskTestSpecs": {
+          "description": "TaskTestSpecs is the list containing the spec fields of the TaskTests being executed in this suite.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.NamedTaskTestSpec"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        }
+      }
+    },
+    "v1alpha1.TaskTestSuiteRunStatusFields": {
+      "type": "object",
+      "required": [
+        "taskTestSpecs",
+        "taskTestRunStatuses"
+      ],
+      "properties": {
+        "completionTime": {
+          "description": "CompletionTime is the time the test completed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "taskTestRunStatuses": {
+          "description": "TaskTestRunStatuses is the list containing the status fields of the TaskTestRuns responsible for executing this suite's TasksTests.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.SuiteTaskTestRunStatus"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
+        "taskTestSpecs": {
+          "description": "TaskTestSpecs is the list containing the spec fields of the TaskTests being executed in this suite.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.NamedTaskTestSpec"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        }
+      }
+    },
+    "v1alpha1.TaskTestSuiteSpec": {
+      "type": "object",
+      "required": [
+        "taskTests"
+      ],
+      "properties": {
+        "taskTests": {
+          "description": "TaskTests is a list of the TaskTests, which make up the suite. TaskTests can be added to this list by reference or be defined directly inside the list.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.SuiteTest"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1alpha1.VerificationPolicy": {
+      "description": "VerificationPolicy defines the rules to verify Tekton resources. VerificationPolicy can config the mapping from resources to a list of public keys, so when verifying the resources we can use the corresponding public keys.",
+      "type": "object",
+      "required": [
+        "spec"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec holds the desired state of the VerificationPolicy.",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.VerificationPolicySpec"
+        }
+      }
+    },
+    "v1alpha1.VerificationPolicyList": {
+      "description": "VerificationPolicyList contains a list of VerificationPolicy",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.VerificationPolicy"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1alpha1.VerificationPolicySpec": {
+      "description": "VerificationPolicySpec defines the patterns and authorities.",
+      "type": "object",
+      "required": [
+        "resources",
+        "authorities"
+      ],
+      "properties": {
+        "authorities": {
+          "description": "Authorities defines the rules for validating signatures.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.Authority"
+          }
+        },
+        "mode": {
+          "description": "Mode controls whether a failing policy will fail the taskrun/pipelinerun, or only log the warnings enforce - fail the taskrun/pipelinerun if verification fails (default) warn - don't fail the taskrun/pipelinerun if verification fails but log warnings",
+          "type": "string"
+        },
+        "resources": {
+          "description": "Resources defines the patterns of resources sources that should be subject to this policy. For example, we may want to apply this Policy from a certain GitHub repo. Then the ResourcesPattern should be valid regex. E.g. If using gitresolver, and we want to config keys from a certain git repo. `ResourcesPattern` can be `https://github.com/tektoncd/catalog.git`, we will use regex to filter out those resources.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.ResourcePattern"
+          }
+        }
+      }
+    }
+  }
+}

@@ -15,8 +15,7 @@ func (tt *TaskTest) SetDefaults(ctx context.Context) {
 
 // FIXME(jlux98) implement this
 // SetDefaults set any defaults for the task test spec
-func (tts *TaskTestSpec) SetDefaults(ctx context.Context) {
-	// cfg := config.FromContextOrDefaults(ctx)
+func (tts *TaskTestSpec) SetDefaults(context.Context) {
 	for _, fc := range tts.Expected.FileSystemContents {
 		for i := range fc.Objects {
 			if fc.Objects[i].Type == "" {

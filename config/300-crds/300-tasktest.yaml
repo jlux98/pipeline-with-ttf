@@ -203,6 +203,8 @@ spec:
                                   description: |-
                                     The content of the file system object. Setting this value is only
                                     acceptable, if the field Type is set to 'TextFile'.
+                                    N2H: it might be useful to be able to populate the contents field using
+                                    values from a ConfigMap or Secret.
                                   type: string
                                 path:
                                   description: Path is the path to this file system object
@@ -667,6 +669,8 @@ spec:
                         description: |-
                           InitialWorkspaceContents describes the desired contents of a workspace
                           declared in the Task under Test before starting the test.
+                          N2H: it might be useful to be able to populate a workspace with files from a
+                          git repo.
                         type: object
                         required:
                           - name
@@ -700,6 +704,8 @@ spec:
                                   description: |-
                                     The content of the file system object. Setting this value is only
                                     acceptable, if the field Type is set to 'TextFile'.
+                                    N2H: it might be useful to be able to populate the contents field using
+                                    values from a ConfigMap or Secret.
                                   type: string
                                 path:
                                   description: Path is the path to this file system object

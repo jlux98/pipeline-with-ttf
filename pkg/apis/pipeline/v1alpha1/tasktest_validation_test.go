@@ -89,6 +89,84 @@ func TestTaskTest_Invalid(t *testing.T) {
 				want:     apis.ErrGeneric(`invalid resource name "": must be a valid DNS label`, "metadata.name"),
 			},
 		}, {
+			name: "parameter names not unique",
+			tc: testCase{
+				taskTest: &v1alpha1.TaskTest{ObjectMeta: metav1.ObjectMeta{
+					Name: "tt",
+				},
+					Spec: v1alpha1.TaskTestSpec{
+						TaskRef: &v1.TaskRef{Name: "task"},
+						Inputs: v1alpha1.TaskTestInputs{
+							Params: v1.Params{
+								{
+									Name:  "name",
+									Value: v1.ParamValue{StringVal: "value"},
+								}, {
+									Name:  "name",
+									Value: v1.ParamValue{StringVal: "value"},
+								},
+							},
+						},
+					},
+				},
+				want: apis.ErrMultipleOneOf("spec.inputs.params[name].name"),
+			},
+		}, {
+			name: "input workspace names not unique",
+			tc: testCase{
+				taskTest: &v1alpha1.TaskTest{ObjectMeta: metav1.ObjectMeta{
+					Name: "tt",
+				},
+					Spec: v1alpha1.TaskTestSpec{
+						TaskRef: &v1.TaskRef{Name: "task"},
+						Inputs: v1alpha1.TaskTestInputs{
+							WorkspaceContents: []v1alpha1.InitialWorkspaceContents{{
+								Name: "name",
+								Objects: []v1alpha1.InputFileSystemObject{{Path: "/path/to/object0",
+									Type: "Directory",
+								}},
+							}, {
+								Name: "name",
+								Objects: []v1alpha1.InputFileSystemObject{{Path: "/path/to/object1",
+									Type: "Directory",
+								}},
+							},
+							},
+						},
+					},
+				},
+				want: apis.ErrMultipleOneOf("spec.inputs.workspaceContents[1].name"),
+			},
+		}, {
+			name: "input workspace object path not unique",
+			tc: testCase{
+				taskTest: &v1alpha1.TaskTest{ObjectMeta: metav1.ObjectMeta{
+					Name: "tt",
+				},
+					Spec: v1alpha1.TaskTestSpec{
+						TaskRef: &v1.TaskRef{Name: "task"},
+						Inputs: v1alpha1.TaskTestInputs{
+							WorkspaceContents: []v1alpha1.InitialWorkspaceContents{{
+								Name: "name0",
+								Objects: []v1alpha1.InputFileSystemObject{
+									{
+										Path: "/object/path",
+										Type: "TextFile",
+										Content: `
+							content
+							`,
+									}, {
+										Path:    "/object/path",
+										Type:    "TextFile",
+										Content: `not  content`,
+									}}},
+							},
+						},
+					},
+				},
+				want: apis.ErrMultipleOneOf("spec.inputs.workspaceContents[0].objects[1].path"),
+			},
+		}, {
 			name: "input workspace object type directory but contents not empty",
 			tc: testCase{
 				taskTest: &v1alpha1.TaskTest{
@@ -239,6 +317,53 @@ func TestTaskTest_Invalid(t *testing.T) {
 				},
 				want: apis.ErrInvalidValue("InvalidFileType", "spec.expected.fileSystemContents[1].objects[2].type").Also(apis.ErrDisallowedFields("spec.expected.fileSystemContents[1].objects[1].content")),
 			},
+		}, {
+			name: "result name not unique",
+			tc: testCase{
+				taskTest: &v1alpha1.TaskTest{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "tt",
+					},
+					Spec: v1alpha1.TaskTestSpec{
+						TaskRef: &v1.TaskRef{Name: "task"},
+						Expected: v1alpha1.ExpectedOutcomes{
+							Results: []v1.TaskResult{
+								{
+									Name: "result",
+								}, {
+									Name: "result",
+								},
+							},
+						},
+					},
+				},
+				want: apis.ErrMultipleOneOf("spec.expected.results[1].name"),
+			},
+		}, {
+			name: "expected step file path not unique",
+			tc: testCase{
+				taskTest: &v1alpha1.TaskTest{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "tt",
+					},
+					Spec: v1alpha1.TaskTestSpec{
+						TaskRef: &v1.TaskRef{Name: "task"},
+						Expected: v1alpha1.ExpectedOutcomes{
+							FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
+								StepName: "step",
+								Objects: []v1alpha1.FileSystemObject{{
+									Path: "/path/to/object",
+									Type: "AnyObjectType",
+								}, {
+									Path: "/path/to/object",
+									Type: "AnyObjectType",
+								}},
+							}},
+						},
+					},
+				},
+				want: apis.ErrMultipleOneOf("spec.expected.fileSystemContents[0].objects[1].path"),
+			},
 		},
 	}
 	for _, ts := range tests {
@@ -281,33 +406,64 @@ func TestTaskTest_Valid(t *testing.T) {
 					Inputs: v1alpha1.TaskTestInputs{
 						Params: v1.Params{
 							{
-								Name: "myparam",
+								Name: "param0",
 								Value: v1.ParamValue{
-									Type:      "mytype",
-									StringVal: "myvalue",
-									ArrayVal:  []string{"myvalue"},
-									ObjectVal: map[string]string{"mykey": "myvalue"},
+									Type:      "type",
+									StringVal: "value",
+									ArrayVal:  []string{"value"},
+									ObjectVal: map[string]string{"key": "value"},
+								},
+							}, {
+								Name: "param1",
+								Value: v1.ParamValue{
+									Type:      "type",
+									StringVal: "value",
+									ArrayVal:  []string{"value"},
+									ObjectVal: map[string]string{"key": "value"},
 								},
 							},
 						},
 						Env: []corev1.EnvVar{{
-							Name:  "myname",
-							Value: "myvalue",
+							Name:  "name0",
+							Value: "value",
+						}, {
+							Name:  "name1",
+							Value: "value",
 						}},
-						StepEnvs: []v1alpha1.StepEnv{{Env: []corev1.EnvVar{{Name: "myname",
-							ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{Name: "myname"},
-								Key:                  "mykey"},
-							}}}}},
+						StepEnvs: []v1alpha1.StepEnv{{Env: []corev1.EnvVar{
+							{
+								Name: "name0",
+								ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "name"},
+									Key:                  "key"},
+								},
+							}, {
+								Name:  "name1",
+								Value: "value",
+							}}}},
 						WorkspaceContents: []v1alpha1.InitialWorkspaceContents{{
-							Name: "myname",
-							Objects: []v1alpha1.InputFileSystemObject{{
-								Path: "/my/path",
-								Type: "TextFile",
-								Content: `my
+							Name: "name0",
+							Objects: []v1alpha1.InputFileSystemObject{
+								{
+									Path: "/object/path0",
+									Type: "TextFile",
+									Content: `
 							content
 							`,
-							}}},
+								}, {
+									Path:    "/object/path1",
+									Type:    "TextFile",
+									Content: `not  content`,
+								}}},
+							{
+								Name: "name1",
+								Objects: []v1alpha1.InputFileSystemObject{{
+									Path: "/object/path0",
+									Type: "TextFile",
+									Content: `
+							content
+							`,
+								}}},
 						},
 					},
 				},
@@ -322,34 +478,56 @@ func TestTaskTest_Valid(t *testing.T) {
 					TaskRef: &v1.TaskRef{Name: "task"},
 					Expected: v1alpha1.ExpectedOutcomes{
 						Env: []corev1.EnvVar{{
-							Name:  "myname",
-							Value: "myvalue",
+							Name:  "name0",
+							Value: "value",
+						}, {
+							Name:  "name1",
+							Value: "value",
 						}},
-						StepEnvs: []v1alpha1.StepEnv{{Env: []corev1.EnvVar{{Name: "myname",
+						StepEnvs: []v1alpha1.StepEnv{{Env: []corev1.EnvVar{{Name: "name0",
 							ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{Name: "myname"},
-								Key:                  "mykey"},
-							}}}}},
+								LocalObjectReference: corev1.LocalObjectReference{Name: "name"},
+								Key:                  "key"},
+							}}, {
+							Name:  "name1",
+							Value: "value",
+						}}}},
 						FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
-							StepName: "mystep",
+							StepName: "step",
 							Objects: []v1alpha1.FileSystemObject{{
-								Path: "/my/path",
+								Path: "/object/path0",
 								Type: "TextFile",
-								Content: `my
+								Content: `
 							content
 							`,
+							}, {
+								Path:    "/object/path1",
+								Type:    "TextFile",
+								Content: `not content`,
 							}}}},
 						Results: []v1.TaskResult{
 							{
-								Name:        "myname",
-								Type:        "mytype",
-								Properties:  map[string]v1.PropertySpec{"mykey": {Type: "mytype"}},
+								Name:        "name0",
+								Type:        "type",
+								Properties:  map[string]v1.PropertySpec{"key": {Type: "type"}},
 								Description: "description",
 								Value: &v1.ResultValue{
-									Type:      "mytype",
-									StringVal: "myvalue",
-									ArrayVal:  []string{"myvalue"},
-									ObjectVal: map[string]string{"mykey": "myvalue"},
+									Type:      "type",
+									StringVal: "value",
+									ArrayVal:  []string{"value"},
+									ObjectVal: map[string]string{"key": "value"},
+								},
+							},
+							{
+								Name:        "name1",
+								Type:        "type",
+								Properties:  map[string]v1.PropertySpec{"key": {Type: "type"}},
+								Description: "description",
+								Value: &v1.ResultValue{
+									Type:      "type",
+									StringVal: "value",
+									ArrayVal:  []string{"value"},
+									ObjectVal: map[string]string{"key": "value"},
 								},
 							},
 						},
@@ -369,59 +547,59 @@ func TestTaskTest_Valid(t *testing.T) {
 					Inputs: v1alpha1.TaskTestInputs{
 						Params: v1.Params{
 							{
-								Name: "myparam",
+								Name: "param",
 								Value: v1.ParamValue{
-									Type:      "mytype",
-									StringVal: "myvalue",
-									ArrayVal:  []string{"myvalue"},
-									ObjectVal: map[string]string{"mykey": "myvalue"},
+									Type:      "type",
+									StringVal: "value",
+									ArrayVal:  []string{"value"},
+									ObjectVal: map[string]string{"key": "value"},
 								},
 							},
 						},
 						Env: []corev1.EnvVar{{
-							Name:  "myname",
-							Value: "myvalue",
+							Name:  "name",
+							Value: "value",
 						}},
-						StepEnvs: []v1alpha1.StepEnv{{Env: []corev1.EnvVar{{Name: "myname",
+						StepEnvs: []v1alpha1.StepEnv{{Env: []corev1.EnvVar{{Name: "name",
 							ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{Name: "myname"},
-								Key:                  "mykey"},
+								LocalObjectReference: corev1.LocalObjectReference{Name: "name"},
+								Key:                  "key"},
 							}}}}},
 						WorkspaceContents: []v1alpha1.InitialWorkspaceContents{{
-							Name: "myname",
+							Name: "name",
 							Objects: []v1alpha1.InputFileSystemObject{{
-								Path: "my/path",
+								Path: "/path",
 								Type: "Directory",
 							}}},
 						},
 					},
 					Expected: v1alpha1.ExpectedOutcomes{
 						Env: []corev1.EnvVar{{
-							Name:  "myname",
-							Value: "myvalue",
+							Name:  "name",
+							Value: "value",
 						}},
-						StepEnvs: []v1alpha1.StepEnv{{Env: []corev1.EnvVar{{Name: "myname",
+						StepEnvs: []v1alpha1.StepEnv{{Env: []corev1.EnvVar{{Name: "name",
 							ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{Name: "myname"},
-								Key:                  "mykey"},
+								LocalObjectReference: corev1.LocalObjectReference{Name: "name"},
+								Key:                  "key"},
 							}}}}},
 						FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
-							StepName: "mystep",
+							StepName: "step",
 							Objects: []v1alpha1.FileSystemObject{{
-								Path: "/my/path",
+								Path: "/object/path",
 								Type: "Directory",
 							}}}},
 						Results: []v1.TaskResult{
 							{
-								Name:        "myname",
-								Type:        "mytype",
-								Properties:  map[string]v1.PropertySpec{"mykey": {Type: "mytype"}},
+								Name:        "name",
+								Type:        "type",
+								Properties:  map[string]v1.PropertySpec{"key": {Type: "type"}},
 								Description: "description",
 								Value: &v1.ResultValue{
-									Type:      "mytype",
-									StringVal: "myvalue",
-									ArrayVal:  []string{"myvalue"},
-									ObjectVal: map[string]string{"mykey": "myvalue"},
+									Type:      "type",
+									StringVal: "value",
+									ArrayVal:  []string{"value"},
+									ObjectVal: map[string]string{"key": "value"},
 								},
 							},
 						},
