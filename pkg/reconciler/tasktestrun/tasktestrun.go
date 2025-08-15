@@ -2,7 +2,12 @@ package tasktestrun
 
 import (
 	"context"
+	"fmt"
+	"slices"
+	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -10,22 +15,17 @@ import (
 	tasktestrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1alpha1/tasktestrun"
 	v1listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1"
 	alphalisters "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
-	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
-	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
-	resolution "github.com/tektoncd/pipeline/pkg/remoteresolution/resource"
-	"github.com/tektoncd/pipeline/pkg/spire"
-	"github.com/tektoncd/pipeline/pkg/taskrunmetrics"
-	"go.opentelemetry.io/otel/trace"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
-	corev1Listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/utils/clock"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/reconciler"
 )
@@ -38,18 +38,18 @@ type Reconciler struct {
 	Clock             clock.PassiveClock
 
 	// listers index properties about resources
-	spireClient              spire.ControllerAPIClient
-	taskTestRunLister        alphalisters.TaskTestRunLister
-	taskRunLister            v1listers.TaskRunLister
-	limitrangeLister         corev1Listers.LimitRangeLister
-	podLister                corev1Listers.PodLister
-	verificationPolicyLister alphalisters.VerificationPolicyLister
-	cloudEventClient         cloudevent.CEClient
-	entrypointCache          podconvert.EntrypointCache
-	metrics                  *taskrunmetrics.Recorder
-	pvcHandler               volumeclaim.PvcHandler
-	resolutionRequester      resolution.Requester
-	tracerProvider           trace.TracerProvider
+	taskTestRunLister alphalisters.TaskTestRunLister
+	taskRunLister     v1listers.TaskRunLister
+	cloudEventClient  cloudevent.CEClient
+	// spireClient              spire.ControllerAPIClient
+	// limitrangeLister         corev1Listers.LimitRangeLister
+	// podLister                corev1Listers.PodLister
+	// verificationPolicyLister alphalisters.VerificationPolicyLister
+	// entrypointCache          podconvert.EntrypointCache
+	// metrics                  *taskrunmetrics.Recorder
+	// pvcHandler               volumeclaim.PvcHandler
+	// resolutionRequester      resolution.Requester
+	// tracerProvider           trace.TracerProvider
 }
 
 // ReconcileKind implements tasktestrun.Interface.
@@ -74,22 +74,29 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TaskTestRun
 		// on the event to perform user facing initialisations, such has reset a CI check status
 		afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
 		events.Emit(ctx, nil, afterCondition, tr)
+	}
 
-		err := c.reconcile(ctx, tr, nil)
+	if err := c.reconcile(ctx, tr, nil); err != nil {
+		logger.Errorf("Reconcile: %v", err.Error())
 		return err
 	}
 
-	// if tr.Status.StartTime != nil {
-	// 	// Compute the time since the task started.
-	// 	elapsed := c.Clock.Since(tr.Status.StartTime.Time)
-	// 	// Snooze this resource until the timeout has elapsed.
-	// 	timeout := tr.GetTimeout(ctx)
-	// 	waitTime := timeout - elapsed
-	// 	if timeout == config.NoTimeoutDuration {
-	// 		waitTime = time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes) * time.Minute
-	// 	}
-	// 	return controller.NewRequeueAfter(waitTime)
+	// // Emit events (only when ConditionSucceeded was changed)
+	// if err := c.finishReconcileUpdateEmitEvents(ctx, tr, before, err); err != nil {
+	// 	return err
 	// }
+
+	if tr.Status.StartTime != nil {
+		// Compute the time since the task started.
+		elapsed := c.Clock.Since(tr.Status.StartTime.Time)
+		// Snooze this resource until the timeout has elapsed.
+		timeout := tr.GetTimeout(ctx)
+		waitTime := timeout - elapsed
+		if timeout == config.NoTimeoutDuration {
+			waitTime = time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes) * time.Minute
+		}
+		return controller.NewRequeueAfter(waitTime)
+	}
 
 	return nil
 }
@@ -100,13 +107,21 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TaskTestRun
 // case of error but it does not sync updates back to etcd. It does not emit
 // events. `reconcile` consumes spec and resources returned by `prepare`
 func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, rtr *resources.ResolvedTask) error {
-
 	logger := logging.FromContext(ctx)
 	// recorder := controller.GetEventRecorder(ctx)
 	var err error
 
 	// Get the TaskTestRun's TaskRun if it should have one. Otherwise, create the TaskRun.
 	var taskRun *v1.TaskRun
+
+	if ttr.Spec.TaskTestSpec != nil {
+		ttr.Status.TaskTestSpec = &v1alpha1.NamedTaskTestSpec{
+			Spec: ttr.Spec.TaskTestSpec,
+		}
+	}
+	if ttr.Spec.TaskTestRef != nil {
+		logger.Info(`// TODO deref TaskTestRef and copy spec `)
+	}
 
 	if ttr.Status.TaskRunName != "" {
 		taskRun, err = c.taskRunLister.TaskRuns(ttr.Namespace).Get(ttr.Status.TaskRunName)
@@ -176,6 +191,55 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 			logger.Errorf("Failed to create task run taskRun for taskrun %q: %v", ttr.Name, err)
 			return err
 		}
+	} else if taskRun.Status.CompletionTime != nil {
+		expectationsMet := true
+		ttr.Status.CompletionTime = taskRun.Status.CompletionTime
+		taskResults := taskRun.Status.Results
+		for _, expectedResult := range ttr.Status.TaskTestSpec.Spec.Expected.Results {
+			var gotValue *v1.ResultValue
+			i := slices.IndexFunc(taskResults, func(actualResult v1.TaskRunResult) bool {
+				return actualResult.Name == expectedResult.Name
+			})
+			if i == -1 {
+				gotValue = nil
+				expectationsMet = false
+			} else {
+				gotValue = &taskResults[i].Value
+			}
+			diff := cmp.Diff(expectedResult.Value, gotValue)
+			ttr.Status.Outcomes.Results = append(ttr.Status.Outcomes.Results, v1alpha1.ObservedResults{
+				Name: expectedResult.Name,
+				Want: expectedResult.Value,
+				Got:  gotValue,
+				Diff: diff,
+			})
+			if diff != "" {
+				expectationsMet = false
+			}
+		}
+		ttr.Status.Outcomes.SuccessStatus = v1alpha1.ObservedSuccessStatus{
+			Want: ttr.Status.TaskTestSpec.Spec.Expected.SuccessStatus,
+			Got:  taskRun.IsSuccessful(),
+		}
+		ttr.Status.Outcomes.SuccessStatus.WantMatchesGot = ttr.Status.Outcomes.SuccessStatus.Want == ttr.Status.Outcomes.SuccessStatus.Got
+
+		if !ttr.Status.Outcomes.SuccessStatus.WantMatchesGot {
+			expectationsMet = false
+		}
+
+		ttr.Status.Outcomes.SuccessReason = v1alpha1.ObservedSuccessReason{
+			Want: ttr.Status.TaskTestSpec.Spec.Expected.SuccessReason,
+			Got:  v1.TaskRunReason(taskRun.Status.Conditions[0].Reason),
+		}
+		ttr.Status.Outcomes.SuccessReason.Diff = cmp.Diff(ttr.Status.Outcomes.SuccessReason.Want, ttr.Status.Outcomes.SuccessReason.Got)
+
+		if ttr.Status.Outcomes.SuccessReason.Diff != "" {
+			expectationsMet = false
+		}
+
+		if expectationsMet {
+			ttr.Status.MarkSuccessful()
+		}
 	}
 
 	// if podconvert.IsPodExceedingNodeResources(taskRun) {
@@ -202,27 +266,55 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 	// 	return err
 	// }
 
+	ttr.Status.TaskRunName = taskRun.Name
+	ttr.Status.TaskRunStatus = taskRun.Status
+
 	logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", ttr.Name, ttr.Namespace, ttr.Status.GetCondition(apis.ConditionSucceeded))
 	return nil
 }
 
 func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRun, rtr *resources.ResolvedTask) (*v1.TaskRun, error) {
+	var taskRun *v1.TaskRun
+	var taskName string
+
 	if ttr.Spec.TaskTestSpec != nil {
-		task, err := c.PipelineClientSet.TektonV1().Tasks(ttr.Namespace).Get(ctx, ttr.Spec.TaskTestSpec.TaskRef.Name, metav1.GetOptions{})
-		if err != nil {
-			return nil, err
-		}
-		ttr.Status.TaskRunName = ttr.GetObjectMeta().GetName() + "-run"
-		taskRun := &v1.TaskRun{
-			TypeMeta:   metav1.TypeMeta{Kind: "TaskRun", APIVersion: "tekton.dev/v1"},
-			ObjectMeta: metav1.ObjectMeta{Name: ttr.Status.TaskRunName, Namespace: ttr.Namespace},
-			Spec:       v1.TaskRunSpec{TaskRef: &v1.TaskRef{Name: task.Name}},
-		}
-		taskRun.Status.InitializeConditions()
-		taskRunAfterCreation, err := c.PipelineClientSet.TektonV1().TaskRuns(ttr.Namespace).Create(ctx, taskRun, metav1.CreateOptions{})
-		return taskRunAfterCreation, err
+		taskName = ttr.Spec.TaskTestSpec.TaskRef.Name
 	}
-	return nil, nil
+
+	task, err := c.PipelineClientSet.TektonV1().Tasks(ttr.Namespace).Get(ctx, taskName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	if ttr.Status.TaskTestSpec.Spec.Expected.Results != nil {
+		declaredResults := task.Spec.Results
+		for _, expectedResult := range ttr.Status.TaskTestSpec.Spec.Expected.Results {
+			if !slices.ContainsFunc(declaredResults, func(result v1.TaskResult) bool {
+				return result.Name == expectedResult.Name
+			}) {
+				return nil, fmt.Errorf("error: Result %s expected but not declared by task %s", expectedResult.Name, taskName)
+			}
+		}
+	}
+
+	taskRun = &v1.TaskRun{
+		TypeMeta: metav1.TypeMeta{Kind: "TaskRun", APIVersion: "tekton.dev/v1"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            ttr.GetObjectMeta().GetName() + "-run",
+			Namespace:       ttr.Namespace,
+			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(ttr, schema.GroupVersionKind{Group: "tekton.dev", Version: "v1alpha1", Kind: "TaskTestRun"})},
+			Labels:          map[string]string{"tekton.dev/taskTestRun": ttr.Name},
+		},
+		Spec: v1.TaskRunSpec{TaskRef: &v1.TaskRef{Name: task.Name}},
+	}
+	taskRun.Status.InitializeConditions()
+
+	taskRun, err = c.PipelineClientSet.TektonV1().TaskRuns(ttr.Namespace).Create(ctx, taskRun, metav1.CreateOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return taskRun, nil
 }
 
 // Check that our Reconciler implements taskrunreconciler.Interface

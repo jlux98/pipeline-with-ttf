@@ -2176,6 +2176,7 @@ spec:
                         type: object
                         required:
                           - outcomes
+                          - taskRunName
                           - taskRunStatus
                         properties:
                           annotations:
@@ -5731,6 +5732,711 @@ spec:
                                             field is false and so mounted volumes are writable.
                                           type: boolean
                                     x-kubernetes-list-type: atomic
+                          taskTestSpec:
+                            description: TaskTestSpec is a copy of the Spec of the referenced TaskTest.
+                            type: object
+                            required:
+                              - name
+                              - spec
+                            properties:
+                              name:
+                                description: Name is the name the TaskTest to which the spec belongs
+                                type: string
+                              spec:
+                                description: Spec is the spec field of the TaskTest being executed in this suite.
+                                type: object
+                                required:
+                                  - inputs
+                                properties:
+                                  expected:
+                                    description: |-
+                                      Expected contains the data, which the TaskTestRun controller will
+                                      use to check, whether a TaskTestRun was successful or not.
+                                      If this field is left empty, then the TaskTestRun is deemed successful,
+                                      if the TaskRun completes without a failure occurring.
+                                    type: object
+                                    properties:
+                                      env:
+                                        description: |-
+                                          List of environment variables with expected values to be checked for in
+                                          all of the Task's Steps.
+                                        type: array
+                                        items:
+                                          description: EnvVar represents an environment variable present in a Container.
+                                          type: object
+                                          required:
+                                            - name
+                                          properties:
+                                            name:
+                                              description: Name of the environment variable. Must be a C_IDENTIFIER.
+                                              type: string
+                                            value:
+                                              description: |-
+                                                Variable references $(VAR_NAME) are expanded
+                                                using the previously defined environment variables in the container and
+                                                any service environment variables. If a variable cannot be resolved,
+                                                the reference in the input string will be unchanged. Double $$ are reduced
+                                                to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e.
+                                                "$$(VAR_NAME)" will produce the string literal "$(VAR_NAME)".
+                                                Escaped references will never be expanded, regardless of whether the variable
+                                                exists or not.
+                                                Defaults to "".
+                                              type: string
+                                            valueFrom:
+                                              description: Source for the environment variable's value. Cannot be used if value is not empty.
+                                              type: object
+                                              properties:
+                                                configMapKeyRef:
+                                                  description: Selects a key of a ConfigMap.
+                                                  type: object
+                                                  required:
+                                                    - key
+                                                  properties:
+                                                    key:
+                                                      description: The key to select.
+                                                      type: string
+                                                    name:
+                                                      description: |-
+                                                        Name of the referent.
+                                                        This field is effectively required, but due to backwards compatibility is
+                                                        allowed to be empty. Instances of this type with an empty value here are
+                                                        almost certainly wrong.
+                                                        More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                                      type: string
+                                                      default: ""
+                                                    optional:
+                                                      description: Specify whether the ConfigMap or its key must be defined
+                                                      type: boolean
+                                                  x-kubernetes-map-type: atomic
+                                                fieldRef:
+                                                  description: |-
+                                                    Selects a field of the pod: supports metadata.name, metadata.namespace, `metadata.labels['<KEY>']`, `metadata.annotations['<KEY>']`,
+                                                    spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.
+                                                  type: object
+                                                  required:
+                                                    - fieldPath
+                                                  properties:
+                                                    apiVersion:
+                                                      description: Version of the schema the FieldPath is written in terms of, defaults to "v1".
+                                                      type: string
+                                                    fieldPath:
+                                                      description: Path of the field to select in the specified API version.
+                                                      type: string
+                                                  x-kubernetes-map-type: atomic
+                                                resourceFieldRef:
+                                                  description: |-
+                                                    Selects a resource of the container: only resources limits and requests
+                                                    (limits.cpu, limits.memory, limits.ephemeral-storage, requests.cpu, requests.memory and requests.ephemeral-storage) are currently supported.
+                                                  type: object
+                                                  required:
+                                                    - resource
+                                                  properties:
+                                                    containerName:
+                                                      description: 'Container name: required for volumes, optional for env vars'
+                                                      type: string
+                                                    divisor:
+                                                      description: Specifies the output format of the exposed resources, defaults to "1"
+                                                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                                      anyOf:
+                                                        - type: integer
+                                                        - type: string
+                                                      x-kubernetes-int-or-string: true
+                                                    resource:
+                                                      description: 'Required: resource to select'
+                                                      type: string
+                                                  x-kubernetes-map-type: atomic
+                                                secretKeyRef:
+                                                  description: Selects a key of a secret in the pod's namespace
+                                                  type: object
+                                                  required:
+                                                    - key
+                                                  properties:
+                                                    key:
+                                                      description: The key of the secret to select from.  Must be a valid secret key.
+                                                      type: string
+                                                    name:
+                                                      description: |-
+                                                        Name of the referent.
+                                                        This field is effectively required, but due to backwards compatibility is
+                                                        allowed to be empty. Instances of this type with an empty value here are
+                                                        almost certainly wrong.
+                                                        More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                                      type: string
+                                                      default: ""
+                                                    optional:
+                                                      description: Specify whether the Secret or its key must be defined
+                                                      type: boolean
+                                                  x-kubernetes-map-type: atomic
+                                        x-kubernetes-list-type: atomic
+                                      fileSystemContents:
+                                        description: |-
+                                          FileSystemContents is a list step names, each one paired with a list of expected
+                                          file system objects.
+                                        type: array
+                                        items:
+                                          description: |-
+                                            ExpectedStepFileSystemContent contains the name of a step as declared in the
+                                            Task under Test and a list of file system objects.
+
+                                            The rules for these file system objects are as follows: If the Type is
+                                            not set it will default to "AnyObjectType". If Type is set to a type other
+                                            than "TextFile", then Content must be left empty. Path value must be an
+                                            absolute path, variable substitution for workspace paths is possible.
+                                          type: object
+                                          required:
+                                            - stepName
+                                          properties:
+                                            objects:
+                                              description: |-
+                                                Objects is a list of File System Objects, which are expected to be
+                                                in the container's file system after the step has finished executing (or
+                                                in the case of Type being set to "None" expected to not be there). If
+                                                this field is left empty, then it will default to "AnyObjectType".
+                                              type: array
+                                              items:
+                                                description: |-
+                                                  FileSystemObject describes a file system object by giving a path to the
+                                                  object, the type of the object and in case it is a text file the contents of
+                                                  that text file. Path value must be an absolute path, variable substitution for workspace paths is possible.
+                                                type: object
+                                                required:
+                                                  - path
+                                                properties:
+                                                  content:
+                                                    description: |-
+                                                      The content of the file system object. Setting this value is only
+                                                      acceptable, if the field Type is set to 'TextFile'.
+                                                      N2H: it might be useful to be able to populate the contents field using
+                                                      values from a ConfigMap or Secret.
+                                                    type: string
+                                                  path:
+                                                    description: Path is the path to this file system object
+                                                    type: string
+                                                  type:
+                                                    description: |-
+                                                      Type is the type of this file system object. The values, which are
+                                                      acceptable for this field, are defined in the enum FileSystemObjectType
+                                                    type: string
+                                              x-kubernetes-list-map-keys:
+                                                - path
+                                              x-kubernetes-list-type: map
+                                            stepName:
+                                              description: |-
+                                                StepName is the name of the step, whose file system will be checked for
+                                                the objects in FileSystemObject.
+                                              type: string
+                                        x-kubernetes-list-map-keys:
+                                          - stepName
+                                        x-kubernetes-list-type: map
+                                      results:
+                                        description: |-
+                                          Results is a list of Results declared in the Task under test and the
+                                          values the Task is expected to fill these Results with given the input
+                                          data.
+                                        type: array
+                                        items:
+                                          description: TaskResult used to describe the results of a task
+                                          type: object
+                                          required:
+                                            - name
+                                          properties:
+                                            description:
+                                              description: Description is a human-readable description of the result
+                                              type: string
+                                            name:
+                                              description: Name the given name
+                                              type: string
+                                            properties:
+                                              description: Properties is the JSON Schema properties to support key-value pairs results.
+                                              type: object
+                                              additionalProperties:
+                                                description: PropertySpec defines the struct for object keys
+                                                type: object
+                                                properties:
+                                                  type:
+                                                    description: |-
+                                                      ParamType indicates the type of an input parameter;
+                                                      Used to distinguish between a single string and an array of strings.
+                                                    type: string
+                                            type:
+                                              description: |-
+                                                Type is the user-specified type of the result. The possible type
+                                                is currently "string" and will support "array" in following work.
+                                              type: string
+                                            value:
+                                              description: Value the expression used to retrieve the value of the result from an underlying Step.
+                                              x-kubernetes-preserve-unknown-fields: true
+                                        x-kubernetes-list-type: atomic
+                                      stepEnvs:
+                                        description: |-
+                                          List of Step environments, where expected values for environment
+                                          variables can be individually defined for all of the Task's Steps.
+                                          Expected values defined here will take precedence over expectations
+                                          defined in 'env'.
+                                        type: array
+                                        items:
+                                          description: |-
+                                            StepEnv contains the name of a step as defined the manifest of the Task under
+                                            test and a list of environment variable declarations to be set for this step.
+                                          type: object
+                                          required:
+                                            - name
+                                          properties:
+                                            env:
+                                              description: List of environment variables to set for this step.
+                                              type: array
+                                              items:
+                                                description: EnvVar represents an environment variable present in a Container.
+                                                type: object
+                                                required:
+                                                  - name
+                                                properties:
+                                                  name:
+                                                    description: Name of the environment variable. Must be a C_IDENTIFIER.
+                                                    type: string
+                                                  value:
+                                                    description: |-
+                                                      Variable references $(VAR_NAME) are expanded
+                                                      using the previously defined environment variables in the container and
+                                                      any service environment variables. If a variable cannot be resolved,
+                                                      the reference in the input string will be unchanged. Double $$ are reduced
+                                                      to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e.
+                                                      "$$(VAR_NAME)" will produce the string literal "$(VAR_NAME)".
+                                                      Escaped references will never be expanded, regardless of whether the variable
+                                                      exists or not.
+                                                      Defaults to "".
+                                                    type: string
+                                                  valueFrom:
+                                                    description: Source for the environment variable's value. Cannot be used if value is not empty.
+                                                    type: object
+                                                    properties:
+                                                      configMapKeyRef:
+                                                        description: Selects a key of a ConfigMap.
+                                                        type: object
+                                                        required:
+                                                          - key
+                                                        properties:
+                                                          key:
+                                                            description: The key to select.
+                                                            type: string
+                                                          name:
+                                                            description: |-
+                                                              Name of the referent.
+                                                              This field is effectively required, but due to backwards compatibility is
+                                                              allowed to be empty. Instances of this type with an empty value here are
+                                                              almost certainly wrong.
+                                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                                            type: string
+                                                            default: ""
+                                                          optional:
+                                                            description: Specify whether the ConfigMap or its key must be defined
+                                                            type: boolean
+                                                        x-kubernetes-map-type: atomic
+                                                      fieldRef:
+                                                        description: |-
+                                                          Selects a field of the pod: supports metadata.name, metadata.namespace, `metadata.labels['<KEY>']`, `metadata.annotations['<KEY>']`,
+                                                          spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.
+                                                        type: object
+                                                        required:
+                                                          - fieldPath
+                                                        properties:
+                                                          apiVersion:
+                                                            description: Version of the schema the FieldPath is written in terms of, defaults to "v1".
+                                                            type: string
+                                                          fieldPath:
+                                                            description: Path of the field to select in the specified API version.
+                                                            type: string
+                                                        x-kubernetes-map-type: atomic
+                                                      resourceFieldRef:
+                                                        description: |-
+                                                          Selects a resource of the container: only resources limits and requests
+                                                          (limits.cpu, limits.memory, limits.ephemeral-storage, requests.cpu, requests.memory and requests.ephemeral-storage) are currently supported.
+                                                        type: object
+                                                        required:
+                                                          - resource
+                                                        properties:
+                                                          containerName:
+                                                            description: 'Container name: required for volumes, optional for env vars'
+                                                            type: string
+                                                          divisor:
+                                                            description: Specifies the output format of the exposed resources, defaults to "1"
+                                                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                                            anyOf:
+                                                              - type: integer
+                                                              - type: string
+                                                            x-kubernetes-int-or-string: true
+                                                          resource:
+                                                            description: 'Required: resource to select'
+                                                            type: string
+                                                        x-kubernetes-map-type: atomic
+                                                      secretKeyRef:
+                                                        description: Selects a key of a secret in the pod's namespace
+                                                        type: object
+                                                        required:
+                                                          - key
+                                                        properties:
+                                                          key:
+                                                            description: The key of the secret to select from.  Must be a valid secret key.
+                                                            type: string
+                                                          name:
+                                                            description: |-
+                                                              Name of the referent.
+                                                              This field is effectively required, but due to backwards compatibility is
+                                                              allowed to be empty. Instances of this type with an empty value here are
+                                                              almost certainly wrong.
+                                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                                            type: string
+                                                            default: ""
+                                                          optional:
+                                                            description: Specify whether the Secret or its key must be defined
+                                                            type: boolean
+                                                        x-kubernetes-map-type: atomic
+                                              x-kubernetes-list-type: atomic
+                                            name:
+                                              description: Name is the name of the step for whom these environment variables will be set.
+                                              type: string
+                                        x-kubernetes-list-type: atomic
+                                      successReason:
+                                        description: |-
+                                          SuccessReason is the reason, with which the TaskRuns initiated by this
+                                          test are expected to be marked upon completion.
+                                        type: string
+                                      successStatus:
+                                        description: |-
+                                          SuccessStatus reports, whether the TaskRuns initiated by this test are
+                                          expected to succeed. This is useful for testing cases in which the Task
+                                          is supposed to fail because of a faulty input.
+                                        type: boolean
+                                  inputs:
+                                    description: Inputs represents the test data for executing the test case.
+                                    type: object
+                                    properties:
+                                      env:
+                                        description: List of environment variables to set in all of the Task's Steps.
+                                        type: array
+                                        items:
+                                          description: EnvVar represents an environment variable present in a Container.
+                                          type: object
+                                          required:
+                                            - name
+                                          properties:
+                                            name:
+                                              description: Name of the environment variable. Must be a C_IDENTIFIER.
+                                              type: string
+                                            value:
+                                              description: |-
+                                                Variable references $(VAR_NAME) are expanded
+                                                using the previously defined environment variables in the container and
+                                                any service environment variables. If a variable cannot be resolved,
+                                                the reference in the input string will be unchanged. Double $$ are reduced
+                                                to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e.
+                                                "$$(VAR_NAME)" will produce the string literal "$(VAR_NAME)".
+                                                Escaped references will never be expanded, regardless of whether the variable
+                                                exists or not.
+                                                Defaults to "".
+                                              type: string
+                                            valueFrom:
+                                              description: Source for the environment variable's value. Cannot be used if value is not empty.
+                                              type: object
+                                              properties:
+                                                configMapKeyRef:
+                                                  description: Selects a key of a ConfigMap.
+                                                  type: object
+                                                  required:
+                                                    - key
+                                                  properties:
+                                                    key:
+                                                      description: The key to select.
+                                                      type: string
+                                                    name:
+                                                      description: |-
+                                                        Name of the referent.
+                                                        This field is effectively required, but due to backwards compatibility is
+                                                        allowed to be empty. Instances of this type with an empty value here are
+                                                        almost certainly wrong.
+                                                        More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                                      type: string
+                                                      default: ""
+                                                    optional:
+                                                      description: Specify whether the ConfigMap or its key must be defined
+                                                      type: boolean
+                                                  x-kubernetes-map-type: atomic
+                                                fieldRef:
+                                                  description: |-
+                                                    Selects a field of the pod: supports metadata.name, metadata.namespace, `metadata.labels['<KEY>']`, `metadata.annotations['<KEY>']`,
+                                                    spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.
+                                                  type: object
+                                                  required:
+                                                    - fieldPath
+                                                  properties:
+                                                    apiVersion:
+                                                      description: Version of the schema the FieldPath is written in terms of, defaults to "v1".
+                                                      type: string
+                                                    fieldPath:
+                                                      description: Path of the field to select in the specified API version.
+                                                      type: string
+                                                  x-kubernetes-map-type: atomic
+                                                resourceFieldRef:
+                                                  description: |-
+                                                    Selects a resource of the container: only resources limits and requests
+                                                    (limits.cpu, limits.memory, limits.ephemeral-storage, requests.cpu, requests.memory and requests.ephemeral-storage) are currently supported.
+                                                  type: object
+                                                  required:
+                                                    - resource
+                                                  properties:
+                                                    containerName:
+                                                      description: 'Container name: required for volumes, optional for env vars'
+                                                      type: string
+                                                    divisor:
+                                                      description: Specifies the output format of the exposed resources, defaults to "1"
+                                                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                                      anyOf:
+                                                        - type: integer
+                                                        - type: string
+                                                      x-kubernetes-int-or-string: true
+                                                    resource:
+                                                      description: 'Required: resource to select'
+                                                      type: string
+                                                  x-kubernetes-map-type: atomic
+                                                secretKeyRef:
+                                                  description: Selects a key of a secret in the pod's namespace
+                                                  type: object
+                                                  required:
+                                                    - key
+                                                  properties:
+                                                    key:
+                                                      description: The key of the secret to select from.  Must be a valid secret key.
+                                                      type: string
+                                                    name:
+                                                      description: |-
+                                                        Name of the referent.
+                                                        This field is effectively required, but due to backwards compatibility is
+                                                        allowed to be empty. Instances of this type with an empty value here are
+                                                        almost certainly wrong.
+                                                        More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                                      type: string
+                                                      default: ""
+                                                    optional:
+                                                      description: Specify whether the Secret or its key must be defined
+                                                      type: boolean
+                                                  x-kubernetes-map-type: atomic
+                                        x-kubernetes-list-type: atomic
+                                      params:
+                                        description: Parameters declares parameters passed to the task under test.
+                                        type: array
+                                        items:
+                                          description: Param declares an ParamValues to use for the parameter called name.
+                                          type: object
+                                          required:
+                                            - name
+                                            - value
+                                          properties:
+                                            name:
+                                              type: string
+                                            value:
+                                              x-kubernetes-preserve-unknown-fields: true
+                                        x-kubernetes-list-type: atomic
+                                      stepEnvs:
+                                        description: |-
+                                          List of Step environments, where environment variables can be individually
+                                          set for each one of the Task's Steps. Values set here will overwrite
+                                          values set in 'env'.
+                                        type: array
+                                        items:
+                                          description: |-
+                                            StepEnv contains the name of a step as defined the manifest of the Task under
+                                            test and a list of environment variable declarations to be set for this step.
+                                          type: object
+                                          required:
+                                            - name
+                                          properties:
+                                            env:
+                                              description: List of environment variables to set for this step.
+                                              type: array
+                                              items:
+                                                description: EnvVar represents an environment variable present in a Container.
+                                                type: object
+                                                required:
+                                                  - name
+                                                properties:
+                                                  name:
+                                                    description: Name of the environment variable. Must be a C_IDENTIFIER.
+                                                    type: string
+                                                  value:
+                                                    description: |-
+                                                      Variable references $(VAR_NAME) are expanded
+                                                      using the previously defined environment variables in the container and
+                                                      any service environment variables. If a variable cannot be resolved,
+                                                      the reference in the input string will be unchanged. Double $$ are reduced
+                                                      to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e.
+                                                      "$$(VAR_NAME)" will produce the string literal "$(VAR_NAME)".
+                                                      Escaped references will never be expanded, regardless of whether the variable
+                                                      exists or not.
+                                                      Defaults to "".
+                                                    type: string
+                                                  valueFrom:
+                                                    description: Source for the environment variable's value. Cannot be used if value is not empty.
+                                                    type: object
+                                                    properties:
+                                                      configMapKeyRef:
+                                                        description: Selects a key of a ConfigMap.
+                                                        type: object
+                                                        required:
+                                                          - key
+                                                        properties:
+                                                          key:
+                                                            description: The key to select.
+                                                            type: string
+                                                          name:
+                                                            description: |-
+                                                              Name of the referent.
+                                                              This field is effectively required, but due to backwards compatibility is
+                                                              allowed to be empty. Instances of this type with an empty value here are
+                                                              almost certainly wrong.
+                                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                                            type: string
+                                                            default: ""
+                                                          optional:
+                                                            description: Specify whether the ConfigMap or its key must be defined
+                                                            type: boolean
+                                                        x-kubernetes-map-type: atomic
+                                                      fieldRef:
+                                                        description: |-
+                                                          Selects a field of the pod: supports metadata.name, metadata.namespace, `metadata.labels['<KEY>']`, `metadata.annotations['<KEY>']`,
+                                                          spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.
+                                                        type: object
+                                                        required:
+                                                          - fieldPath
+                                                        properties:
+                                                          apiVersion:
+                                                            description: Version of the schema the FieldPath is written in terms of, defaults to "v1".
+                                                            type: string
+                                                          fieldPath:
+                                                            description: Path of the field to select in the specified API version.
+                                                            type: string
+                                                        x-kubernetes-map-type: atomic
+                                                      resourceFieldRef:
+                                                        description: |-
+                                                          Selects a resource of the container: only resources limits and requests
+                                                          (limits.cpu, limits.memory, limits.ephemeral-storage, requests.cpu, requests.memory and requests.ephemeral-storage) are currently supported.
+                                                        type: object
+                                                        required:
+                                                          - resource
+                                                        properties:
+                                                          containerName:
+                                                            description: 'Container name: required for volumes, optional for env vars'
+                                                            type: string
+                                                          divisor:
+                                                            description: Specifies the output format of the exposed resources, defaults to "1"
+                                                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                                            anyOf:
+                                                              - type: integer
+                                                              - type: string
+                                                            x-kubernetes-int-or-string: true
+                                                          resource:
+                                                            description: 'Required: resource to select'
+                                                            type: string
+                                                        x-kubernetes-map-type: atomic
+                                                      secretKeyRef:
+                                                        description: Selects a key of a secret in the pod's namespace
+                                                        type: object
+                                                        required:
+                                                          - key
+                                                        properties:
+                                                          key:
+                                                            description: The key of the secret to select from.  Must be a valid secret key.
+                                                            type: string
+                                                          name:
+                                                            description: |-
+                                                              Name of the referent.
+                                                              This field is effectively required, but due to backwards compatibility is
+                                                              allowed to be empty. Instances of this type with an empty value here are
+                                                              almost certainly wrong.
+                                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                                            type: string
+                                                            default: ""
+                                                          optional:
+                                                            description: Specify whether the Secret or its key must be defined
+                                                            type: boolean
+                                                        x-kubernetes-map-type: atomic
+                                              x-kubernetes-list-type: atomic
+                                            name:
+                                              description: Name is the name of the step for whom these environment variables will be set.
+                                              type: string
+                                        x-kubernetes-list-map-keys:
+                                          - name
+                                        x-kubernetes-list-type: map
+                                      workspaceContents:
+                                        description: |-
+                                          List of Workspaces with preset values, which will be initialized for any
+                                          runs of the task under test.
+                                        type: array
+                                        items:
+                                          description: |-
+                                            InitialWorkspaceContents describes the desired contents of a workspace
+                                            declared in the Task under Test before starting the test.
+                                            N2H: it might be useful to be able to populate a workspace with files from a
+                                            git repo.
+                                          type: object
+                                          required:
+                                            - name
+                                            - objects
+                                          properties:
+                                            name:
+                                              description: Name is the name of the workspace as declared by the Task under test.
+                                              type: string
+                                            objects:
+                                              description: |-
+                                                Objects is a list of file system objects to be placed in the specified
+                                                workspace. Relative paths are interpreted from the root of the workspace,
+                                                and for absolute paths the leading '/' denotes the root of the workspace.
+                                                If the type chosen for the object is 'Directory', then an empty directory
+                                                will be created at the location denoted by Path and Content must not be
+                                                fille. I the type chosen for the object is 'TextFile', then a text file
+                                                with Content as its content will be created at that location.
+                                              type: array
+                                              items:
+                                                description: |-
+                                                  InputFileSystemObject describes a file system object to be placed when
+                                                  setting up a workspace for testing a Task by giving a path to the object, the
+                                                  type of the object and in case it is a text file the contents of that text
+                                                  file.
+                                                type: object
+                                                required:
+                                                  - path
+                                                  - type
+                                                properties:
+                                                  content:
+                                                    description: |-
+                                                      The content of the file system object. Setting this value is only
+                                                      acceptable, if the field Type is set to 'TextFile'.
+                                                      N2H: it might be useful to be able to populate the contents field using
+                                                      values from a ConfigMap or Secret.
+                                                    type: string
+                                                  path:
+                                                    description: Path is the path to this file system object
+                                                    type: string
+                                                  type:
+                                                    description: Type is the type of this file system object.
+                                                    type: string
+                                              x-kubernetes-list-map-keys:
+                                                - path
+                                              x-kubernetes-list-type: map
+                                        x-kubernetes-list-map-keys:
+                                          - name
+                                        x-kubernetes-list-type: map
+                                  taskRef:
+                                    description: |-
+                                      TaskRef is a reference to a task definition, which must be in the same
+                                      namespace as the this test.
+                                      N2H: in the future this might use v1.TaskRef and be able to resolve
+                                      remote tasks.
+                                    type: object
+                                    required:
+                                      - name
+                                    properties:
+                                      name:
+                                        type: string
                   x-kubernetes-list-map-keys:
                     - taskTestRunName
                   x-kubernetes-list-type: map

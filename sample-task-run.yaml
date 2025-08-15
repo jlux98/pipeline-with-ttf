@@ -1,0 +1,20 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: hello-world-run-
+spec:
+  taskSpec:
+    results:
+    - name: current-time
+      description: |
+        The current time in the format hh:mm:ss
+    - name: current-date
+      description: |
+        The current date in the format dd:mm:yy
+    steps:
+      - name: hello-step
+        image: alpine
+        script: |
+          echo "Hello world!"
+          date +%H:%M:%S | tee $(results.current-time.path)
+          date +%Y:%m:%d | tee $(results.current-date.path)

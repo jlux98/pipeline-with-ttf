@@ -142,7 +142,7 @@ type TaskTestRunStatusFields struct {
 	// TODO(jlu98) decide, whether to also populate this field when TaskTests are defined inline
 	//
 	// +optional
-	TaskTestSpec NamedTaskTestSpec `json:"taskTestSpec,omitempty"`
+	TaskTestSpec *NamedTaskTestSpec `json:"taskTestSpec,omitempty"`
 
 	// TaskRunName is the name of the TaskRun responsible for executing this
 	// test's Tasks.
@@ -276,12 +276,10 @@ type ObservedSuccessStatus struct {
 	// Got reports, whether the task under test actually succeeded
 	Got bool `json:"got"`
 
-	// Diff describes, how Want and Got differ, using the typical
-	// notation for go tests (prefacing lines from want with a - and lines from
-	// got with a +)
+	// WantMatchesGot describes, whether Want and Got have the same value.
 	//
 	// +optional
-	Diff string `json:"diff,omitempty"`
+	WantMatchesGot bool `json:"diff,omitempty"`
 }
 
 type ObservedSuccessReason struct {
@@ -326,6 +324,16 @@ func (trs *TaskTestRunStatus) InitializeConditions() {
 
 var taskTestRunCondSet = apis.NewBatchConditionSet()
 
+// MarkSuccessful sets the ConditionSucceeded condition to ConditionUnknown
+// with the reason and message.
+func (trs *TaskTestRunStatus) MarkSuccessful() {
+	taskTestRunCondSet.Manage(trs).SetCondition(apis.Condition{
+		Type:   apis.ConditionSucceeded,
+		Status: corev1.ConditionTrue,
+		Reason: TaskTestRunReasonSuccessful.String(),
+	})
+}
+
 // GetNamespacedName returns a k8s namespaced name that identifies this TaskRun
 func (ttr *TaskTestRun) GetNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Namespace: ttr.Namespace, Name: ttr.Name}
@@ -339,4 +347,15 @@ func (tr *TaskTestRun) GetTimeout(ctx context.Context) time.Duration {
 		return defaultTimeout * time.Minute //nolint:durationcheck
 	}
 	return tr.Spec.Timeout.Duration
+}
+
+type TaskTestRunReason string
+
+const (
+	// TaskTestRunReasonSuccessful is the reason set when the TaskRun completed successfully
+	TaskTestRunReasonSuccessful TaskTestRunReason = "All Expectations were met."
+)
+
+func (t TaskTestRunReason) String() string {
+	return string(t)
 }

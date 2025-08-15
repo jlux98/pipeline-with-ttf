@@ -777,7 +777,6 @@ func schema_pkg_apis_pipeline_v1alpha1_NamedTaskTestSpec(ref common.ReferenceCal
 					"name": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Name is the name the TaskTest to which the spec belongs",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -785,7 +784,6 @@ func schema_pkg_apis_pipeline_v1alpha1_NamedTaskTestSpec(ref common.ReferenceCal
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Spec is the spec field of the TaskTest being executed in this suite.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSpec"),
 						},
 					},
@@ -2277,6 +2275,12 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunStatus(ref common.ReferenceCal
 							},
 						},
 					},
+					"taskTestSpec": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TaskTestSpec is a copy of the Spec of the referenced TaskTest.",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.NamedTaskTestSpec"),
+						},
+					},
 					"taskRunName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TaskRunName is the name of the TaskRun responsible for executing this test's Tasks.",
@@ -2315,7 +2319,7 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunStatus(ref common.ReferenceCal
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedOutcomes", "k8s.io/apimachinery/pkg/apis/meta/v1.Time", "knative.dev/pkg/apis.Condition"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.NamedTaskTestSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedOutcomes", "k8s.io/apimachinery/pkg/apis/meta/v1.Time", "knative.dev/pkg/apis.Condition"},
 	}
 }
 
@@ -2325,6 +2329,12 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunStatusFields(ref common.Refere
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
+					"taskTestSpec": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TaskTestSpec is a copy of the Spec of the referenced TaskTest.",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.NamedTaskTestSpec"),
+						},
+					},
 					"taskRunName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TaskRunName is the name of the TaskRun responsible for executing this test's Tasks.",
@@ -2363,7 +2373,7 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunStatusFields(ref common.Refere
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedOutcomes", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.NamedTaskTestSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedOutcomes", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 

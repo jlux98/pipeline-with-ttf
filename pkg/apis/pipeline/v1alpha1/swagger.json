@@ -381,12 +381,10 @@
       "properties": {
         "name": {
           "description": "Name is the name the TaskTest to which the spec belongs",
-          "type": "string",
-          "default": ""
+          "type": "string"
         },
         "spec": {
           "description": "Spec is the spec field of the TaskTest being executed in this suite.",
-          "default": {},
           "$ref": "#/definitions/v1alpha1.TaskTestSpec"
         }
       }
@@ -1255,6 +1253,10 @@
           "description": "TaskRunStatus is the status of the TaskRun responsible for executing this test's Tasks.",
           "default": {},
           "$ref": "#/definitions/v1.TaskRunStatus"
+        },
+        "taskTestSpec": {
+          "description": "TaskTestSpec is a copy of the Spec of the referenced TaskTest.",
+          "$ref": "#/definitions/v1alpha1.NamedTaskTestSpec"
         }
       }
     },
@@ -1287,6 +1289,10 @@
           "description": "TaskRunStatus is the status of the TaskRun responsible for executing this test's Tasks.",
           "default": {},
           "$ref": "#/definitions/v1.TaskRunStatus"
+        },
+        "taskTestSpec": {
+          "description": "TaskTestSpec is a copy of the Spec of the referenced TaskTest.",
+          "$ref": "#/definitions/v1alpha1.NamedTaskTestSpec"
         }
       }
     },

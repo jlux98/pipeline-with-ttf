@@ -161,10 +161,10 @@ type TaskTestSuiteRunStatusFields struct {
 
 type NamedTaskTestSpec struct {
 	// Name is the name the TaskTest to which the spec belongs
-	Name string `json:"name"`
+	Name *string `json:"name"`
 
 	// Spec is the spec field of the TaskTest being executed in this suite.
-	Spec TaskTestSpec `json:"spec"`
+	Spec *TaskTestSpec `json:"spec"`
 }
 
 type SuiteTaskTestRunStatus struct {
