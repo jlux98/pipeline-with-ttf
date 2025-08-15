@@ -107,8 +107,8 @@ const (
 type TaskTestRunTemplate struct {
 	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
 	//
-	// +optional
 	// +listType=atomic
+	// +optional
 	Workspaces []v1.WorkspaceBinding `json:"workspaces,omitempty"`
 
 	// +optional
@@ -121,10 +121,10 @@ type TaskTestRunTemplate struct {
 }
 
 type SuiteTaskTestRun struct {
-	// TaskTestRef is a reference to a task test definition. If a task test
+	// Name is an identifier for a task test. If a task test
 	// defined inline inside the test suite shares a name with a test defined
 	// outside the suite, then the task defined inside the suite will be chosen.
-	TaskTestRef *TaskTestRef `json:"taskTestRef"`
+	Name string `json:"name"`
 
 	TaskTestRunTemplate `json:",inline"`
 }
@@ -150,10 +150,12 @@ type TaskTestSuiteRunStatusFields struct {
 	// TaskTestRuns responsible for executing this suite's TasksTests.
 	//
 	// +listType=map
-	// +listMapKey=name
+	// +listMapKey=taskTestRunName
 	TaskTestRunStatuses []SuiteTaskTestRunStatus `json:"taskTestRunStatuses"`
 
 	// CompletionTime is the time the test completed.
+	//
+	// +optional
 	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
 }
 

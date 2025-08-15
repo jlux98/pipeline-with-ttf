@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/resolutionrequest"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
+	"github.com/tektoncd/pipeline/pkg/reconciler/tasktestrun"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/utils/clock"
@@ -111,6 +112,7 @@ func main() {
 
 	sharedmain.MainWithConfig(ctx, ControllerLogKey, cfg,
 		taskrun.NewController(opts, clock.RealClock{}),
+		tasktestrun.NewController(opts, clock.RealClock{}),
 		pipelinerun.NewController(opts, clock.RealClock{}),
 		resolutionrequest.NewController(clock.RealClock{}),
 	)

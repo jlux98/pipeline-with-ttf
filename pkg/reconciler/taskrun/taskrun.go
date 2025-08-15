@@ -33,8 +33,9 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	taskrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1/taskrun"
-	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1"
+	listersv1 "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1"
 	alphalisters "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
+	listersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	ctrl "github.com/tektoncd/pipeline/pkg/controller"
 	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources"
@@ -85,7 +86,8 @@ type Reconciler struct {
 
 	// listers index properties about resources
 	spireClient              spire.ControllerAPIClient
-	taskRunLister            listers.TaskRunLister
+	taskRunLister            listersv1.TaskRunLister
+	taskTestRunLister        listersv1alpha1.TaskTestRunLister
 	limitrangeLister         corev1Listers.LimitRangeLister
 	podLister                corev1Listers.PodLister
 	verificationPolicyLister alphalisters.VerificationPolicyLister

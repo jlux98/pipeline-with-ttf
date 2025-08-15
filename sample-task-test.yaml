@@ -1,0 +1,109 @@
+apiVersion: sample-apiVersion
+kind: sample-kind
+metadata: {}
+spec:
+  taskRef:
+    name: task
+  inputs:
+    env:
+      - name: sample-name
+        value: sample-value
+        valueFrom:
+          configMapKeyRef:
+            key: sample-key
+            name: sample-name
+            optional: true
+          fieldRef:
+            apiVersion: sample-apiVersion
+            fieldPath: sample-fieldPath
+          resourceFieldRef:
+            containerName: sample-containerName
+            divisor: 1
+            resource: sample-resource
+          secretKeyRef:
+            key: sample-key
+            name: sample-name
+            optional: true
+    params:
+      - name: sample-name
+    stepEnvs:
+      - env:
+          - name: sample-name
+            value: sample-value
+            valueFrom:
+              configMapKeyRef:
+                key: sample-key
+                name: sample-name
+                optional: true
+              fieldRef:
+                apiVersion: sample-apiVersion
+                fieldPath: sample-fieldPath
+              resourceFieldRef:
+                containerName: sample-containerName
+                divisor: 1
+                resource: sample-resource
+              secretKeyRef:
+                key: sample-key
+                name: sample-name
+                optional: true
+        name: sample-name
+    workspaceContents:
+      - name: sample-name
+        objects:
+          - content: sample-content
+            path: sample-path
+            type: sample-type
+  expected:
+    env:
+      - name: sample-name
+        value: sample-value
+        valueFrom:
+          configMapKeyRef:
+            key: sample-key
+            name: sample-name
+            optional: true
+          fieldRef:
+            apiVersion: sample-apiVersion
+            fieldPath: sample-fieldPath
+          resourceFieldRef:
+            containerName: sample-containerName
+            divisor: 1
+            resource: sample-resource
+          secretKeyRef:
+            key: sample-key
+            name: sample-name
+            optional: true
+    fileSystemContents:
+      - objects:
+          - content: sample-content
+            path: sample-path
+            type: sample-type
+        stepName: sample-stepName
+    results:
+      - description: sample-description
+        name: sample-name
+        properties: {}
+        type: sample-type
+    stepEnvs:
+      - env:
+          - name: sample-name
+            value: sample-value
+            valueFrom:
+              configMapKeyRef:
+                key: sample-key
+                name: sample-name
+                optional: true
+              fieldRef:
+                apiVersion: sample-apiVersion
+                fieldPath: sample-fieldPath
+              resourceFieldRef:
+                containerName: sample-containerName
+                divisor: 1
+                resource: sample-resource
+              secretKeyRef:
+                key: sample-key
+                name: sample-name
+                optional: true
+        name: sample-name
+    successReason: sample-successReason
+    successStatus: true

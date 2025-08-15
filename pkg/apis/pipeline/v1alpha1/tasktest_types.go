@@ -19,12 +19,14 @@ import (
 // +k8s:openapi-gen=true
 type TaskTest struct {
 	metav1.TypeMeta `json:",inline"`
+
 	// +optional
 	metav1.ObjectMeta `json:"metadata"`
 
 	// Spec holds the desired state of the TaskTest from the client
+	//
 	// +optional
-	Spec TaskTestSpec `json:"spec"`
+	Spec TaskTestSpec `json:"spec,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -32,6 +34,7 @@ type TaskTest struct {
 // TaskTestList contains a list of TaskTests
 type TaskTestList struct {
 	metav1.TypeMeta `json:",inline"`
+
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TaskTest `json:"items"`
@@ -41,7 +44,9 @@ type TaskTestList struct {
 type TaskTestSpec struct {
 	// TaskRef is a reference to a task definition, which must be in the same
 	// namespace as the this test.
-	TaskRef *v1.TaskRef `json:"taskRef"`
+	// N2H: in the future this might use v1.TaskRef and be able to resolve
+	// remote tasks.
+	TaskRef *SimpleTaskRef `json:"taskRef,omitempty"`
 
 	// Inputs represents the test data for executing the test case.
 	Inputs TaskTestInputs `json:"inputs"`
@@ -52,6 +57,10 @@ type TaskTestSpec struct {
 	// if the TaskRun completes without a failure occurring.
 	// +optional
 	Expected ExpectedOutcomes `json:"expected,omitempty"`
+}
+
+type SimpleTaskRef struct {
+	Name string `json:"name"`
 }
 
 // TaskTestInputs holds the test data, which the TaskTestRun controller uses to
@@ -71,7 +80,8 @@ type TaskTestInputs struct {
 	Env []corev1.EnvVar `json:"env,omitempty" patchMergeKey:"name" patchStrategy:"merge" protobuf:"bytes,7,rep,name=env"`
 
 	// List of Step environments, where environment variables can be individually
-	// set for each one of the Task's Steps.
+	// set for each one of the Task's Steps. Values set here will overwrite
+	// values set in 'env'.
 	//
 	// +listType=map
 	// +listMapKey=name
@@ -205,15 +215,19 @@ type ExpectedOutcomes struct {
 	Env []corev1.EnvVar `json:"env,omitempty" patchMergeKey:"name" patchStrategy:"merge" protobuf:"bytes,7,rep,name=env"`
 
 	// List of Step environments, where expected values for environment
-	// variables can be individually declared for all of the Task's Steps.
+	// variables can be individually defined for all of the Task's Steps.
+	// Expected values defined here will take precedence over expectations
+	// defined in 'env'.
 	//
-	// +optional
 	// +listType=atomic
+	// +optional
 	StepEnvs []StepEnv `json:"stepEnvs,omitempty"`
 
 	// SuccessStatus reports, whether the TaskRuns initiated by this test are
 	// expected to succeed. This is useful for testing cases in which the Task
 	// is supposed to fail because of a faulty input.
+	//
+	// +optional
 	SuccessStatus bool `json:"successStatus,omitempty"`
 
 	// SuccessReason is the reason, with which the TaskRuns initiated by this
@@ -228,7 +242,7 @@ type ExpectedOutcomes struct {
 	// +listType=map
 	// +listMapKey=stepName
 	// +optional
-	FileSystemContents []ExpectedStepFileSystemContent `json:"fileSystemContents"`
+	FileSystemContents []ExpectedStepFileSystemContent `json:"fileSystemContents,omitempty"`
 }
 
 // ExpectedStepFileSystemContent contains the name of a step as declared in the
@@ -241,7 +255,7 @@ type ExpectedOutcomes struct {
 type ExpectedStepFileSystemContent struct {
 	// StepName is the name of the step, whose file system will be checked for
 	// the objects in FileSystemObject.
-	StepName string `json:"stepName,omitempty"`
+	StepName string `json:"stepName"`
 
 	// Objects is a list of File System Objects, which are expected to be
 	// in the container's file system after the step has finished executing (or
@@ -249,7 +263,7 @@ type ExpectedStepFileSystemContent struct {
 	// this field is left empty, then it will default to "AnyObjectType".
 	//
 	// +listType=map
-	// +listMapKey=name
+	// +listMapKey=path
 	// +optional
 	Objects []FileSystemObject `json:"objects,omitempty"`
 }

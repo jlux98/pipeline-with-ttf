@@ -89,7 +89,7 @@ func TestTaskTestRun_Validate(t *testing.T) {
 		taskTestRun: &v1alpha1.TaskTestRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "run"},
 			Spec: v1alpha1.TaskTestRunSpec{
-				TaskTestSpec: &v1alpha1.TaskTestSpec{TaskRef: &v1.TaskRef{Name: "task"}},
+				TaskTestSpec: &v1alpha1.TaskTestSpec{TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"}},
 				Workspaces: []v1.WorkspaceBinding{{
 					Name: "workspace",
 					VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
@@ -194,7 +194,7 @@ func TestTaskTestRun_Invalidate(t *testing.T) {
 			Spec: v1alpha1.TaskTestRunSpec{
 				TaskTestRef: &v1alpha1.TaskTestRef{Name: "test"},
 				TaskTestSpec: &v1alpha1.TaskTestSpec{
-					TaskRef: &v1.TaskRef{Name: "task"},
+					TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
 				},
 			},
 		},
@@ -204,6 +204,12 @@ func TestTaskTestRun_Invalidate(t *testing.T) {
 		ttr: v1alpha1.TaskTestRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "run"},
 			Spec:       v1alpha1.TaskTestRunSpec{},
+		},
+		wantErr: apis.ErrMissingOneOf("spec.taskTestRef", "spec.taskTestSpec"),
+	}, {
+		name: "neither taskTestRef nor taskTestSpec set",
+		ttr: v1alpha1.TaskTestRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "run"},
 		},
 		wantErr: apis.ErrMissingOneOf("spec.taskTestRef", "spec.taskTestSpec"),
 	}, {

@@ -31,6 +31,9 @@ const (
 	// TaskRunLabelKey is used as the label identifier for a TaskRun
 	TaskRunLabelKey = GroupName + "/taskRun"
 
+	// TaskTestRunLabelKey is used as the label identifier for a TaskRun
+	TaskTestRunLabelKey = GroupName + "/taskTestRun"
+
 	// TaskRunLabelKey is used as the label identifier for a TaskRun
 	TaskRunUIDLabelKey = GroupName + "/taskRunUID"
 

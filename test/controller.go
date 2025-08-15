@@ -37,6 +37,7 @@ import (
 	fakepipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/pipelinerun/fake"
 	faketaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/task/fake"
 	faketaskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/taskrun/fake"
+	faketasktestruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/tasktestrun/fake"
 	fakeverificationpolicyinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/verificationpolicy/fake"
 	fakecustomruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/customrun/fake"
 	fakestepactioninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/stepaction/fake"
@@ -84,6 +85,8 @@ type Data struct {
 	ExpectedCloudEventCount int
 	VerificationPolicies    []*v1alpha1.VerificationPolicy
 	Secrets                 []*corev1.Secret
+	TaskTests               []*v1alpha1.TaskTest
+	TaskTestRuns            []*v1alpha1.TaskTestRun
 }
 
 // Clients holds references to clients which are useful for reconciler tests.
@@ -110,6 +113,7 @@ type Informers struct {
 	ResolutionRequest  resolutioninformersv1alpha1.ResolutionRequestInformer
 	VerificationPolicy informersv1alpha1.VerificationPolicyInformer
 	Secret             coreinformers.SecretInformer
+	TaskTestRun        informersv1alpha1.TaskTestRunInformer
 }
 
 // Assets holds references to the controller, logs, clients, and informers.
@@ -196,6 +200,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		ResolutionRequest:  fakeresolutionrequestinformer.Get(ctx),
 		VerificationPolicy: fakeverificationpolicyinformer.Get(ctx),
 		Secret:             fakesecretinformer.Get(ctx),
+		TaskTestRun:        faketasktestruninformer.Get(ctx),
 	}
 
 	// Attach reactors that add resource mutations to the appropriate
@@ -293,6 +298,14 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 			t.Fatal(err)
 		}
 	}
+	c.Pipeline.PrependReactor("*", "tasktestruns", AddToInformer(t, i.TaskTestRun.Informer().GetIndexer()))
+	for _, tr := range d.TaskTestRuns {
+		tr := tr.DeepCopy() // Avoid assumptions that the informer's copy is modified.
+		if _, err := c.Pipeline.TektonV1alpha1().TaskTestRuns(tr.Namespace).Create(ctx, tr, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	c.Pipeline.ClearActions()
 	c.Kube.ClearActions()
 	c.ResolutionRequests.ClearActions()

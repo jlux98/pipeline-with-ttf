@@ -45,7 +45,6 @@ spec:
               type: object
               required:
                 - inputs
-                - taskRef
               properties:
                 expected:
                   description: |-
@@ -182,6 +181,8 @@ spec:
                           than "TextFile", then Content must be left empty. Path value must be an
                           absolute path, variable substitution for workspace paths is possible.
                         type: object
+                        required:
+                          - stepName
                         properties:
                           objects:
                             description: |-
@@ -215,7 +216,7 @@ spec:
                                     acceptable for this field, are defined in the enum FileSystemObjectType
                                   type: string
                             x-kubernetes-list-map-keys:
-                              - name
+                              - path
                             x-kubernetes-list-type: map
                           stepName:
                             description: |-
@@ -267,7 +268,9 @@ spec:
                     stepEnvs:
                       description: |-
                         List of Step environments, where expected values for environment
-                        variables can be individually declared for all of the Task's Steps.
+                        variables can be individually defined for all of the Task's Steps.
+                        Expected values defined here will take precedence over expectations
+                        defined in 'env'.
                       type: array
                       items:
                         description: |-
@@ -534,7 +537,8 @@ spec:
                     stepEnvs:
                       description: |-
                         List of Step environments, where environment variables can be individually
-                        set for each one of the Task's Steps.
+                        set for each one of the Task's Steps. Values set here will overwrite
+                        values set in 'env'.
                       type: array
                       items:
                         description: |-
@@ -723,45 +727,13 @@ spec:
                   description: |-
                     TaskRef is a reference to a task definition, which must be in the same
                     namespace as the this test.
+                    N2H: in the future this might use v1.TaskRef and be able to resolve
+                    remote tasks.
                   type: object
+                  required:
+                    - name
                   properties:
-                    apiVersion:
-                      description: |-
-                        API version of the referent
-                        Note: A Task with non-empty APIVersion and Kind is considered a Custom Task
-                      type: string
-                    kind:
-                      description: |-
-                        TaskKind indicates the Kind of the Task:
-                        1. Namespaced Task when Kind is set to "Task". If Kind is "", it defaults to "Task".
-                        2. Custom Task when Kind is non-empty and APIVersion is non-empty
-                      type: string
                     name:
-                      description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
-                      type: string
-                    params:
-                      description: |-
-                        Params contains the parameters used to identify the
-                        referenced Tekton resource. Example entries might include
-                        "repo" or "path" but the set of params ultimately depends on
-                        the chosen resolver.
-                      type: array
-                      items:
-                        description: Param declares an ParamValues to use for the parameter called name.
-                        type: object
-                        required:
-                          - name
-                          - value
-                        properties:
-                          name:
-                            type: string
-                          value:
-                            x-kubernetes-preserve-unknown-fields: true
-                      x-kubernetes-list-type: atomic
-                    resolver:
-                      description: |-
-                        Resolver is the name of the resolver that should perform
-                        resolution of the referenced Tekton resource, such as "git".
                       type: string
   names:
     kind: TaskTest

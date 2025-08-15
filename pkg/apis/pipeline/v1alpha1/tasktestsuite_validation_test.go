@@ -6,7 +6,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,7 +36,7 @@ func TestTaskTestSuite_Invalidate(t *testing.T) {
 						}, {
 							Name: "test",
 							TaskTestSpec: &v1alpha1.TaskTestSpec{
-								TaskRef:  &v1.TaskRef{Name: "task"},
+								TaskRef:  &v1alpha1.SimpleTaskRef{Name: "task"},
 								Inputs:   v1alpha1.TaskTestInputs{},
 								Expected: v1alpha1.ExpectedOutcomes{},
 							},
@@ -64,7 +63,7 @@ func TestTaskTestSuite_Invalidate(t *testing.T) {
 						Name:        "test",
 						TaskTestRef: &v1alpha1.TaskTestRef{Name: "test0"},
 						TaskTestSpec: &v1alpha1.TaskTestSpec{
-							TaskRef: &v1.TaskRef{Name: "task"},
+							TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
 						},
 					}},
 				},
@@ -138,7 +137,7 @@ func TestTaskTestSuite_Validate(t *testing.T) {
 					}, {
 						Name: "test1",
 						TaskTestSpec: &v1alpha1.TaskTestSpec{
-							TaskRef:  &v1.TaskRef{Name: "task"},
+							TaskRef:  &v1alpha1.SimpleTaskRef{Name: "task"},
 							Inputs:   v1alpha1.TaskTestInputs{},
 							Expected: v1alpha1.ExpectedOutcomes{},
 						},

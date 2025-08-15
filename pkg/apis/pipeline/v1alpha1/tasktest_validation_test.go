@@ -95,7 +95,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 					Name: "tt",
 				},
 					Spec: v1alpha1.TaskTestSpec{
-						TaskRef: &v1.TaskRef{Name: "task"},
+						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
 						Inputs: v1alpha1.TaskTestInputs{
 							Params: v1.Params{
 								{
@@ -118,7 +118,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 					Name: "tt",
 				},
 					Spec: v1alpha1.TaskTestSpec{
-						TaskRef: &v1.TaskRef{Name: "task"},
+						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
 						Inputs: v1alpha1.TaskTestInputs{
 							WorkspaceContents: []v1alpha1.InitialWorkspaceContents{{
 								Name: "name",
@@ -144,7 +144,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 					Name: "tt",
 				},
 					Spec: v1alpha1.TaskTestSpec{
-						TaskRef: &v1.TaskRef{Name: "task"},
+						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
 						Inputs: v1alpha1.TaskTestInputs{
 							WorkspaceContents: []v1alpha1.InitialWorkspaceContents{{
 								Name: "name0",
@@ -325,7 +325,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 						Name: "tt",
 					},
 					Spec: v1alpha1.TaskTestSpec{
-						TaskRef: &v1.TaskRef{Name: "task"},
+						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
 						Expected: v1alpha1.ExpectedOutcomes{
 							Results: []v1.TaskResult{
 								{
@@ -347,7 +347,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 						Name: "tt",
 					},
 					Spec: v1alpha1.TaskTestSpec{
-						TaskRef: &v1.TaskRef{Name: "task"},
+						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
 						Expected: v1alpha1.ExpectedOutcomes{
 							FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
 								StepName: "step",
@@ -392,7 +392,7 @@ func TestTaskTest_Valid(t *testing.T) {
 					Name: "tt",
 				},
 				Spec: v1alpha1.TaskTestSpec{
-					TaskRef: &v1.TaskRef{Name: "task"},
+					TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
 				},
 			},
 		}, {
@@ -402,7 +402,7 @@ func TestTaskTest_Valid(t *testing.T) {
 					Name: "tt",
 				},
 				Spec: v1alpha1.TaskTestSpec{
-					TaskRef: &v1.TaskRef{Name: "task"},
+					TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
 					Inputs: v1alpha1.TaskTestInputs{
 						Params: v1.Params{
 							{
@@ -475,7 +475,7 @@ func TestTaskTest_Valid(t *testing.T) {
 					Name: "tt",
 				},
 				Spec: v1alpha1.TaskTestSpec{
-					TaskRef: &v1.TaskRef{Name: "task"},
+					TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
 					Expected: v1alpha1.ExpectedOutcomes{
 						Env: []corev1.EnvVar{{
 							Name:  "name0",
@@ -543,7 +543,7 @@ func TestTaskTest_Valid(t *testing.T) {
 					Name: "tt",
 				},
 				Spec: v1alpha1.TaskTestSpec{
-					TaskRef: &v1.TaskRef{Name: "task"},
+					TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
 					Inputs: v1alpha1.TaskTestInputs{
 						Params: v1.Params{
 							{

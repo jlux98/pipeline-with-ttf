@@ -188,6 +188,28 @@ kind: VerificationPolicy
 	return &v
 }
 
+// MustParseTaskTest takes YAML and parses it into a *v1alpha1.TaskTest
+func MustParseTaskTest(t *testing.T, yaml string) *v1alpha1.TaskTest {
+	t.Helper()
+	var v v1alpha1.TaskTest
+	yaml = `apiVersion: tekton.dev/v1alpha1
+kind: TaskTest
+` + yaml
+	mustParseYAML(t, yaml, &v)
+	return &v
+}
+
+// MustParseTaskTestRun takes YAML and parses it into a *v1alpha1.TaskTestRun
+func MustParseTaskTestRun(t *testing.T, yaml string) *v1alpha1.TaskTestRun {
+	t.Helper()
+	var v v1alpha1.TaskTestRun
+	yaml = `apiVersion: tekton.dev/v1alpha1
+kind: TaskTestRun
+` + yaml
+	mustParseYAML(t, yaml, &v)
+	return &v
+}
+
 func mustParseYAML(t *testing.T, yaml string, i runtime.Object) {
 	t.Helper()
 	if _, _, err := scheme.Codecs.UniversalDeserializer().Decode([]byte(yaml), nil, i); err != nil {

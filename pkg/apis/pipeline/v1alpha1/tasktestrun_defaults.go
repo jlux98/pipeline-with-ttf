@@ -11,8 +11,9 @@ import (
 )
 
 // SetDefaults implements apis.Defaultable.
-func (tr *TaskTestRun) SetDefaults(ctx context.Context) {
-	tr.Spec.SetDefaults(ctx)
+func (ttr *TaskTestRun) SetDefaults(ctx context.Context) {
+	ttr.Spec.SetDefaults(ctx)
+	// ttr.Status.SetDefaults(ctx)
 }
 
 func (trs *TaskTestRunSpec) SetDefaults(ctx context.Context) {

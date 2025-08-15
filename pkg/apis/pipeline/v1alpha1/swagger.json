@@ -233,7 +233,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "stepEnvs": {
-          "description": "List of Step environments, where expected values for environment variables can be individually declared for all of the Task's Steps.",
+          "description": "List of Step environments, where expected values for environment variables can be individually defined for all of the Task's Steps. Expected values defined here will take precedence over expectations defined in 'env'.",
           "type": "array",
           "items": {
             "default": {},
@@ -254,6 +254,9 @@
     "v1alpha1.ExpectedStepFileSystemContent": {
       "description": "ExpectedStepFileSystemContent contains the name of a step as declared in the Task under Test and a list of file system objects.\n\nThe rules for these file system objects are as follows: If the Type is not set it will default to \"AnyObjectType\". If Type is set to a type other than \"TextFile\", then Content must be left empty. Path value must be an absolute path, variable substitution for workspace paths is possible.",
       "type": "object",
+      "required": [
+        "stepName"
+      ],
       "properties": {
         "objects": {
           "description": "Objects is a list of File System Objects, which are expected to be in the container's file system after the step has finished executing (or in the case of Type being set to \"None\" expected to not be there). If this field is left empty, then it will default to \"AnyObjectType\".",
@@ -263,13 +266,14 @@
             "$ref": "#/definitions/v1alpha1.FileSystemObject"
           },
           "x-kubernetes-list-map-keys": [
-            "name"
+            "path"
           ],
           "x-kubernetes-list-type": "map"
         },
         "stepName": {
           "description": "StepName is the name of the step, whose file system will be checked for the objects in FileSystemObject.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -389,23 +393,39 @@
     },
     "v1alpha1.ObservedEnvVar": {
       "type": "object",
+      "required": [
+        "name",
+        "want",
+        "got"
+      ],
       "properties": {
         "diff": {
+          "description": "Diff describes, how Want and Got differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
           "type": "string"
         },
         "got": {
-          "type": "string"
+          "description": "Got is the value that environment variable was found to have",
+          "type": "string",
+          "default": ""
         },
         "name": {
-          "type": "string"
+          "description": "Name is the identifier of an environment variable",
+          "type": "string",
+          "default": ""
         },
         "want": {
-          "type": "string"
+          "description": "Want is the value the test expects that environment variable to have",
+          "type": "string",
+          "default": ""
         }
       }
     },
     "v1alpha1.ObservedFileSystemObject": {
       "type": "object",
+      "required": [
+        "want",
+        "got"
+      ],
       "properties": {
         "diff": {
           "description": "Diff describes, how Want and Got differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
@@ -426,35 +446,32 @@
     "v1alpha1.ObservedOutcomes": {
       "type": "object",
       "properties": {
-        "env": {
-          "description": "listMapKey=name",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1alpha1.ObservedEnvVar"
-          },
-          "x-kubernetes-list-type": "map"
-        },
         "fileSystemObjects": {
           "default": {},
           "$ref": "#/definitions/v1alpha1.ObservedFileSystemObject"
         },
         "results": {
-          "description": "listMapKey=name",
+          "description": "Results contains a list of Results with both their expected and actual values",
           "type": "array",
           "items": {
             "default": {},
             "$ref": "#/definitions/v1alpha1.ObservedResults"
           },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
           "x-kubernetes-list-type": "map"
         },
         "stepEnvs": {
-          "description": "listMapKey=stepName",
+          "description": "StepEnv contains a list of environment variables with both their expected and actual values.",
           "type": "array",
           "items": {
             "default": {},
             "$ref": "#/definitions/v1alpha1.ObservedStepEnv"
           },
+          "x-kubernetes-list-map-keys": [
+            "stepName"
+          ],
           "x-kubernetes-list-type": "map"
         },
         "successReason": {
@@ -469,27 +486,40 @@
     },
     "v1alpha1.ObservedResults": {
       "type": "object",
+      "required": [
+        "name",
+        "want",
+        "got"
+      ],
       "properties": {
         "diff": {
+          "description": "Diff describes, how Want and Got differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
           "type": "string"
         },
         "got": {
-          "default": {},
-          "$ref": "#/definitions/v1.TaskResult"
+          "description": "Got describes the value this Result was found to have",
+          "$ref": "#/definitions/v1.ParamValue"
         },
         "name": {
-          "type": "string"
+          "description": "Name is the name of a Result object declared in the task test executed by this task test run",
+          "type": "string",
+          "default": ""
         },
         "want": {
-          "default": {},
-          "$ref": "#/definitions/v1.TaskResult"
+          "description": "Want describes the value the test expected this Result to have",
+          "$ref": "#/definitions/v1.ParamValue"
         }
       }
     },
     "v1alpha1.ObservedStepEnv": {
       "type": "object",
+      "required": [
+        "stepName",
+        "env"
+      ],
       "properties": {
         "env": {
+          "description": "Env is a list of observed environment variables, showing their expected and actual values",
           "type": "array",
           "items": {
             "default": {},
@@ -501,12 +531,17 @@
           "x-kubernetes-list-type": "map"
         },
         "stepName": {
-          "type": "string"
+          "description": "StepName is the name of a step declared by the task under test",
+          "type": "string",
+          "default": ""
         }
       }
     },
     "v1alpha1.ObservedStepFileSystemContent": {
       "type": "object",
+      "required": [
+        "stepName"
+      ],
       "properties": {
         "objects": {
           "description": "Objects is a list of Observed File System Objects (currently possible: text files, binary files and empty directories), which were expected to be in the container's file system after the step had finished executing",
@@ -515,39 +550,58 @@
             "default": {},
             "$ref": "#/definitions/v1alpha1.ObservedFileSystemObject"
           },
-          "x-kubernetes-list-map-keys": [
-            "name"
-          ],
-          "x-kubernetes-list-type": "map"
+          "x-kubernetes-list-type": "atomic"
         },
         "stepName": {
           "description": "StepName is the name of the step, whose file system was checked.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     },
     "v1alpha1.ObservedSuccessReason": {
       "type": "object",
+      "required": [
+        "want",
+        "got"
+      ],
       "properties": {
         "diff": {
+          "description": "Diff describes, how Want and Got differ, using the typical\nnotation for go tests (prefacing lines from want with a - and lines from got with a +)",
           "type": "string"
         },
         "got": {
-          "type": "string"
+          "description": "Got reports, what Reason was given for the success status of the task under test",
+          "type": "string",
+          "default": ""
         },
         "want": {
-          "type": "string"
+          "description": "Want describes, what Reason the test expected to find for the success status of the task under test",
+          "type": "string",
+          "default": ""
         }
       }
     },
     "v1alpha1.ObservedSuccessStatus": {
       "type": "object",
+      "required": [
+        "want",
+        "got"
+      ],
       "properties": {
+        "diff": {
+          "description": "Diff describes, how Want and Got differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
+          "type": "string"
+        },
         "got": {
-          "type": "boolean"
+          "description": "Got reports, whether the task under test actually succeeded",
+          "type": "boolean",
+          "default": false
         },
         "want": {
-          "type": "boolean"
+          "description": "Want describes, whether the test exects the task under test to succeed",
+          "type": "boolean",
+          "default": false
         }
       }
     },
@@ -669,6 +723,18 @@
             "default": {},
             "$ref": "#/definitions/v1beta1.WorkspaceBinding"
           }
+        }
+      }
+    },
+    "v1alpha1.SimpleTaskRef": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -834,19 +900,20 @@
     "v1alpha1.SuiteTaskTestRun": {
       "type": "object",
       "required": [
-        "taskTestRef"
+        "name"
       ],
       "properties": {
         "computeResources": {
           "description": "Compute resources to use for this TaskRun",
           "$ref": "#/definitions/v1.ResourceRequirements"
         },
+        "name": {
+          "description": "Name is an identifier for a task test. If a task test defined inline inside the test suite shares a name with a test defined outside the suite, then the task defined inside the suite will be chosen.",
+          "type": "string",
+          "default": ""
+        },
         "serviceAccountName": {
           "type": "string"
-        },
-        "taskTestRef": {
-          "description": "TaskTestRef is a reference to a task test definition. If a task test defined inline inside the test suite shares a name with a test defined outside the suite, then the task defined inside the suite will be chosen.",
-          "$ref": "#/definitions/v1alpha1.TaskTestRef"
         },
         "workspaces": {
           "description": "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
@@ -963,7 +1030,7 @@
           }
         },
         "stepEnvs": {
-          "description": "List of Step environments, where environment variables can be individually set for each one of the Task's Steps.",
+          "description": "List of Step environments, where environment variables can be individually set for each one of the Task's Steps. Values set here will overwrite values set in 'env'.",
           "type": "array",
           "items": {
             "default": {},
@@ -1018,10 +1085,14 @@
     },
     "v1alpha1.TaskTestRef": {
       "type": "object",
+      "required": [
+        "name"
+      ],
       "properties": {
         "name": {
           "description": "Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names",
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -1047,6 +1118,7 @@
           "$ref": "#/definitions/v1alpha1.TaskTestRunSpec"
         },
         "status": {
+          "description": "Status holds the status of the TaskTestRun",
           "default": {},
           "$ref": "#/definitions/v1alpha1.TaskTestRunStatus"
         }
@@ -1170,6 +1242,10 @@
           "default": {},
           "$ref": "#/definitions/v1alpha1.ObservedOutcomes"
         },
+        "startTime": {
+          "description": "StartTime is the time the build is actually started.",
+          "$ref": "#/definitions/v1.Time"
+        },
         "taskRunName": {
           "description": "TaskRunName is the name of the TaskRun responsible for executing this test's Tasks.",
           "type": "string",
@@ -1179,11 +1255,6 @@
           "description": "TaskRunStatus is the status of the TaskRun responsible for executing this test's Tasks.",
           "default": {},
           "$ref": "#/definitions/v1.TaskRunStatus"
-        },
-        "taskTestSpec": {
-          "description": "TaskTestSpec is a copy of the Spec of the referenced TaskTest.",
-          "default": {},
-          "$ref": "#/definitions/v1alpha1.NamedTaskTestSpec"
         }
       }
     },
@@ -1203,6 +1274,10 @@
           "default": {},
           "$ref": "#/definitions/v1alpha1.ObservedOutcomes"
         },
+        "startTime": {
+          "description": "StartTime is the time the build is actually started.",
+          "$ref": "#/definitions/v1.Time"
+        },
         "taskRunName": {
           "description": "TaskRunName is the name of the TaskRun responsible for executing this test's Tasks.",
           "type": "string",
@@ -1212,11 +1287,6 @@
           "description": "TaskRunStatus is the status of the TaskRun responsible for executing this test's Tasks.",
           "default": {},
           "$ref": "#/definitions/v1.TaskRunStatus"
-        },
-        "taskTestSpec": {
-          "description": "TaskTestSpec is a copy of the Spec of the referenced TaskTest.",
-          "default": {},
-          "$ref": "#/definitions/v1alpha1.NamedTaskTestSpec"
         }
       }
     },
@@ -1245,7 +1315,6 @@
       "description": "TaskTestSpec defines the desired state of TaskTest.",
       "type": "object",
       "required": [
-        "taskRef",
         "inputs"
       ],
       "properties": {
@@ -1260,8 +1329,8 @@
           "$ref": "#/definitions/v1alpha1.TaskTestInputs"
         },
         "taskRef": {
-          "description": "TaskRef is a reference to a task definition, which must be in the same namespace as the this test.",
-          "$ref": "#/definitions/v1.TaskRef"
+          "description": "TaskRef is a reference to a task definition, which must be in the same namespace as the this test. N2H: in the future this might use v1.TaskRef and be able to resolve remote tasks.",
+          "$ref": "#/definitions/v1alpha1.SimpleTaskRef"
         }
       }
     },
@@ -1478,7 +1547,7 @@
             "$ref": "#/definitions/v1alpha1.SuiteTaskTestRunStatus"
           },
           "x-kubernetes-list-map-keys": [
-            "name"
+            "taskTestRunName"
           ],
           "x-kubernetes-list-type": "map"
         },
@@ -1515,7 +1584,7 @@
             "$ref": "#/definitions/v1alpha1.SuiteTaskTestRunStatus"
           },
           "x-kubernetes-list-map-keys": [
-            "name"
+            "taskTestRunName"
           ],
           "x-kubernetes-list-type": "map"
         },

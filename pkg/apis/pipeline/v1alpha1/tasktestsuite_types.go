@@ -64,7 +64,10 @@ type SuiteTest struct {
 	// means, that all other unfinished tests will be cancelled immediately and
 	// the suite execution is marked as a failure. "Continue" means, that if the
 	// test fails the
-	// suite is still executed as if the test succeeded. This field defaults to "CancelRunningAndFail" if unset
+	// suite is still executed as if the test succeeded. This field defaults to
+	// "CancelRunningAndFail" if unset
+	//
+	// +optional
 	OnError OnTestErrorType `json:"onError,omitempty"`
 
 	// Retries represents how many times this TaskTestRun should be retried in
