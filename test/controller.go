@@ -37,6 +37,7 @@ import (
 	fakepipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/pipelinerun/fake"
 	faketaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/task/fake"
 	faketaskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/taskrun/fake"
+	faketasktestinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/tasktest/fake"
 	faketasktestruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/tasktestrun/fake"
 	fakeverificationpolicyinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/verificationpolicy/fake"
 	fakecustomruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/customrun/fake"
@@ -113,6 +114,7 @@ type Informers struct {
 	ResolutionRequest  resolutioninformersv1alpha1.ResolutionRequestInformer
 	VerificationPolicy informersv1alpha1.VerificationPolicyInformer
 	Secret             coreinformers.SecretInformer
+	TaskTest           informersv1alpha1.TaskTestInformer
 	TaskTestRun        informersv1alpha1.TaskTestRunInformer
 }
 
@@ -200,6 +202,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		ResolutionRequest:  fakeresolutionrequestinformer.Get(ctx),
 		VerificationPolicy: fakeverificationpolicyinformer.Get(ctx),
 		Secret:             fakesecretinformer.Get(ctx),
+		TaskTest:           faketasktestinformer.Get(ctx),
 		TaskTestRun:        faketasktestruninformer.Get(ctx),
 	}
 
@@ -295,6 +298,13 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	for _, s := range d.Secrets {
 		s := s.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if _, err := c.Kube.CoreV1().Secrets(s.Namespace).Create(ctx, s, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	c.Pipeline.PrependReactor("*", "tasktests", AddToInformer(t, i.TaskTest.Informer().GetIndexer()))
+	for _, tt := range d.TaskTests {
+		tt := tt.DeepCopy() // Avoid assumptions that the informer's copy is modified.
+		if _, err := c.Pipeline.TektonV1alpha1().TaskTests(tt.Namespace).Create(ctx, tt, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}

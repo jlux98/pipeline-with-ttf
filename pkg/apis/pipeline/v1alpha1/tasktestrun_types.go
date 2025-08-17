@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -139,7 +140,7 @@ func (trs TaskTestRunStatus) SetDefaults(ctx context.Context) {
 
 type TaskTestRunStatusFields struct {
 	// TaskTestSpec is a copy of the Spec of the referenced TaskTest.
-	// TODO(jlu98) decide, whether to also populate this field when TaskTests are defined inline
+	// TODO(jlux98) decide, whether to also populate this field when TaskTests are defined inline
 	//
 	// +optional
 	TaskTestSpec *NamedTaskTestSpec `json:"taskTestSpec,omitempty"`
@@ -354,8 +355,30 @@ type TaskTestRunReason string
 const (
 	// TaskTestRunReasonSuccessful is the reason set when the TaskRun completed successfully
 	TaskTestRunReasonSuccessful TaskTestRunReason = "All Expectations were met."
+
+	// TaskTestRunReasonUnmetExpectations indicated that the reason for failure status is
+	// that the outcomes of the tasktestrun did not match the expectations
+	// specified in the task test
+	TaskTestRunReasonUnmetExpectations TaskTestRunReason = "TaskTestRunUnmetExpectations"
+
+	// TaskTestRunReasonFailedValidation indicated that the reason for failure status is
+	// that tasktestrun failed runtime validation
+	TaskTestRunReasonFailedValidation TaskTestRunReason = "TaskTestRunValidationFailed"
 )
 
 func (t TaskTestRunReason) String() string {
 	return string(t)
+}
+
+// MarkResourceFailed sets the ConditionSucceeded condition to ConditionFalse
+// based on an error that occurred and a reason
+func (trs *TaskTestRunStatus) MarkResourceFailed(reason TaskTestRunReason, err error) {
+	taskTestRunCondSet.Manage(trs).SetCondition(apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionFalse,
+		Reason:  reason.String(),
+		Message: pipelineErrors.GetErrorMessage(err),
+	})
+	succeeded := trs.GetCondition(apis.ConditionSucceeded)
+	trs.CompletionTime = &succeeded.LastTransitionTime.Inner
 }

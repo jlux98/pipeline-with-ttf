@@ -50,7 +50,8 @@ func (*realPostWriter) Write(file string, content string) {
 
 	if content != "" {
 		if _, err := f.WriteString(content); err != nil {
-			log.Fatalf("Writing %q: %v", file, err)
+			defer log.Fatalf("Writing %q: %v", file, err)
+			return
 		}
 	}
 }

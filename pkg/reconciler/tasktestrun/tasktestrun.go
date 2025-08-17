@@ -2,6 +2,7 @@ package tasktestrun
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -15,6 +16,7 @@ import (
 	tasktestrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1alpha1/tasktestrun"
 	v1listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1"
 	alphalisters "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/apiserver"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
@@ -55,9 +57,6 @@ type Reconciler struct {
 // ReconcileKind implements tasktestrun.Interface.
 func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TaskTestRun) reconciler.Event {
 	logger := logging.FromContext(ctx)
-
-	logger.Info("unga bunga")
-
 	ctx = cloudevent.ToContext(ctx, c.cloudEventClient)
 
 	if !tr.HasStarted() {
@@ -74,6 +73,11 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TaskTestRun
 		// on the event to perform user facing initialisations, such has reset a CI check status
 		afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
 		events.Emit(ctx, nil, afterCondition, tr)
+	}
+
+	_, err := c.prepare(ctx, tr)
+	if err != nil {
+		return fmt.Errorf("could not prepare reconciliation of task test run %s: %w", tr.Name, err)
 	}
 
 	if err := c.reconcile(ctx, tr, nil); err != nil {
@@ -101,6 +105,25 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TaskTestRun
 	return nil
 }
 
+func (c *Reconciler) prepare(ctx context.Context, ttr *v1alpha1.TaskTestRun) (*v1alpha1.NamedTaskTestSpec, error) {
+	if ttr.Spec.TaskTestSpec != nil {
+		ttr.Status.TaskTestSpec = &v1alpha1.NamedTaskTestSpec{
+			Spec: ttr.Spec.TaskTestSpec,
+		}
+	}
+	if ttr.Spec.TaskTestRef != nil {
+		taskTest, err := c.dereferenceTaskTestRef(ctx, ttr)
+		if err != nil {
+			return nil, err
+		}
+		ttr.Status.TaskTestSpec = &v1alpha1.NamedTaskTestSpec{
+			Name: &ttr.Spec.TaskTestRef.Name,
+			Spec: &taskTest.Spec,
+		}
+	}
+	return ttr.Status.TaskTestSpec, nil
+}
+
 // `reconcile` creates the TaskRun associated to the TaskTestRun, and it pulls
 // back status updates from the TaskRun to the TaskTestRun.
 // It reports errors back to Reconcile, it updates the tasktest run status in
@@ -113,15 +136,6 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 
 	// Get the TaskTestRun's TaskRun if it should have one. Otherwise, create the TaskRun.
 	var taskRun *v1.TaskRun
-
-	if ttr.Spec.TaskTestSpec != nil {
-		ttr.Status.TaskTestSpec = &v1alpha1.NamedTaskTestSpec{
-			Spec: ttr.Spec.TaskTestSpec,
-		}
-	}
-	if ttr.Spec.TaskTestRef != nil {
-		logger.Info(`// TODO deref TaskTestRef and copy spec `)
-	}
 
 	if ttr.Status.TaskRunName != "" {
 		taskRun, err = c.taskRunLister.TaskRuns(ttr.Namespace).Get(ttr.Status.TaskRunName)
@@ -188,21 +202,27 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 	if taskRun == nil {
 		taskRun, err = c.createTaskRun(ctx, ttr, rtr)
 		if err != nil {
-			logger.Errorf("Failed to create task run taskRun for taskrun %q: %v", ttr.Name, err)
+			if errors.Is(err, apiserver.ErrReferencedObjectValidationFailed) {
+				ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunReasonFailedValidation, err)
+			}
+			logger.Errorf("Failed to create task run for taskTestRun %q: %v", ttr.Name, err)
 			return err
 		}
 	} else if taskRun.Status.CompletionTime != nil {
 		expectationsMet := true
 		ttr.Status.CompletionTime = taskRun.Status.CompletionTime
 		taskResults := taskRun.Status.Results
+		diffs := ""
+		if ttr.Status.Outcomes.Results == nil {
+			ttr.Status.Outcomes.Results = []v1alpha1.ObservedResults{}
+		}
 		for _, expectedResult := range ttr.Status.TaskTestSpec.Spec.Expected.Results {
 			var gotValue *v1.ResultValue
 			i := slices.IndexFunc(taskResults, func(actualResult v1.TaskRunResult) bool {
 				return actualResult.Name == expectedResult.Name
 			})
 			if i == -1 {
-				gotValue = nil
-				expectationsMet = false
+				gotValue = &v1.ResultValue{}
 			} else {
 				gotValue = &taskResults[i].Value
 			}
@@ -215,6 +235,7 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 			})
 			if diff != "" {
 				expectationsMet = false
+				diffs += diff
 			}
 		}
 		ttr.Status.Outcomes.SuccessStatus = v1alpha1.ObservedSuccessStatus{
@@ -225,20 +246,25 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 
 		if !ttr.Status.Outcomes.SuccessStatus.WantMatchesGot {
 			expectationsMet = false
+			diffs += "observed success status did not match expectation\n"
 		}
 
 		ttr.Status.Outcomes.SuccessReason = v1alpha1.ObservedSuccessReason{
 			Want: ttr.Status.TaskTestSpec.Spec.Expected.SuccessReason,
 			Got:  v1.TaskRunReason(taskRun.Status.Conditions[0].Reason),
 		}
-		ttr.Status.Outcomes.SuccessReason.Diff = cmp.Diff(ttr.Status.Outcomes.SuccessReason.Want, ttr.Status.Outcomes.SuccessReason.Got)
+		diff := cmp.Diff(ttr.Status.Outcomes.SuccessReason.Want, ttr.Status.Outcomes.SuccessReason.Got)
+		ttr.Status.Outcomes.SuccessReason.Diff = diff
 
 		if ttr.Status.Outcomes.SuccessReason.Diff != "" {
 			expectationsMet = false
+			diffs += diff
 		}
 
 		if expectationsMet {
 			ttr.Status.MarkSuccessful()
+		} else {
+			ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunReasonUnmetExpectations, errors.New("not all expectations were met:\n"+diffs))
 		}
 	}
 
@@ -269,21 +295,29 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 	ttr.Status.TaskRunName = taskRun.Name
 	ttr.Status.TaskRunStatus = taskRun.Status
 
-	logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", ttr.Name, ttr.Namespace, ttr.Status.GetCondition(apis.ConditionSucceeded))
+	logger.Infof("Successfully reconciled tasktestrun %s/%s with status: %#v", ttr.Name, ttr.Namespace, ttr.Status.GetCondition(apis.ConditionSucceeded))
 	return nil
+}
+
+func (c *Reconciler) dereferenceTaskTestRef(ctx context.Context, ttr *v1alpha1.TaskTestRun) (*v1alpha1.TaskTest, error) {
+	taskTest, err := c.PipelineClientSet.TektonV1alpha1().TaskTests(ttr.Namespace).Get(ctx, ttr.Spec.TaskTestRef.Name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return taskTest, nil
 }
 
 func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRun, rtr *resources.ResolvedTask) (*v1.TaskRun, error) {
 	var taskRun *v1.TaskRun
 	var taskName string
 
-	if ttr.Spec.TaskTestSpec != nil {
-		taskName = ttr.Spec.TaskTestSpec.TaskRef.Name
+	if ttr.Status.TaskTestSpec.Spec != nil {
+		taskName = ttr.Status.TaskTestSpec.Spec.TaskRef.Name
 	}
 
 	task, err := c.PipelineClientSet.TektonV1().Tasks(ttr.Namespace).Get(ctx, taskName, metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not dereference task under test: %w", err)
 	}
 
 	if ttr.Status.TaskTestSpec.Spec.Expected.Results != nil {
@@ -292,7 +326,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 			if !slices.ContainsFunc(declaredResults, func(result v1.TaskResult) bool {
 				return result.Name == expectedResult.Name
 			}) {
-				return nil, fmt.Errorf("error: Result %s expected but not declared by task %s", expectedResult.Name, taskName)
+				return nil, fmt.Errorf("%w: Result %s expected but not declared by task \"%s\"", apiserver.ErrReferencedObjectValidationFailed, expectedResult.Name, task.Name)
 			}
 		}
 	}
