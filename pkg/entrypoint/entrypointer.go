@@ -174,6 +174,10 @@ type Entrypointer struct {
 
 	// ArtifactsDirectory is the directory to find artifacts, defaults to pipeline.ArtifactsDir
 	ArtifactsDirectory string
+
+	// DumpEnvironment bool specifies, whether the environment of the container
+	// should be dumped as an internal result after the container has finished executing
+	DumpEnvironment bool
 }
 
 // Waiter encapsulates waiting for files to exist.
@@ -207,6 +211,9 @@ func (e Entrypointer) Go() error {
 		return err
 	}
 	if err := os.MkdirAll(filepath.Join(e.StepMetadataDir, "artifacts"), os.ModePerm); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Join(e.StepMetadataDir, "environment"), os.ModePerm); err != nil {
 		return err
 	}
 	for _, f := range e.WaitFiles {
@@ -472,6 +479,45 @@ func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string,
 	}
 	return nil
 }
+
+// func (e Entrypointer) readEnvironmentsFromDisk(ctx context.Context, resultDir string, resultType result.ResultType) error {
+// 	output := map[string]string{}
+// 	results := e.Results
+// 	if resultType == result.StepResultType {
+// 		results = e.StepResults
+// 	}
+// 	for _, resultFile := range results {
+// 		if resultFile == "" {
+// 			continue
+// 		}
+// 		fileContents, err := os.ReadFile(filepath.Join(resultDir, resultFile))
+// 		if os.IsNotExist(err) {
+// 			continue
+// 		} else if err != nil {
+// 			return err
+// 		}
+// 		// if the file doesn't exist, ignore it
+// 		output = append(output, result.RunResult{
+// 			Key:        resultFile,
+// 			Value:      string(fileContents),
+// 			ResultType: resultType,
+// 		})
+// 	}
+
+// 	signed, err := signResults(ctx, e.SpireWorkloadAPI, output)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	output = append(output, signed...)
+
+// 	// push output to termination path
+// 	if e.ResultExtractionMethod == ResultExtractionMethodTerminationMessage && len(output) != 0 {
+// 		if err := termination.WriteMessage(e.TerminationPath, output); err != nil {
+// 			return err
+// 		}
+// 	}
+// 	return nil
+// }
 
 // BreakpointExitCode reads the post file and returns the exit code it contains
 func (e Entrypointer) BreakpointExitCode(breakpointExitPostFile string) (int, error) {

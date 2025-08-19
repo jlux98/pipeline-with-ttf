@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
@@ -36,6 +37,8 @@ const (
 	debugScriptsDir        = "/tekton/debug/scripts"
 	defaultScriptPreamble  = "#!/bin/sh\nset -e\n"
 	debugInfoDir           = "/tekton/debug/info"
+	environmentVolumeName  = "tekton-internal-environment"
+	environmentDir         = "/tekton/environment"
 )
 
 var (
@@ -55,6 +58,20 @@ var (
 		MountPath: scriptsDir,
 		ReadOnly:  false,
 	}
+	environmentVolume = corev1.Volume{
+		Name:         environmentVolumeName,
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+	}
+	environmentVolumeMount = corev1.VolumeMount{
+		Name:      environmentVolumeName,
+		MountPath: environmentDir,
+		ReadOnly:  true,
+	}
+	writeEnvironmentVolumeMount = corev1.VolumeMount{
+		Name:      environmentVolumeName,
+		MountPath: environmentDir,
+		ReadOnly:  false,
+	}
 	debugScriptsVolume = corev1.Volume{
 		Name:         debugScriptsVolumeName,
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
@@ -69,6 +86,10 @@ var (
 	}
 )
 
+func convertScripts(shellImageLinux string, shellImageWin string, steps []v1.Step, sidecars []v1.Sidecar, debugConfig *v1.TaskRunDebug, securityContext SecurityContextConfig) (*corev1.Container, []corev1.Container, []corev1.Container) {
+	return convertScriptsExpanded(shellImageLinux, shellImageWin, steps, sidecars, debugConfig, securityContext, false)
+}
+
 // convertScripts creates an init container that mounts any Scripts specified by
 // the input Steps and Sidecars. It returns the init container, plus two slices of Containers
 // representing the Steps and Sidecars, respectively, that use the scripts from the init container.
@@ -78,7 +99,7 @@ var (
 //   - debugConfig: the TaskRun's debug configuration
 //   - setSecurityContext: whether the init container should include a security context that will
 //     allow it to run in a namespace with "restricted" pod security admission
-func convertScripts(shellImageLinux string, shellImageWin string, steps []v1.Step, sidecars []v1.Sidecar, debugConfig *v1.TaskRunDebug, securityContext SecurityContextConfig) (*corev1.Container, []corev1.Container, []corev1.Container) {
+func convertScriptsExpanded(shellImageLinux string, shellImageWin string, steps []v1.Step, sidecars []v1.Sidecar, debugConfig *v1.TaskRunDebug, securityContext SecurityContextConfig, dumpEnvironment bool) (*corev1.Container, []corev1.Container, []corev1.Container) {
 	// Place scripts is an init container used for creating scripts in the
 	// /tekton/scripts directory which would be later used by the step containers
 	// as a Command
@@ -112,7 +133,7 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1.Ste
 		placeScriptsInit.VolumeMounts = append(placeScriptsInit.VolumeMounts, debugScriptsVolumeMount)
 	}
 
-	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, debugConfig, "script")
+	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, debugConfig, "script", dumpEnvironment)
 	sidecarContainers := convertListOfSidecars(sidecars, &placeScriptsInit, "sidecar-script")
 
 	if hasScripts(steps, sidecars, debugConfig) {
@@ -128,7 +149,7 @@ func convertListOfSidecars(sidecars []v1.Sidecar, initContainer *corev1.Containe
 	for i, s := range sidecars {
 		c := s.ToK8sContainer()
 		if s.Script != "" {
-			placeScriptInContainer(s.Script, getScriptFile(scriptsDir, fmt.Sprintf("%s-%d", namePrefix, i)), c, initContainer)
+			placeScriptInContainer(s.Script, getScriptFile(scriptsDir, fmt.Sprintf("%s-%d", namePrefix, i)), c, initContainer, false)
 		}
 		containers = append(containers, *c)
 	}
@@ -137,12 +158,12 @@ func convertListOfSidecars(sidecars []v1.Sidecar, initContainer *corev1.Containe
 
 // convertListOfSteps iterates through the list of steps, generates the script file name and heredoc termination string,
 // adds an entry to the init container args, sets up the step container to run the script, and sets the volume mounts.
-func convertListOfSteps(steps []v1.Step, initContainer *corev1.Container, debugConfig *v1.TaskRunDebug, namePrefix string) []corev1.Container {
+func convertListOfSteps(steps []v1.Step, initContainer *corev1.Container, debugConfig *v1.TaskRunDebug, namePrefix string, dumpEnvironment bool) []corev1.Container {
 	containers := []corev1.Container{}
 	for i, s := range steps {
 		c := steps[i].ToK8sContainer()
 		if s.Script != "" {
-			placeScriptInContainer(s.Script, getScriptFile(scriptsDir, fmt.Sprintf("%s-%d", namePrefix, i)), c, initContainer)
+			placeScriptInContainer(s.Script, getScriptFile(scriptsDir, fmt.Sprintf("%s-%d", namePrefix, i)), c, initContainer, dumpEnvironment)
 		}
 		containers = append(containers, *c)
 	}
@@ -157,7 +178,7 @@ func getScriptFile(scriptsDir, scriptName string) string {
 // placeScriptInContainer given a piece of script to be executed, placeScriptInContainer firstly modifies initContainer
 // so that it capsules the target script into scriptFile, then it modifies the container so that it can execute the scriptFile
 // in runtime.
-func placeScriptInContainer(script, scriptFile string, c *corev1.Container, initContainer *corev1.Container) {
+func placeScriptInContainer(script, scriptFile string, c *corev1.Container, initContainer *corev1.Container, dumpEnvironment bool) {
 	if script == "" {
 		return
 	}
@@ -183,6 +204,31 @@ func placeScriptInContainer(script, scriptFile string, c *corev1.Container, init
 		args = append(args, c.Args...)
 		c.Args = args
 	} else {
+		// TODO(jlux98) add logic to only enable this when this is a step script and the TaskRun this container belongs to is controlled by a TaskTestRun that has expected values specified for the environment
+		if dumpEnvironment {
+			// 			script += fmt.Sprintf(`
+
+			// envDir="%s"
+			// envFile="${envDir}/%s"
+
+			// echo "In order to verify the correct functioning of this step the current state of all environment variables will now be dumped to ${envFile}"
+
+			// printenv > "$envFile"
+			// `, environmentDir, c.Name)
+			script += fmt.Sprintf(`
+
+envPath="%s/environment"
+
+echo "In order to verify the correct functioning of this step the current state of all environment variables will now be dumped to $envPath"
+
+echo '{"step": "%s", "environment": {' >> "$envPath"
+echo "$(printenv)" | while read -r line; do
+echo '"'"$line"'",' >> "$envPath"
+done
+echo '}},' >> "$envPath"
+`, pipeline.DefaultResultPath, c.Name)
+			c.VolumeMounts = append(c.VolumeMounts, writeEnvironmentVolumeMount)
+		}
 		// Only encode the script for linux scripts
 		// The decode-script subcommand of the entrypoint does not work under windows
 		script = encodeScript(script)

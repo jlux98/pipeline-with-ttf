@@ -56,6 +56,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepActionList":                schema_pkg_apis_pipeline_v1alpha1_StepActionList(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepActionSpec":                schema_pkg_apis_pipeline_v1alpha1_StepActionSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepEnv":                       schema_pkg_apis_pipeline_v1alpha1_StepEnv(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepEnvironment":               schema_pkg_apis_pipeline_v1alpha1_StepEnvironment(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskTestRun":              schema_pkg_apis_pipeline_v1alpha1_SuiteTaskTestRun(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskTestRunStatus":        schema_pkg_apis_pipeline_v1alpha1_SuiteTaskTestRunStatus(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTest":                     schema_pkg_apis_pipeline_v1alpha1_SuiteTest(ref),
@@ -884,8 +885,7 @@ func schema_pkg_apis_pipeline_v1alpha1_ObservedOutcomes(ref common.ReferenceCall
 				Properties: map[string]spec.Schema{
 					"fileSystemObjects": {
 						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedFileSystemObject"),
+							Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedFileSystemObject"),
 						},
 					},
 					"results": {
@@ -934,14 +934,12 @@ func schema_pkg_apis_pipeline_v1alpha1_ObservedOutcomes(ref common.ReferenceCall
 					},
 					"successStatus": {
 						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessStatus"),
+							Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessStatus"),
 						},
 					},
 					"successReason": {
 						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessReason"),
+							Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessReason"),
 						},
 					},
 				},
@@ -1139,10 +1137,10 @@ func schema_pkg_apis_pipeline_v1alpha1_ObservedSuccessStatus(ref common.Referenc
 							Format:      "",
 						},
 					},
-					"diff": {
+					"wantMatchesGot": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Diff describes, how Want and Got differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
-							Type:        []string{"string"},
+							Description: "WantMatchesGot describes, whether Want and Got have the same value.",
+							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},
@@ -1681,6 +1679,41 @@ func schema_pkg_apis_pipeline_v1alpha1_StepEnv(ref common.ReferenceCallback) com
 		},
 		Dependencies: []string{
 			"k8s.io/api/core/v1.EnvVar"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1alpha1_StepEnvironment(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"step": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+					"environment": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"step", "environment"},
+			},
+		},
 	}
 }
 
@@ -2278,13 +2311,19 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunStatus(ref common.ReferenceCal
 					"taskTestSpec": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TaskTestSpec is a copy of the Spec of the referenced TaskTest.",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.NamedTaskTestSpec"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSpec"),
+						},
+					},
+					"taskTestName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TaskTestName is the name of the referenced TaskTest if no inline TaskTest (via TaskTestSpec) is used",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"taskRunName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TaskRunName is the name of the TaskRun responsible for executing this test's Tasks.",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2292,7 +2331,6 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunStatus(ref common.ReferenceCal
 					"taskRunStatus": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TaskRunStatus is the status of the TaskRun responsible for executing this test's Tasks.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatus"),
 						},
 					},
@@ -2310,16 +2348,28 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunStatus(ref common.ReferenceCal
 					},
 					"outcomes": {
 						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedOutcomes"),
+							Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedOutcomes"),
+						},
+					},
+					"retriesStatus": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RetriesStatus contains the history of TaskTestRunStatus in case of a retry in order to keep record of failures. All TaskTestRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestRunStatus"),
+									},
+								},
+							},
 						},
 					},
 				},
-				Required: []string{"taskRunName", "taskRunStatus", "outcomes"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.NamedTaskTestSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedOutcomes", "k8s.io/apimachinery/pkg/apis/meta/v1.Time", "knative.dev/pkg/apis.Condition"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedOutcomes", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Time", "knative.dev/pkg/apis.Condition"},
 	}
 }
 
@@ -2332,13 +2382,19 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunStatusFields(ref common.Refere
 					"taskTestSpec": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TaskTestSpec is a copy of the Spec of the referenced TaskTest.",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.NamedTaskTestSpec"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSpec"),
+						},
+					},
+					"taskTestName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TaskTestName is the name of the referenced TaskTest if no inline TaskTest (via TaskTestSpec) is used",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"taskRunName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TaskRunName is the name of the TaskRun responsible for executing this test's Tasks.",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2346,7 +2402,6 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunStatusFields(ref common.Refere
 					"taskRunStatus": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TaskRunStatus is the status of the TaskRun responsible for executing this test's Tasks.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatus"),
 						},
 					},
@@ -2364,16 +2419,28 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunStatusFields(ref common.Refere
 					},
 					"outcomes": {
 						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedOutcomes"),
+							Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedOutcomes"),
+						},
+					},
+					"retriesStatus": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RetriesStatus contains the history of TaskTestRunStatus in case of a retry in order to keep record of failures. All TaskTestRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestRunStatus"),
+									},
+								},
+							},
 						},
 					},
 				},
-				Required: []string{"taskRunName", "taskRunStatus", "outcomes"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.NamedTaskTestSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedOutcomes", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedOutcomes", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -2438,19 +2505,16 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestSpec(ref common.ReferenceCallback
 					"inputs": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Inputs represents the test data for executing the test case.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestInputs"),
 						},
 					},
 					"expected": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Expected contains the data, which the TaskTestRun controller will use to check, whether a TaskTestRun was successful or not. If this field is left empty, then the TaskTestRun is deemed successful, if the TaskRun completes without a failure occurring.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ExpectedOutcomes"),
 						},
 					},
 				},
-				Required: []string{"inputs"},
 			},
 		},
 		Dependencies: []string{

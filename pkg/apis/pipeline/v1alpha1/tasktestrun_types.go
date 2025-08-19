@@ -2,14 +2,18 @@ package v1alpha1
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/clock"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -39,6 +43,49 @@ type TaskTestRun struct {
 	//
 	// +optional
 	Status TaskTestRunStatus `json:"status,omitempty"`
+}
+
+func (ttr *TaskTestRun) HasTimedOut(ctx context.Context, c clock.PassiveClock) bool {
+	if ttr.Status.StartTime.IsZero() {
+		return false
+	}
+	timeout := ttr.GetTimeout(ctx)
+	// If timeout is set to 0 or defaulted to 0, there is no timeout.
+	if timeout == apisconfig.NoTimeoutDuration {
+		return false
+	}
+	runtime := c.Since(ttr.Status.StartTime.Time)
+	return runtime > timeout
+}
+
+func (ttr *TaskTestRun) IsRetriable() bool {
+	return len(ttr.Status.RetriesStatus) < ttr.Spec.Retries
+}
+
+// +listType=atomic
+type RetriesStatus []TaskTestRunStatus
+
+func (ttr *TaskTestRun) IsCancelled() bool {
+	return ttr.Spec.Status == TaskTestRunSpecStatusCancelled
+}
+
+func (ttr *TaskTestRun) IsDone() bool {
+	return !ttr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown()
+}
+
+// GetGroupVersionKind implements kmeta.OwnerRefable.
+func (ttr *TaskTestRun) GetGroupVersionKind() schema.GroupVersionKind {
+	return schema.GroupVersionKind{
+		Group:   "tekton.dev",
+		Version: "v1alpha1",
+		Kind:    "TaskTestRun",
+	}
+}
+
+// GetObjectMeta implements kmeta.OwnerRefable.
+// Subtle: this method shadows the method (ObjectMeta).GetObjectMeta of TaskTestRun.ObjectMeta.
+func (ttr *TaskTestRun) GetObjectMeta() metav1.Object {
+	return &ttr.ObjectMeta
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -143,15 +190,21 @@ type TaskTestRunStatusFields struct {
 	// TODO(jlux98) decide, whether to also populate this field when TaskTests are defined inline
 	//
 	// +optional
-	TaskTestSpec *NamedTaskTestSpec `json:"taskTestSpec,omitempty"`
+	TaskTestSpec *TaskTestSpec `json:"taskTestSpec,omitempty"`
+
+	// TaskTestName is the name of the referenced TaskTest if no inline TaskTest
+	// (via TaskTestSpec) is used
+	//
+	// +optional
+	TaskTestName *string `json:"taskTestName,omitempty"`
 
 	// TaskRunName is the name of the TaskRun responsible for executing this
 	// test's Tasks.
-	TaskRunName string `json:"taskRunName"`
+	TaskRunName *string `json:"taskRunName,omitempty"`
 
 	// TaskRunStatus is the status of the TaskRun responsible for executing this
 	// test's Tasks.
-	TaskRunStatus v1.TaskRunStatus `json:"taskRunStatus"`
+	TaskRunStatus *v1.TaskRunStatus `json:"taskRunStatus,omitempty"`
 
 	// StartTime is the time the build is actually started.
 	StartTime *metav1.Time `json:"startTime,omitempty"`
@@ -161,19 +214,27 @@ type TaskTestRunStatusFields struct {
 	// +optional
 	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
 
-	Outcomes ObservedOutcomes `json:"outcomes"`
+	Outcomes *ObservedOutcomes `json:"outcomes,omitempty"`
+
+	// RetriesStatus contains the history of TaskTestRunStatus in case of a retry in order to keep record of failures.
+	// All TaskTestRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.
+	//
+	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
+	RetriesStatus RetriesStatus `json:"retriesStatus,omitempty"`
 }
 
 type ObservedOutcomes struct {
 	// +optional
-	FileSystemObjects ObservedFileSystemObject `json:"fileSystemObjects,omitempty"`
+	FileSystemObjects *ObservedFileSystemObject `json:"fileSystemObjects,omitempty"`
 
 	// Results contains a list of Results with both their expected and actual values
 	//
 	// +listType=map
 	// +listMapKey=name
 	// +optional
-	Results []ObservedResults `json:"results,omitempty"`
+	Results *[]ObservedResults `json:"results,omitempty"`
 
 	// StepEnv contains a list of environment variables with both their expected
 	// and actual values.
@@ -181,11 +242,11 @@ type ObservedOutcomes struct {
 	// +listType=map
 	// +listMapKey=stepName
 	// +optional
-	StepEnvs []ObservedStepEnv `json:"stepEnvs,omitempty"`
+	StepEnvs *[]ObservedStepEnv `json:"stepEnvs,omitempty"`
 
-	SuccessStatus ObservedSuccessStatus `json:"successStatus,omitempty"`
+	SuccessStatus *ObservedSuccessStatus `json:"successStatus,omitempty"`
 
-	SuccessReason ObservedSuccessReason `json:"successReason,omitempty"`
+	SuccessReason *ObservedSuccessReason `json:"successReason,omitempty"`
 }
 
 type ObservedStepFileSystemContent struct {
@@ -280,7 +341,7 @@ type ObservedSuccessStatus struct {
 	// WantMatchesGot describes, whether Want and Got have the same value.
 	//
 	// +optional
-	WantMatchesGot bool `json:"diff,omitempty"`
+	WantMatchesGot bool `json:"wantMatchesGot,omitempty"`
 }
 
 type ObservedSuccessReason struct {
@@ -329,9 +390,10 @@ var taskTestRunCondSet = apis.NewBatchConditionSet()
 // with the reason and message.
 func (trs *TaskTestRunStatus) MarkSuccessful() {
 	taskTestRunCondSet.Manage(trs).SetCondition(apis.Condition{
-		Type:   apis.ConditionSucceeded,
-		Status: corev1.ConditionTrue,
-		Reason: TaskTestRunReasonSuccessful.String(),
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionTrue,
+		Reason:  TaskTestRunReasonSuccessful.String(),
+		Message: "TaskRun completed executing and outcomes were as expected",
 	})
 }
 
@@ -341,29 +403,33 @@ func (ttr *TaskTestRun) GetNamespacedName() types.NamespacedName {
 }
 
 // GetTimeout returns the timeout for the TaskTestRun, or the default if not specified
-func (tr *TaskTestRun) GetTimeout(ctx context.Context) time.Duration {
+func (ttr *TaskTestRun) GetTimeout(ctx context.Context) time.Duration {
 	// Use the platform default is no timeout is set
-	if tr.Spec.Timeout == nil {
+	if ttr.Spec.Timeout == nil {
 		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
 		return defaultTimeout * time.Minute //nolint:durationcheck
 	}
-	return tr.Spec.Timeout.Duration
+	return ttr.Spec.Timeout.Duration
 }
 
 type TaskTestRunReason string
 
 const (
 	// TaskTestRunReasonSuccessful is the reason set when the TaskRun completed successfully
-	TaskTestRunReasonSuccessful TaskTestRunReason = "All Expectations were met."
+	TaskTestRunReasonSuccessful TaskTestRunReason = "Succeeded"
 
-	// TaskTestRunReasonUnmetExpectations indicated that the reason for failure status is
+	// TaskTestRunUnexpectatedOutcomes indicated that the reason for failure status is
 	// that the outcomes of the tasktestrun did not match the expectations
 	// specified in the task test
-	TaskTestRunReasonUnmetExpectations TaskTestRunReason = "TaskTestRunUnmetExpectations"
+	TaskTestRunUnexpectatedOutcomes TaskTestRunReason = "TaskTestRunUnexpectedOutcomes"
 
 	// TaskTestRunReasonFailedValidation indicated that the reason for failure status is
 	// that tasktestrun failed runtime validation
 	TaskTestRunReasonFailedValidation TaskTestRunReason = "TaskTestRunValidationFailed"
+
+	TaskTestRunReasonTimedOut TaskTestRunReason = "TaskTestRunTimedOut"
+
+	TaskTestRunReasonCancelled TaskTestRunReason = "TaskTestRunCancelled"
 )
 
 func (t TaskTestRunReason) String() string {
@@ -381,4 +447,33 @@ func (trs *TaskTestRunStatus) MarkResourceFailed(reason TaskTestRunReason, err e
 	})
 	succeeded := trs.GetCondition(apis.ConditionSucceeded)
 	trs.CompletionTime = &succeeded.LastTransitionTime.Inner
+}
+
+func GetControllingTaskTestRun(meta metav1.ObjectMeta) *metav1.OwnerReference {
+	index := slices.IndexFunc(meta.OwnerReferences, func(ref metav1.OwnerReference) bool {
+		return ref.APIVersion == "tekton.dev/v1alpha1" && ref.Kind == "TaskTestRun"
+	})
+	if index < 0 {
+		return nil
+	}
+	return &meta.OwnerReferences[index]
+}
+
+func IsControlledByTaskTestRun(meta metav1.ObjectMeta) bool {
+	return GetControllingTaskTestRun(meta) != nil
+}
+
+type StepEnvironmentList []StepEnvironment
+
+type StepEnvironment struct {
+	Step        string            `json:"step"`
+	Environment map[string]string `json:"environment"`
+}
+
+func (sel StepEnvironmentList) ToMap() map[string]map[string]string {
+	result := map[string]map[string]string{}
+	for idx := range sel {
+		result[sel[idx].Step] = sel[idx].Environment
+	}
+	return result
 }

@@ -23,14 +23,21 @@ func (tt *TaskTest) Validate(ctx context.Context) *apis.FieldError {
 
 // Validate implements apis.Validatable.
 func (ts *TaskTestSpec) Validate(ctx context.Context) *apis.FieldError {
-	errs := ts.Inputs.Validate(ctx).ViaField("inputs")
-	errs = errs.Also(ts.Expected.Validate(ctx).ViaField("expected"))
+	var errs *apis.FieldError
+	if ts.Inputs != nil {
+		errs = errs.Also(ts.Inputs.Validate(ctx).ViaField("inputs"))
+	}
+	if ts.Expected != nil {
+		errs = errs.Also(ts.Expected.Validate(ctx).ViaField("expected"))
+	}
 	return errs
 }
 
 func (tti *TaskTestInputs) Validate(ctx context.Context) *apis.FieldError {
 	var errs *apis.FieldError
-	errs = errs.Also(v1.ValidateParameters(ctx, tti.Params).ViaField("params"))
+	if tti.Params != nil {
+		errs = errs.Also(v1.ValidateParameters(ctx, tti.Params).ViaField("params"))
+	}
 	errs = errs.Also(ValidateIdentifierUniqueness(extractNamesFromWorkspaceContents(tti.WorkspaceContents), "name").ViaField("workspaceContents"))
 	for i, wc := range tti.WorkspaceContents {
 		errs = errs.Also(wc.Validate().ViaFieldIndex("workspaceContents", i))

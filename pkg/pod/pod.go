@@ -23,6 +23,7 @@ import (
 	"log"
 	"math"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -32,6 +33,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources/tasklevel"
 	"github.com/tektoncd/pipeline/pkg/names"
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
@@ -41,7 +43,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/utils/strings/slices"
+	"k8s.io/utils/ptr"
 	"knative.dev/pkg/changeset"
 	"knative.dev/pkg/kmap"
 	"knative.dev/pkg/kmeta"
@@ -229,7 +231,15 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	// Convert any steps with Script to command+args.
 	// If any are found, append an init container to initialize scripts.
 	if alphaAPIEnabled {
-		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, b.Images.ShellImageWin, steps, sidecars, taskRun.Spec.Debug, securityContextConfig)
+		if v1alpha1.IsControlledByTaskTestRun(taskRun.ObjectMeta) {
+			scriptsInit, stepContainers, sidecarContainers = convertScriptsExpanded(b.Images.ShellImage, b.Images.ShellImageWin, steps, sidecars, taskRun.Spec.Debug, securityContextConfig, true)
+			taskSpec.Results = append(taskSpec.Results, v1.TaskResult{
+				Name: "environment",
+				Type: v1.ResultsTypeString,
+			})
+		} else {
+			scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, b.Images.ShellImageWin, steps, sidecars, taskRun.Spec.Debug, securityContextConfig)
+		}
 	} else {
 		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, "", steps, sidecars, nil, securityContextConfig)
 	}
@@ -237,6 +247,9 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	if scriptsInit != nil {
 		initContainers = append(initContainers, *scriptsInit)
 		volumes = append(volumes, scriptsVolume)
+		if v1alpha1.IsControlledByTaskTestRun(taskRun.ObjectMeta) {
+			volumes = append(volumes, environmentVolume)
+		}
 	}
 	if alphaAPIEnabled && taskRun.Spec.Debug != nil && taskRun.Spec.Debug.NeedsDebug() {
 		volumes = append(volumes, debugScriptsVolume, debugInfoVolume)
@@ -521,6 +534,12 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 			TopologySpreadConstraints:    podTemplate.TopologySpreadConstraints,
 			ActiveDeadlineSeconds:        &activeDeadlineSeconds, // Set ActiveDeadlineSeconds to mark the pod as "terminating" (like a Job)
 		},
+	}
+
+	if v1alpha1.IsControlledByTaskTestRun(taskRun.ObjectMeta) {
+		taskTestRunRef := *v1alpha1.GetControllingTaskTestRun(taskRun.ObjectMeta)
+		taskTestRunRef.Controller = ptr.To(false)
+		newPod.ObjectMeta.OwnerReferences = append(newPod.ObjectMeta.OwnerReferences, taskTestRunRef)
 	}
 
 	for _, f := range transformers {

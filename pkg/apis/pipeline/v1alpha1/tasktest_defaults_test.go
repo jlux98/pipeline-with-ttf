@@ -33,7 +33,7 @@ func TestTask_SetDefaults(t *testing.T) {
 		name: "expected file system object type set to AnyObjectType",
 		in: &v1alpha1.TaskTest{
 			Spec: v1alpha1.TaskTestSpec{
-				Expected: v1alpha1.ExpectedOutcomes{
+				Expected: &v1alpha1.ExpectedOutcomes{
 					FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
 						StepName: "MyStep",
 						Objects: []v1alpha1.FileSystemObject{{
@@ -46,7 +46,7 @@ func TestTask_SetDefaults(t *testing.T) {
 		},
 		want: &v1alpha1.TaskTest{
 			Spec: v1alpha1.TaskTestSpec{
-				Expected: v1alpha1.ExpectedOutcomes{
+				Expected: &v1alpha1.ExpectedOutcomes{
 					FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
 						StepName: "MyStep",
 						Objects: []v1alpha1.FileSystemObject{{
@@ -61,7 +61,7 @@ func TestTask_SetDefaults(t *testing.T) {
 		name: "non-default expected file system object type not overwritten",
 		in: &v1alpha1.TaskTest{
 			Spec: v1alpha1.TaskTestSpec{
-				Expected: v1alpha1.ExpectedOutcomes{
+				Expected: &v1alpha1.ExpectedOutcomes{
 					FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
 						StepName: "MyStep",
 						Objects: []v1alpha1.FileSystemObject{{
@@ -74,7 +74,7 @@ func TestTask_SetDefaults(t *testing.T) {
 		},
 		want: &v1alpha1.TaskTest{
 			Spec: v1alpha1.TaskTestSpec{
-				Expected: v1alpha1.ExpectedOutcomes{
+				Expected: &v1alpha1.ExpectedOutcomes{
 					FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
 						StepName: "MyStep",
 						Objects: []v1alpha1.FileSystemObject{{

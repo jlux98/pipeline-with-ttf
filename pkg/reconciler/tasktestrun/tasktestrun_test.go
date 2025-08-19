@@ -84,7 +84,7 @@ spec:
     script: |
       echo "Hello world!"
       date +%H:%M:%S | tee $(results.current-time.path)
-      date +%y-%m-%d | tee $(results.current-date.path)`
+      date +%Y-%m-%d | tee $(results.current-date.path)`
 )
 
 // TaskTest manifests
@@ -396,8 +396,8 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 					Reason: "Started",
 				}}},
 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
-					TaskRunName:  "ttr-newly-created-run",
-					TaskTestSpec: &v1alpha1.NamedTaskTestSpec{Spec: &v1alpha1.TaskTestSpec{TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"}}},
+					TaskRunName:  ptr.To("ttr-newly-created-run"),
+					TaskTestSpec: &v1alpha1.TaskTestSpec{TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"}},
 				},
 			},
 			wantTr:        parse.MustParseV1TaskRun(t, trManifestJustStarted),
@@ -412,8 +412,8 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 					Reason: "Started",
 				}}},
 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
-					TaskRunName:  "task-test-run123-run",
-					TaskTestSpec: &v1alpha1.NamedTaskTestSpec{Spec: &v1alpha1.TaskTestSpec{TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"}}},
+					TaskRunName:  ptr.To("task-test-run123-run"),
+					TaskTestSpec: &v1alpha1.TaskTestSpec{TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"}},
 				},
 			},
 			wantTr:        parse.MustParseV1TaskRun(t, trManifestAlreadyStarted),
@@ -423,15 +423,16 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 			ttr: taskTestRunCompletedTaskRunWithTestSpec,
 			wantTtrStatus: &v1alpha1.TaskTestRunStatus{
 				Status: duckv1.Status{Conditions: duckv1.Conditions{{
-					Type:   "Succeeded",
-					Status: "True",
-					Reason: "All Expectations were met.",
+					Type:    "Succeeded",
+					Status:  "True",
+					Reason:  "Succeeded",
+					Message: "TaskRun completed executing and outcomes were as expected",
 				}}},
 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
-					TaskRunName: "ttr-completed-task-run-run",
-					TaskTestSpec: &v1alpha1.NamedTaskTestSpec{Spec: &v1alpha1.TaskTestSpec{
+					TaskRunName: ptr.To("ttr-completed-task-run-run"),
+					TaskTestSpec: &v1alpha1.TaskTestSpec{
 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "hello-task"},
-						Expected: v1alpha1.ExpectedOutcomes{
+						Expected: &v1alpha1.ExpectedOutcomes{
 							Results: []v1.TaskResult{
 								{
 									Name: "current-date",
@@ -450,12 +451,12 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 									},
 								},
 							},
-							SuccessStatus: true,
-							SuccessReason: v1.TaskRunReasonSuccessful,
+							SuccessStatus: ptr.To(true),
+							SuccessReason: ptr.To(v1.TaskRunReasonSuccessful),
 						},
-					}},
-					Outcomes: v1alpha1.ObservedOutcomes{
-						Results: []v1alpha1.ObservedResults{
+					},
+					Outcomes: &v1alpha1.ObservedOutcomes{
+						Results: &[]v1alpha1.ObservedResults{
 							{
 								Name: "current-date",
 								Want: &v1.ResultValue{
@@ -479,12 +480,12 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 								},
 							},
 						},
-						SuccessStatus: v1alpha1.ObservedSuccessStatus{
+						SuccessStatus: &v1alpha1.ObservedSuccessStatus{
 							Want:           true,
 							Got:            true,
 							WantMatchesGot: true,
 						},
-						SuccessReason: v1alpha1.ObservedSuccessReason{
+						SuccessReason: &v1alpha1.ObservedSuccessReason{
 							Want: v1.TaskRunReasonSuccessful,
 							Got:  v1.TaskRunReasonSuccessful,
 							Diff: "",
@@ -500,42 +501,41 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 			ttr: taskTestRunCompletedTaskRunWithTestRef,
 			wantTtrStatus: &v1alpha1.TaskTestRunStatus{
 				Status: duckv1.Status{Conditions: duckv1.Conditions{{
-					Type:   "Succeeded",
-					Status: "True",
-					Reason: "All Expectations were met.",
+					Type:    "Succeeded",
+					Status:  "True",
+					Reason:  "Succeeded",
+					Message: "TaskRun completed executing and outcomes were as expected",
 				}}},
 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
-					TaskRunName: "ttr-completed-task-run-referenced-test-run",
-					TaskTestSpec: &v1alpha1.NamedTaskTestSpec{
-						Name: ptr.To("task-test"),
-						Spec: &v1alpha1.TaskTestSpec{
-							TaskRef: &v1alpha1.SimpleTaskRef{Name: "hello-task"},
-							Expected: v1alpha1.ExpectedOutcomes{
-								Results: []v1.TaskResult{
-									{
-										Name: "current-date",
-										Type: "string",
-										Value: &v1.ResultValue{
-											StringVal: "2025-08-15",
-											Type:      "string",
-										},
-									},
-									{
-										Name: "current-time",
-										Type: "string",
-										Value: &v1.ResultValue{
-											StringVal: "15:17:59",
-											Type:      "string",
-										},
+					TaskRunName:  ptr.To("ttr-completed-task-run-referenced-test-run"),
+					TaskTestName: ptr.To("task-test"),
+					TaskTestSpec: &v1alpha1.TaskTestSpec{
+						TaskRef: &v1alpha1.SimpleTaskRef{Name: "hello-task"},
+						Expected: &v1alpha1.ExpectedOutcomes{
+							Results: []v1.TaskResult{
+								{
+									Name: "current-date",
+									Type: "string",
+									Value: &v1.ResultValue{
+										StringVal: "2025-08-15",
+										Type:      "string",
 									},
 								},
-								SuccessStatus: true,
-								SuccessReason: v1.TaskRunReasonSuccessful,
+								{
+									Name: "current-time",
+									Type: "string",
+									Value: &v1.ResultValue{
+										StringVal: "15:17:59",
+										Type:      "string",
+									},
+								},
 							},
+							SuccessStatus: ptr.To(true),
+							SuccessReason: ptr.To(v1.TaskRunReasonSuccessful),
 						},
 					},
-					Outcomes: v1alpha1.ObservedOutcomes{
-						Results: []v1alpha1.ObservedResults{
+					Outcomes: &v1alpha1.ObservedOutcomes{
+						Results: &[]v1alpha1.ObservedResults{
 							{
 								Name: "current-date",
 								Want: &v1.ResultValue{
@@ -559,12 +559,12 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 								},
 							},
 						},
-						SuccessStatus: v1alpha1.ObservedSuccessStatus{
+						SuccessStatus: &v1alpha1.ObservedSuccessStatus{
 							Want:           true,
 							Got:            true,
 							WantMatchesGot: true,
 						},
-						SuccessReason: v1alpha1.ObservedSuccessReason{
+						SuccessReason: &v1alpha1.ObservedSuccessReason{
 							Want: v1.TaskRunReasonSuccessful,
 							Got:  v1.TaskRunReasonSuccessful,
 							Diff: "",
@@ -582,7 +582,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 				Status: duckv1.Status{Conditions: duckv1.Conditions{{
 					Type:   "Succeeded",
 					Status: "False",
-					Reason: "TaskTestRunUnmetExpectations",
+					Reason: "TaskTestRunUnexpectedOutcomes",
 					Message: "not all expectations were met:\n" +
 						diffCurrentDate +
 						diffCurrentTime +
@@ -590,10 +590,10 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 						cmp.Diff(v1.TaskRunReason("TaskRunCancelled"), v1.TaskRunReason("Succeeded")),
 				}}},
 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
-					TaskRunName: "ttr-completed-task-run-unexpected-results-run",
-					TaskTestSpec: &v1alpha1.NamedTaskTestSpec{Spec: &v1alpha1.TaskTestSpec{
+					TaskRunName: ptr.To("ttr-completed-task-run-unexpected-results-run"),
+					TaskTestSpec: &v1alpha1.TaskTestSpec{
 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "hello-task"},
-						Expected: v1alpha1.ExpectedOutcomes{
+						Expected: &v1alpha1.ExpectedOutcomes{
 							Results: []v1.TaskResult{
 								{
 									Name: "current-date",
@@ -612,12 +612,12 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 									},
 								},
 							},
-							SuccessStatus: false,
-							SuccessReason: "TaskRunCancelled",
+							SuccessStatus: ptr.To(false),
+							SuccessReason: ptr.To(v1.TaskRunReason("TaskRunCancelled")),
 						},
-					}},
-					Outcomes: v1alpha1.ObservedOutcomes{
-						Results: []v1alpha1.ObservedResults{
+					},
+					Outcomes: &v1alpha1.ObservedOutcomes{
+						Results: &[]v1alpha1.ObservedResults{
 							{
 								Name: "current-date",
 								Want: &v1.ResultValue{
@@ -640,12 +640,12 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 								Diff: diffCurrentTime,
 							},
 						},
-						SuccessStatus: v1alpha1.ObservedSuccessStatus{
+						SuccessStatus: &v1alpha1.ObservedSuccessStatus{
 							Want:           false,
 							Got:            true,
 							WantMatchesGot: false,
 						},
-						SuccessReason: v1alpha1.ObservedSuccessReason{
+						SuccessReason: &v1alpha1.ObservedSuccessReason{
 							Want: "TaskRunCancelled",
 							Got:  "Succeeded",
 							Diff: cmp.Diff(v1.TaskRunReason("TaskRunCancelled"), v1.TaskRunReason("Succeeded")),
@@ -696,7 +696,10 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 				t.Errorf("Didn't get expected TaskTestRun: %v", diff.PrintWantGot(d))
 			}
 
-			tr, err := clients.Pipeline.TektonV1().TaskRuns(tt.ttr.Namespace).Get(testAssets.Ctx, ttr.Status.TaskRunName, metav1.GetOptions{})
+			if ttr.Status.TaskRunName == nil {
+				ttr.Status.TaskRunName = ptr.To("")
+			}
+			tr, err := clients.Pipeline.TektonV1().TaskRuns(tt.ttr.Namespace).Get(testAssets.Ctx, *ttr.Status.TaskRunName, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("getting updated taskrun: %v", err)
 			}
@@ -718,7 +721,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 				ignoreLastTransitionTime); d != "" {
 				t.Errorf("Didn't get expected TaskRun: %v", diff.PrintWantGot(d))
 			}
-			if d := cmp.Diff(tr.Status, ttr.Status.TaskRunStatus); d != "" {
+			if d := cmp.Diff(tr.Status, *ttr.Status.TaskRunStatus); d != "" {
 				t.Errorf("TaskRun Status not mirrored properly to TaskTestRun: %v", diff.PrintWantGot(d))
 			}
 		})
@@ -770,9 +773,9 @@ func TestReconciler_InvalidateReconcileKind(t *testing.T) {
 					},
 				},
 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
-					TaskTestSpec: &v1alpha1.NamedTaskTestSpec{Spec: &v1alpha1.TaskTestSpec{
+					TaskTestSpec: &v1alpha1.TaskTestSpec{
 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-						Expected: v1alpha1.ExpectedOutcomes{
+						Expected: &v1alpha1.ExpectedOutcomes{
 							Results: []v1.TaskResult{
 								{
 									Name:  "current-date",
@@ -785,10 +788,10 @@ func TestReconciler_InvalidateReconcileKind(t *testing.T) {
 									Value: &v1.ResultValue{StringVal: "15:17:59", Type: "string"},
 								},
 							},
-							SuccessStatus: true,
-							SuccessReason: v1.TaskRunReasonSuccessful,
+							SuccessStatus: ptr.To(true),
+							SuccessReason: ptr.To(v1.TaskRunReasonSuccessful),
 						},
-					}},
+					},
 				},
 			},
 			wantErr:            fmt.Errorf(`%w: Result current-date expected but not declared by task "task"`, apiserver.ErrReferencedObjectValidationFailed),
@@ -804,7 +807,7 @@ func TestReconciler_InvalidateReconcileKind(t *testing.T) {
 					Reason: "Started",
 				}}},
 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
-					TaskTestSpec: &v1alpha1.NamedTaskTestSpec{Spec: &v1alpha1.TaskTestSpec{TaskRef: &v1alpha1.SimpleTaskRef{Name: "absent-task"}}},
+					TaskTestSpec: &v1alpha1.TaskTestSpec{TaskRef: &v1alpha1.SimpleTaskRef{Name: "absent-task"}},
 				},
 			},
 		},

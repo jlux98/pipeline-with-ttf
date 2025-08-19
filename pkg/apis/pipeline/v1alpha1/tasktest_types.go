@@ -49,14 +49,16 @@ type TaskTestSpec struct {
 	TaskRef *SimpleTaskRef `json:"taskRef,omitempty"`
 
 	// Inputs represents the test data for executing the test case.
-	Inputs TaskTestInputs `json:"inputs"`
+	//
+	// +optional
+	Inputs *TaskTestInputs `json:"inputs,omitempty"`
 
 	// Expected contains the data, which the TaskTestRun controller will
 	// use to check, whether a TaskTestRun was successful or not.
 	// If this field is left empty, then the TaskTestRun is deemed successful,
 	// if the TaskRun completes without a failure occurring.
 	// +optional
-	Expected ExpectedOutcomes `json:"expected,omitempty"`
+	Expected *ExpectedOutcomes `json:"expected,omitempty"`
 }
 
 type SimpleTaskRef struct {
@@ -131,6 +133,7 @@ func extractPathsFromFileSystemObjects(list []FileSystemObject) []string {
 
 // StepEnv contains the name of a step as defined the manifest of the Task under
 // test and a list of environment variable declarations to be set for this step.
+// TODO(jlux98) find a better name for this type
 type StepEnv struct {
 	// Name is the name of the step for whom these environment variables will be set.
 	Name string `json:"name"`
@@ -228,13 +231,13 @@ type ExpectedOutcomes struct {
 	// is supposed to fail because of a faulty input.
 	//
 	// +optional
-	SuccessStatus bool `json:"successStatus,omitempty"`
+	SuccessStatus *bool `json:"successStatus,omitempty"`
 
 	// SuccessReason is the reason, with which the TaskRuns initiated by this
 	// test are expected to be marked upon completion.
 	//
 	// +optional
-	SuccessReason v1.TaskRunReason `json:"successReason,omitempty"`
+	SuccessReason *v1.TaskRunReason `json:"successReason,omitempty"`
 
 	// FileSystemContents is a list step names, each one paired with a list of expected
 	// file system objects.

@@ -5,10 +5,12 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	taskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/taskrun"
 	tasktestruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/tasktestrun"
 	"github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1alpha1/tasktestrun"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/clock"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/configmap"
@@ -46,6 +48,13 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 		// TODO(jlu98): Set up event handlers.
 		if _, err := taskTestRunInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
 			logging.FromContext(ctx).Panicf("Couldn't register TaskTestRun informer event handler: %w", err)
+		}
+
+		if _, err := taskRunInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterController(&v1alpha1.TaskTestRun{}),
+			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+		}); err != nil {
+			logging.FromContext(ctx).Panicf("Couldn't register TaskRun informer event handler: %w", err)
 		}
 
 		return impl

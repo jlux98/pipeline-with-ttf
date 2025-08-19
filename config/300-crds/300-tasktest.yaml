@@ -43,8 +43,6 @@ spec:
             spec:
               description: Spec holds the desired state of the TaskTest from the client
               type: object
-              required:
-                - inputs
               properties:
                 expected:
                   description: |-

@@ -96,8 +96,6 @@ spec:
                       taskTestSpec:
                         description: TaskTestSpec is a specification of a task test
                         type: object
-                        required:
-                          - inputs
                         properties:
                           expected:
                             description: |-

@@ -10,6 +10,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"knative.dev/pkg/apis"
 )
 
@@ -96,7 +97,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 				},
 					Spec: v1alpha1.TaskTestSpec{
 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-						Inputs: v1alpha1.TaskTestInputs{
+						Inputs: &v1alpha1.TaskTestInputs{
 							Params: v1.Params{
 								{
 									Name:  "name",
@@ -119,7 +120,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 				},
 					Spec: v1alpha1.TaskTestSpec{
 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-						Inputs: v1alpha1.TaskTestInputs{
+						Inputs: &v1alpha1.TaskTestInputs{
 							WorkspaceContents: []v1alpha1.InitialWorkspaceContents{{
 								Name: "name",
 								Objects: []v1alpha1.InputFileSystemObject{{Path: "/path/to/object0",
@@ -145,7 +146,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 				},
 					Spec: v1alpha1.TaskTestSpec{
 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-						Inputs: v1alpha1.TaskTestInputs{
+						Inputs: &v1alpha1.TaskTestInputs{
 							WorkspaceContents: []v1alpha1.InitialWorkspaceContents{{
 								Name: "name0",
 								Objects: []v1alpha1.InputFileSystemObject{
@@ -172,7 +173,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 				taskTest: &v1alpha1.TaskTest{
 					ObjectMeta: metav1.ObjectMeta{Name: "taskname"},
 					Spec: v1alpha1.TaskTestSpec{
-						Inputs: v1alpha1.TaskTestInputs{
+						Inputs: &v1alpha1.TaskTestInputs{
 							WorkspaceContents: []v1alpha1.InitialWorkspaceContents{{
 								Name: "workspace",
 								Objects: []v1alpha1.InputFileSystemObject{{
@@ -192,7 +193,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 				taskTest: &v1alpha1.TaskTest{
 					ObjectMeta: metav1.ObjectMeta{Name: "taskname"},
 					Spec: v1alpha1.TaskTestSpec{
-						Inputs: v1alpha1.TaskTestInputs{
+						Inputs: &v1alpha1.TaskTestInputs{
 							WorkspaceContents: []v1alpha1.InitialWorkspaceContents{{
 								Name: "workspace",
 								Objects: []v1alpha1.InputFileSystemObject{{
@@ -211,7 +212,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 				taskTest: &v1alpha1.TaskTest{
 					ObjectMeta: metav1.ObjectMeta{Name: "taskname"},
 					Spec: v1alpha1.TaskTestSpec{
-						Inputs: v1alpha1.TaskTestInputs{
+						Inputs: &v1alpha1.TaskTestInputs{
 							WorkspaceContents: []v1alpha1.InitialWorkspaceContents{{
 								Name: "workspace",
 								Objects: []v1alpha1.InputFileSystemObject{{
@@ -230,7 +231,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 				taskTest: &v1alpha1.TaskTest{
 					ObjectMeta: metav1.ObjectMeta{Name: "taskname"},
 					Spec: v1alpha1.TaskTestSpec{
-						Inputs: v1alpha1.TaskTestInputs{
+						Inputs: &v1alpha1.TaskTestInputs{
 							WorkspaceContents: []v1alpha1.InitialWorkspaceContents{{
 								Name: "workspace",
 								Objects: []v1alpha1.InputFileSystemObject{{
@@ -249,7 +250,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 				taskTest: &v1alpha1.TaskTest{
 					ObjectMeta: metav1.ObjectMeta{Name: "taskname"},
 					Spec: v1alpha1.TaskTestSpec{
-						Inputs: v1alpha1.TaskTestInputs{
+						Inputs: &v1alpha1.TaskTestInputs{
 							WorkspaceContents: []v1alpha1.InitialWorkspaceContents{{
 								Name: "workspace",
 								Objects: []v1alpha1.InputFileSystemObject{{
@@ -268,7 +269,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 				taskTest: &v1alpha1.TaskTest{
 					ObjectMeta: metav1.ObjectMeta{Name: "taskname"},
 					Spec: v1alpha1.TaskTestSpec{
-						Inputs: v1alpha1.TaskTestInputs{
+						Inputs: &v1alpha1.TaskTestInputs{
 							WorkspaceContents: []v1alpha1.InitialWorkspaceContents{{
 								Name: "workspace",
 								Objects: []v1alpha1.InputFileSystemObject{{
@@ -287,7 +288,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 				taskTest: &v1alpha1.TaskTest{
 					ObjectMeta: metav1.ObjectMeta{Name: "taskname"},
 					Spec: v1alpha1.TaskTestSpec{
-						Expected: v1alpha1.ExpectedOutcomes{
+						Expected: &v1alpha1.ExpectedOutcomes{
 							FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{
 								{
 									StepName: "step0",
@@ -326,7 +327,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 					},
 					Spec: v1alpha1.TaskTestSpec{
 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-						Expected: v1alpha1.ExpectedOutcomes{
+						Expected: &v1alpha1.ExpectedOutcomes{
 							Results: []v1.TaskResult{
 								{
 									Name: "result",
@@ -348,7 +349,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 					},
 					Spec: v1alpha1.TaskTestSpec{
 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-						Expected: v1alpha1.ExpectedOutcomes{
+						Expected: &v1alpha1.ExpectedOutcomes{
 							FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
 								StepName: "step",
 								Objects: []v1alpha1.FileSystemObject{{
@@ -403,7 +404,7 @@ func TestTaskTest_Valid(t *testing.T) {
 				},
 				Spec: v1alpha1.TaskTestSpec{
 					TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-					Inputs: v1alpha1.TaskTestInputs{
+					Inputs: &v1alpha1.TaskTestInputs{
 						Params: v1.Params{
 							{
 								Name: "param0",
@@ -476,7 +477,7 @@ func TestTaskTest_Valid(t *testing.T) {
 				},
 				Spec: v1alpha1.TaskTestSpec{
 					TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-					Expected: v1alpha1.ExpectedOutcomes{
+					Expected: &v1alpha1.ExpectedOutcomes{
 						Env: []corev1.EnvVar{{
 							Name:  "name0",
 							Value: "value",
@@ -531,8 +532,8 @@ func TestTaskTest_Valid(t *testing.T) {
 								},
 							},
 						},
-						SuccessStatus: true,
-						SuccessReason: "blah",
+						SuccessStatus: ptr.To(true),
+						SuccessReason: ptr.To(v1.TaskRunReason("blah")),
 					},
 				},
 			},
@@ -544,7 +545,7 @@ func TestTaskTest_Valid(t *testing.T) {
 				},
 				Spec: v1alpha1.TaskTestSpec{
 					TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-					Inputs: v1alpha1.TaskTestInputs{
+					Inputs: &v1alpha1.TaskTestInputs{
 						Params: v1.Params{
 							{
 								Name: "param",
@@ -573,7 +574,7 @@ func TestTaskTest_Valid(t *testing.T) {
 							}}},
 						},
 					},
-					Expected: v1alpha1.ExpectedOutcomes{
+					Expected: &v1alpha1.ExpectedOutcomes{
 						Env: []corev1.EnvVar{{
 							Name:  "name",
 							Value: "value",
@@ -603,8 +604,8 @@ func TestTaskTest_Valid(t *testing.T) {
 								},
 							},
 						},
-						SuccessStatus: true,
-						SuccessReason: "blah",
+						SuccessStatus: ptr.To(true),
+						SuccessReason: ptr.To(v1.TaskRunReason("blah")),
 					},
 				},
 			},

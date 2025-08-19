@@ -2,16 +2,20 @@ package tasktestrun
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
+	"regexp"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	tasktestrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1alpha1/tasktestrun"
 	v1listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1"
@@ -26,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/clock"
+	"k8s.io/utils/ptr"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
@@ -59,6 +64,8 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TaskTestRun
 	logger := logging.FromContext(ctx)
 	ctx = cloudevent.ToContext(ctx, c.cloudEventClient)
 
+	before := tr.Status.GetCondition(apis.ConditionSucceeded)
+
 	if !tr.HasStarted() {
 		tr.Status.InitializeConditions()
 		// In case node time was not synchronized, when controller has been scheduled to other nodes.
@@ -75,7 +82,33 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TaskTestRun
 		events.Emit(ctx, nil, afterCondition, tr)
 	}
 
-	_, err := c.prepare(ctx, tr)
+	// If the TaskTestRun is complete, run some post run fixtures when applicable
+	if tr.IsDone() {
+		logger.Infof("tasktestrun done : %s \n", tr.Name)
+
+		// We may be reading a version of the object that was stored at an older version
+		// and may not have had all of the assumed default specified.
+		tr.SetDefaults(ctx)
+
+		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, nil)
+	}
+
+	// If the TaskRun is cancelled, kill resources and update status
+	if tr.IsCancelled() {
+		message := fmt.Sprintf("TaskRun %q was cancelled. %s", tr.Name, tr.Spec.StatusMessage)
+		err := c.failTaskRun(ctx, tr, v1alpha1.TaskTestRunReasonCancelled, message)
+		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+	}
+
+	// Check if the TaskRun has timed out; if it is, this will set its status
+	// accordingly.
+	if tr.HasTimedOut(ctx, c.Clock) {
+		message := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, tr.GetTimeout(ctx))
+		err := c.failTaskRun(ctx, tr, v1alpha1.TaskTestRunReasonTimedOut, message)
+		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+	}
+
+	err := c.prepare(ctx, tr)
 	if err != nil {
 		return fmt.Errorf("could not prepare reconciliation of task test run %s: %w", tr.Name, err)
 	}
@@ -84,11 +117,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TaskTestRun
 		logger.Errorf("Reconcile: %v", err.Error())
 		return err
 	}
-
-	// // Emit events (only when ConditionSucceeded was changed)
-	// if err := c.finishReconcileUpdateEmitEvents(ctx, tr, before, err); err != nil {
-	// 	return err
-	// }
 
 	if tr.Status.StartTime != nil {
 		// Compute the time since the task started.
@@ -105,23 +133,56 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TaskTestRun
 	return nil
 }
 
-func (c *Reconciler) prepare(ctx context.Context, ttr *v1alpha1.TaskTestRun) (*v1alpha1.NamedTaskTestSpec, error) {
+func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1alpha1.TaskTestRun, cancelled v1alpha1.TaskTestRunReason, message string) error {
+	// TODO(jlux98) implement this
+	logging.FromContext(ctx).Error("boom: Totally failing the TaskTestRun right now")
+	return nil
+}
+
+func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1alpha1.TaskTestRun, beforeCondition *apis.Condition, previousError error) reconciler.Event {
+	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
+	if afterCondition.IsFalse() && !tr.IsCancelled() && tr.IsRetriable() {
+		retryTaskRun(tr, afterCondition.Message)
+		afterCondition = tr.Status.GetCondition(apis.ConditionSucceeded)
+	}
+	// Send k8s events and cloud events (when configured)
+	events.Emit(ctx, beforeCondition, afterCondition, tr)
+
+	errs := []error{previousError}
+
+	joinedErr := errors.Join(errs...)
+	if controller.IsPermanentError(previousError) {
+		return controller.NewPermanentError(joinedErr)
+	}
+	return joinedErr
+}
+
+func retryTaskRun(tr *v1alpha1.TaskTestRun, s string) {
+	// TODO(jlux98) implement this
+	panic("unimplemented")
+}
+
+func (c *Reconciler) prepare(ctx context.Context, ttr *v1alpha1.TaskTestRun) error {
+	var observedTaskTestSpec *v1alpha1.TaskTestSpec
+	var observedTaskTestName *string
 	if ttr.Spec.TaskTestSpec != nil {
-		ttr.Status.TaskTestSpec = &v1alpha1.NamedTaskTestSpec{
-			Spec: ttr.Spec.TaskTestSpec,
-		}
+		observedTaskTestSpec = ttr.Spec.TaskTestSpec
 	}
 	if ttr.Spec.TaskTestRef != nil {
 		taskTest, err := c.dereferenceTaskTestRef(ctx, ttr)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		ttr.Status.TaskTestSpec = &v1alpha1.NamedTaskTestSpec{
-			Name: &ttr.Spec.TaskTestRef.Name,
-			Spec: &taskTest.Spec,
+		observedTaskTestName = &ttr.Spec.TaskTestRef.Name
+		observedTaskTestSpec = &taskTest.Spec
+		if ttr.Status.TaskTestName == nil || *ttr.Status.TaskTestName != *observedTaskTestName {
+			ttr.Status.TaskTestName = observedTaskTestName
 		}
 	}
-	return ttr.Status.TaskTestSpec, nil
+	if ttr.Status.TaskTestSpec == nil || !cmp.Equal(*ttr.Spec.TaskTestSpec, *observedTaskTestSpec) {
+		ttr.Status.TaskTestSpec = observedTaskTestSpec
+	}
+	return nil
 }
 
 // `reconcile` creates the TaskRun associated to the TaskTestRun, and it pulls
@@ -137,8 +198,9 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 	// Get the TaskTestRun's TaskRun if it should have one. Otherwise, create the TaskRun.
 	var taskRun *v1.TaskRun
 
-	if ttr.Status.TaskRunName != "" {
-		taskRun, err = c.taskRunLister.TaskRuns(ttr.Namespace).Get(ttr.Status.TaskRunName)
+	if ttr.Status.TaskRunName != nil {
+		logger.Infof("boom: Now retrieving TaskRun %s for TTR %s", *ttr.Status.TaskRunName, ttr.Name)
+		taskRun, err = c.taskRunLister.TaskRuns(ttr.Namespace).Get(*ttr.Status.TaskRunName)
 		if k8serrors.IsNotFound(err) {
 			// Keep going, this will result in the TaskRun being created below.
 		} else if err != nil {
@@ -152,6 +214,7 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 		// List TaskRuns that have a label with this TaskTestRun name.  Do not include other labels from the
 		// TaskTestRun in this selector.  The user could change them during the lifetime of the TasTestkRun so the
 		// current labels may not be set on a previously created TaskRun.
+		logger.Infof("boom: Now retrieving TaskRun from list for TTR %s", ttr.Name)
 		labelSelector := labels.Set{pipeline.TaskTestRunLabelKey: ttr.Name}
 		trs, err := c.taskRunLister.TaskRuns(ttr.Namespace).List(labelSelector.AsSelector())
 		if err != nil {
@@ -200,6 +263,7 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 	// }
 
 	if taskRun == nil {
+		logger.Infof("boom: Now creating TaskRun for TTR %s", ttr.Name)
 		taskRun, err = c.createTaskRun(ctx, ttr, rtr)
 		if err != nil {
 			if errors.Is(err, apiserver.ErrReferencedObjectValidationFailed) {
@@ -209,62 +273,17 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 			return err
 		}
 	} else if taskRun.Status.CompletionTime != nil {
-		expectationsMet := true
-		ttr.Status.CompletionTime = taskRun.Status.CompletionTime
-		taskResults := taskRun.Status.Results
-		diffs := ""
-		if ttr.Status.Outcomes.Results == nil {
-			ttr.Status.Outcomes.Results = []v1alpha1.ObservedResults{}
+		logger.Infof("boom: TaskRun for TTR %s has been detected as completed", ttr.Name)
+		if ttr.Status.StartTime == nil {
+			logger.Infof("boom: Now setting start time for TTR %s", ttr.Name)
+			ttr.Status.StartTime = &metav1.Time{Time: c.Clock.Now()}
 		}
-		for _, expectedResult := range ttr.Status.TaskTestSpec.Spec.Expected.Results {
-			var gotValue *v1.ResultValue
-			i := slices.IndexFunc(taskResults, func(actualResult v1.TaskRunResult) bool {
-				return actualResult.Name == expectedResult.Name
-			})
-			if i == -1 {
-				gotValue = &v1.ResultValue{}
-			} else {
-				gotValue = &taskResults[i].Value
-			}
-			diff := cmp.Diff(expectedResult.Value, gotValue)
-			ttr.Status.Outcomes.Results = append(ttr.Status.Outcomes.Results, v1alpha1.ObservedResults{
-				Name: expectedResult.Name,
-				Want: expectedResult.Value,
-				Got:  gotValue,
-				Diff: diff,
-			})
-			if diff != "" {
-				expectationsMet = false
-				diffs += diff
-			}
+		if ttr.Status.CompletionTime == nil {
+			logger.Infof("boom: Now setting Completion time for TTR %s", ttr.Name)
+			ttr.Status.CompletionTime = &metav1.Time{Time: c.Clock.Now()}
 		}
-		ttr.Status.Outcomes.SuccessStatus = v1alpha1.ObservedSuccessStatus{
-			Want: ttr.Status.TaskTestSpec.Spec.Expected.SuccessStatus,
-			Got:  taskRun.IsSuccessful(),
-		}
-		ttr.Status.Outcomes.SuccessStatus.WantMatchesGot = ttr.Status.Outcomes.SuccessStatus.Want == ttr.Status.Outcomes.SuccessStatus.Got
-
-		if !ttr.Status.Outcomes.SuccessStatus.WantMatchesGot {
-			expectationsMet = false
-			diffs += "observed success status did not match expectation\n"
-		}
-
-		ttr.Status.Outcomes.SuccessReason = v1alpha1.ObservedSuccessReason{
-			Want: ttr.Status.TaskTestSpec.Spec.Expected.SuccessReason,
-			Got:  v1.TaskRunReason(taskRun.Status.Conditions[0].Reason),
-		}
-		diff := cmp.Diff(ttr.Status.Outcomes.SuccessReason.Want, ttr.Status.Outcomes.SuccessReason.Got)
-		ttr.Status.Outcomes.SuccessReason.Diff = diff
-
-		if ttr.Status.Outcomes.SuccessReason.Diff != "" {
-			expectationsMet = false
-			diffs += diff
-		}
-
-		if expectationsMet {
-			ttr.Status.MarkSuccessful()
-		} else {
-			ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunReasonUnmetExpectations, errors.New("not all expectations were met:\n"+diffs))
+		if err := checkActualOutcomesAgainstExpectations(ctx, ttr, &taskRun.Status); err != nil {
+			return err
 		}
 	}
 
@@ -292,10 +311,152 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 	// 	return err
 	// }
 
-	ttr.Status.TaskRunName = taskRun.Name
-	ttr.Status.TaskRunStatus = taskRun.Status
+	if ttr.Status.TaskRunName == nil || *ttr.Status.TaskRunName != taskRun.Name {
+		logger.Infof("boom: Now setting task run name for TTR %s", ttr.Name)
+		ttr.Status.TaskRunName = &taskRun.Name
+	}
+
+	if ttr.Status.TaskRunStatus == nil || !cmp.Equal(*ttr.Status.TaskRunStatus, taskRun.Status) {
+		logger.Infof("boom: Now setting task run status for TTR %s", ttr.Name)
+		ttr.Status.TaskRunStatus = &taskRun.Status
+	}
 
 	logger.Infof("Successfully reconciled tasktestrun %s/%s with status: %#v", ttr.Name, ttr.Namespace, ttr.Status.GetCondition(apis.ConditionSucceeded))
+	return nil
+}
+
+func checkActualOutcomesAgainstExpectations(ctx context.Context, ttr *v1alpha1.TaskTestRun, taskRun *v1.TaskRunStatus) error {
+	logger := logging.FromContext(ctx)
+	logger.Infof("boom: Status.TaskTestSpec.Expected == %v and Status.GetCondition(apis.ConditionSucceeded).IsUnknown() == %v for TTR %s", ttr.Status.TaskTestSpec.Expected, ttr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown(), ttr.Name)
+	if ttr.Status.TaskTestSpec.Expected != nil && ttr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
+		logger.Infof("boom: Now checking outcomes for TTR %s", ttr.Name)
+		ttr.Status.Outcomes = &v1alpha1.ObservedOutcomes{}
+		expectationsMet := true
+		diffs := ""
+
+		// check results
+		if ttr.Status.TaskTestSpec.Expected.Results != nil && ttr.Status.Outcomes.Results == nil {
+			logger.Infof("boom: Now checking results for TTR %s", ttr.Name)
+			ttr.Status.CompletionTime = taskRun.CompletionTime
+			taskResults := taskRun.Results
+			ttr.Status.Outcomes.Results = &[]v1alpha1.ObservedResults{}
+
+			for _, expectedResult := range ttr.Status.TaskTestSpec.Expected.Results {
+				var gotValue *v1.ResultValue
+				i := slices.IndexFunc(taskResults, func(actualResult v1.TaskRunResult) bool {
+					return actualResult.Name == expectedResult.Name
+				})
+				if i == -1 {
+					gotValue = &v1.ResultValue{}
+				} else {
+					gotValue = &taskResults[i].Value
+				}
+				diff := cmp.Diff(expectedResult.Value, gotValue)
+				ttr.Status.Outcomes.Results = ptr.To(append(*ttr.Status.Outcomes.Results, v1alpha1.ObservedResults{
+					Name: expectedResult.Name,
+					Want: expectedResult.Value,
+					Got:  gotValue,
+					Diff: diff,
+				}))
+				if diff != "" {
+					expectationsMet = false
+					diffs += fmt.Sprintf(`Result %s: `, expectedResult.Name) + diff
+				}
+			}
+		}
+
+		// check success status
+		if ttr.Status.TaskTestSpec.Expected.SuccessStatus != nil {
+			logger.Infof("boom: Now checking success status for TTR %s", ttr.Name)
+			ttr.Status.Outcomes.SuccessStatus = &v1alpha1.ObservedSuccessStatus{
+				Want: *ttr.Status.TaskTestSpec.Expected.SuccessStatus,
+				Got:  taskRun.GetCondition(apis.ConditionSucceeded).IsTrue(),
+			}
+			ttr.Status.Outcomes.SuccessStatus.WantMatchesGot = ttr.Status.Outcomes.SuccessStatus.Want == ttr.Status.Outcomes.SuccessStatus.Got
+
+			if !ttr.Status.Outcomes.SuccessStatus.WantMatchesGot {
+				expectationsMet = false
+				diffs += "observed success status did not match expectation\n"
+			}
+		}
+
+		// check success reason
+		if ttr.Status.TaskTestSpec.Expected.SuccessReason != nil {
+			logger.Infof("boom: Now checking success reason for TTR %s", ttr.Name)
+			ttr.Status.Outcomes.SuccessReason = &v1alpha1.ObservedSuccessReason{
+				Want: *ttr.Status.TaskTestSpec.Expected.SuccessReason,
+				Got:  v1.TaskRunReason(taskRun.Conditions[0].Reason),
+			}
+			diff := cmp.Diff(ttr.Status.Outcomes.SuccessReason.Want, ttr.Status.Outcomes.SuccessReason.Got)
+			ttr.Status.Outcomes.SuccessReason.Diff = diff
+
+			if ttr.Status.Outcomes.SuccessReason.Diff != "" {
+				expectationsMet = false
+				diffs += "SuccessReason: " + diff
+			}
+		}
+
+		// check environment variables
+		if ttr.Status.TaskTestSpec.Expected.Env != nil {
+			logger.Infof("boom: Now checking environment variables for TTR %s", ttr.Name)
+			idx := slices.IndexFunc(taskRun.Results, func(result v1.TaskRunResult) bool {
+				return result.Name == "environment"
+			})
+			if idx < 0 {
+				ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunReasonFailedValidation, errors.New("could not find environment dump for stepEnv"))
+			}
+
+			environments := taskRun.Results[idx].Value.StringVal
+			pattern := regexp.MustCompile(`(".+?)=(.+",
+)`)
+			// environments = strings.ReplaceAll("["+environments+"]", "=", `":"`)
+			environments = pattern.ReplaceAllString("["+environments+"]", `$1":"$2`)
+			environments = strings.ReplaceAll(environments, ",\n}", "}")
+			environments = strings.ReplaceAll(environments, ",\n]", "]")
+			logging.FromContext(ctx).Info(environments)
+
+			var stepEnvironments v1alpha1.StepEnvironmentList
+			err := json.Unmarshal([]byte(environments), &stepEnvironments)
+			if err != nil {
+				logger.Errorf("problem while unmarshalling stepEnvironments: %v", err)
+				return err
+			}
+			stepEnvironmentsMap := stepEnvironments.ToMap()
+			if ttr.Status.Outcomes.StepEnvs == nil {
+				ttr.Status.Outcomes.StepEnvs = &[]v1alpha1.ObservedStepEnv{}
+			}
+			for step := range maps.Keys(stepEnvironmentsMap) {
+				vars := []v1alpha1.ObservedEnvVar{}
+				for _, expectedEnvVar := range ttr.Status.TaskTestSpec.Expected.Env {
+					observation := v1alpha1.ObservedEnvVar{
+						Name: expectedEnvVar.Name,
+						Want: expectedEnvVar.Value,
+						Got:  stepEnvironmentsMap[step][expectedEnvVar.Name],
+					}
+					observation.Diff = cmp.Diff(observation.Want, observation.Got)
+					if observation.Diff != "" {
+						expectationsMet = false
+						diffs += fmt.Sprintf(`envVar %s in step %s: `, expectedEnvVar.Name, step) + observation.Diff
+					}
+					vars = append(vars, observation)
+				}
+				ttr.Status.Outcomes.StepEnvs = ptr.To(append(*ttr.Status.Outcomes.StepEnvs, v1alpha1.ObservedStepEnv{
+					StepName: step,
+					Env:      vars,
+				}))
+			}
+		}
+
+		// set status and emit event
+		beforeCondition := ttr.Status.GetCondition(apis.ConditionSucceeded)
+		logger.Infof("boom: Now checking setting Status for TTR %s", ttr.Name)
+		if expectationsMet {
+			ttr.Status.MarkSuccessful()
+			events.Emit(ctx, beforeCondition, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
+		} else {
+			ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunUnexpectatedOutcomes, errors.New("not all expectations were met:\n"+diffs))
+		}
+	}
 	return nil
 }
 
@@ -307,12 +468,12 @@ func (c *Reconciler) dereferenceTaskTestRef(ctx context.Context, ttr *v1alpha1.T
 	return taskTest, nil
 }
 
-func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRun, rtr *resources.ResolvedTask) (*v1.TaskRun, error) {
+func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRun, _ *resources.ResolvedTask) (*v1.TaskRun, error) {
 	var taskRun *v1.TaskRun
 	var taskName string
 
-	if ttr.Status.TaskTestSpec.Spec != nil {
-		taskName = ttr.Status.TaskTestSpec.Spec.TaskRef.Name
+	if ttr.Status.TaskTestSpec != nil {
+		taskName = ttr.Status.TaskTestSpec.TaskRef.Name
 	}
 
 	task, err := c.PipelineClientSet.TektonV1().Tasks(ttr.Namespace).Get(ctx, taskName, metav1.GetOptions{})
@@ -320,9 +481,9 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 		return nil, fmt.Errorf("could not dereference task under test: %w", err)
 	}
 
-	if ttr.Status.TaskTestSpec.Spec.Expected.Results != nil {
+	if ttr.Status.TaskTestSpec.Expected != nil && ttr.Status.TaskTestSpec.Expected.Results != nil {
 		declaredResults := task.Spec.Results
-		for _, expectedResult := range ttr.Status.TaskTestSpec.Spec.Expected.Results {
+		for _, expectedResult := range ttr.Status.TaskTestSpec.Expected.Results {
 			if !slices.ContainsFunc(declaredResults, func(result v1.TaskResult) bool {
 				return result.Name == expectedResult.Name
 			}) {
@@ -346,6 +507,9 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 	taskRun, err = c.PipelineClientSet.TektonV1().TaskRuns(ttr.Namespace).Create(ctx, taskRun, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
+	}
+	ttr.Status.StartTime = &metav1.Time{
+		Time: c.Clock.Now(),
 	}
 
 	return taskRun, nil

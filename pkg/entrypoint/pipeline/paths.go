@@ -32,4 +32,8 @@ const (
 	ScriptDir = "/tekton/scripts"
 
 	ArtifactsDir = "/tekton/artifacts"
+
+	// EnvironmentDir is the directory used for dumping the environment of a
+	// container to be used for validating TaskTestRuns
+	EnvironmentDir = "/tekton/environment"
 )

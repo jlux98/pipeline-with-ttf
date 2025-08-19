@@ -445,7 +445,6 @@
       "type": "object",
       "properties": {
         "fileSystemObjects": {
-          "default": {},
           "$ref": "#/definitions/v1alpha1.ObservedFileSystemObject"
         },
         "results": {
@@ -473,11 +472,9 @@
           "x-kubernetes-list-type": "map"
         },
         "successReason": {
-          "default": {},
           "$ref": "#/definitions/v1alpha1.ObservedSuccessReason"
         },
         "successStatus": {
-          "default": {},
           "$ref": "#/definitions/v1alpha1.ObservedSuccessStatus"
         }
       }
@@ -587,10 +584,6 @@
         "got"
       ],
       "properties": {
-        "diff": {
-          "description": "Diff describes, how Want and Got differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
-          "type": "string"
-        },
         "got": {
           "description": "Got reports, whether the task under test actually succeeded",
           "type": "boolean",
@@ -600,6 +593,10 @@
           "description": "Want describes, whether the test exects the task under test to succeed",
           "type": "boolean",
           "default": false
+        },
+        "wantMatchesGot": {
+          "description": "WantMatchesGot describes, whether Want and Got have the same value.",
+          "type": "boolean"
         }
       }
     },
@@ -890,6 +887,26 @@
         },
         "name": {
           "description": "Name is the name of the step for whom these environment variables will be set.",
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "v1alpha1.StepEnvironment": {
+      "type": "object",
+      "required": [
+        "step",
+        "environment"
+      ],
+      "properties": {
+        "environment": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "step": {
           "type": "string",
           "default": ""
         }
@@ -1203,11 +1220,6 @@
     },
     "v1alpha1.TaskTestRunStatus": {
       "type": "object",
-      "required": [
-        "taskRunName",
-        "taskRunStatus",
-        "outcomes"
-      ],
       "properties": {
         "annotations": {
           "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
@@ -1237,8 +1249,15 @@
           "format": "int64"
         },
         "outcomes": {
-          "default": {},
           "$ref": "#/definitions/v1alpha1.ObservedOutcomes"
+        },
+        "retriesStatus": {
+          "description": "RetriesStatus contains the history of TaskTestRunStatus in case of a retry in order to keep record of failures. All TaskTestRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.TaskTestRunStatus"
+          }
         },
         "startTime": {
           "description": "StartTime is the time the build is actually started.",
@@ -1246,35 +1265,39 @@
         },
         "taskRunName": {
           "description": "TaskRunName is the name of the TaskRun responsible for executing this test's Tasks.",
-          "type": "string",
-          "default": ""
+          "type": "string"
         },
         "taskRunStatus": {
           "description": "TaskRunStatus is the status of the TaskRun responsible for executing this test's Tasks.",
-          "default": {},
           "$ref": "#/definitions/v1.TaskRunStatus"
+        },
+        "taskTestName": {
+          "description": "TaskTestName is the name of the referenced TaskTest if no inline TaskTest (via TaskTestSpec) is used",
+          "type": "string"
         },
         "taskTestSpec": {
           "description": "TaskTestSpec is a copy of the Spec of the referenced TaskTest.",
-          "$ref": "#/definitions/v1alpha1.NamedTaskTestSpec"
+          "$ref": "#/definitions/v1alpha1.TaskTestSpec"
         }
       }
     },
     "v1alpha1.TaskTestRunStatusFields": {
       "type": "object",
-      "required": [
-        "taskRunName",
-        "taskRunStatus",
-        "outcomes"
-      ],
       "properties": {
         "completionTime": {
           "description": "CompletionTime is the time the test completed.",
           "$ref": "#/definitions/v1.Time"
         },
         "outcomes": {
-          "default": {},
           "$ref": "#/definitions/v1alpha1.ObservedOutcomes"
+        },
+        "retriesStatus": {
+          "description": "RetriesStatus contains the history of TaskTestRunStatus in case of a retry in order to keep record of failures. All TaskTestRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.TaskTestRunStatus"
+          }
         },
         "startTime": {
           "description": "StartTime is the time the build is actually started.",
@@ -1282,17 +1305,19 @@
         },
         "taskRunName": {
           "description": "TaskRunName is the name of the TaskRun responsible for executing this test's Tasks.",
-          "type": "string",
-          "default": ""
+          "type": "string"
         },
         "taskRunStatus": {
           "description": "TaskRunStatus is the status of the TaskRun responsible for executing this test's Tasks.",
-          "default": {},
           "$ref": "#/definitions/v1.TaskRunStatus"
+        },
+        "taskTestName": {
+          "description": "TaskTestName is the name of the referenced TaskTest if no inline TaskTest (via TaskTestSpec) is used",
+          "type": "string"
         },
         "taskTestSpec": {
           "description": "TaskTestSpec is a copy of the Spec of the referenced TaskTest.",
-          "$ref": "#/definitions/v1alpha1.NamedTaskTestSpec"
+          "$ref": "#/definitions/v1alpha1.TaskTestSpec"
         }
       }
     },
@@ -1320,18 +1345,13 @@
     "v1alpha1.TaskTestSpec": {
       "description": "TaskTestSpec defines the desired state of TaskTest.",
       "type": "object",
-      "required": [
-        "inputs"
-      ],
       "properties": {
         "expected": {
           "description": "Expected contains the data, which the TaskTestRun controller will use to check, whether a TaskTestRun was successful or not. If this field is left empty, then the TaskTestRun is deemed successful, if the TaskRun completes without a failure occurring.",
-          "default": {},
           "$ref": "#/definitions/v1alpha1.ExpectedOutcomes"
         },
         "inputs": {
           "description": "Inputs represents the test data for executing the test case.",
-          "default": {},
           "$ref": "#/definitions/v1alpha1.TaskTestInputs"
         },
         "taskRef": {
