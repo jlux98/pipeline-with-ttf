@@ -62,11 +62,7 @@ var (
 		Name:         environmentVolumeName,
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}
-	environmentVolumeMount = corev1.VolumeMount{
-		Name:      environmentVolumeName,
-		MountPath: environmentDir,
-		ReadOnly:  true,
-	}
+
 	writeEnvironmentVolumeMount = corev1.VolumeMount{
 		Name:      environmentVolumeName,
 		MountPath: environmentDir,
