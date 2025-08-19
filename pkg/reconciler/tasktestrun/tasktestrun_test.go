@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -24,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/utils/clock"
+	clock "k8s.io/utils/clock/testing"
 	"k8s.io/utils/ptr"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -36,6 +37,9 @@ import (
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 )
+
+var now = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
+var testClock = clock.NewFakePassiveClock(now)
 
 // IgnoreFields options
 var (
@@ -584,10 +588,10 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 					Status: "False",
 					Reason: "TaskTestRunUnexpectedOutcomes",
 					Message: "not all expectations were met:\n" +
-						diffCurrentDate +
-						diffCurrentTime +
+						"Result current-date: " + diffCurrentDate +
+						"Result current-time: " + diffCurrentTime +
 						"observed success status did not match expectation\n" +
-						cmp.Diff(v1.TaskRunReason("TaskRunCancelled"), v1.TaskRunReason("Succeeded")),
+						"SuccessReason: " + cmp.Diff(v1.TaskRunReason("TaskRunCancelled"), v1.TaskRunReason("Succeeded")),
 				}}},
 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
 					TaskRunName: ptr.To("ttr-completed-task-run-unexpected-results-run"),
@@ -873,7 +877,7 @@ func initializeTaskTestRunControllerAssets(t *testing.T, d test.Data, opts pipel
 	test.EnsureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
-	ctl := NewController(&opts, clock.RealClock{})(ctx, configMapWatcher)
+	ctl := NewController(&opts, testClock)(ctx, configMapWatcher)
 	if err := configMapWatcher.Start(ctx.Done()); err != nil {
 		t.Fatalf("error starting configmap watcher: %v", err)
 	}
