@@ -60,69 +60,70 @@ type Reconciler struct {
 }
 
 // ReconcileKind implements tasktestrun.Interface.
-func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TaskTestRun) reconciler.Event {
+func (c *Reconciler) ReconcileKind(ctx context.Context, ttr *v1alpha1.TaskTestRun) reconciler.Event {
 	logger := logging.FromContext(ctx)
 	ctx = cloudevent.ToContext(ctx, c.cloudEventClient)
 
-	before := tr.Status.GetCondition(apis.ConditionSucceeded)
+	before := ttr.Status.GetCondition(apis.ConditionSucceeded)
 
-	if !tr.HasStarted() {
-		tr.Status.InitializeConditions()
+	if !ttr.HasStarted() {
+		ttr.Status.InitializeConditions()
 		// In case node time was not synchronized, when controller has been scheduled to other nodes.
-		if tr.Status.StartTime.Sub(tr.CreationTimestamp.Time) < 0 {
-			logger.Warnf("TaskRun %s createTimestamp %s is after the taskRun started %s", tr.GetNamespacedName().String(), tr.CreationTimestamp, tr.Status.StartTime)
-			tr.Status.StartTime = &tr.CreationTimestamp
+		if ttr.Status.StartTime.Sub(ttr.CreationTimestamp.Time) < 0 {
+			logger.Warnf("TaskRun %s createTimestamp %s is after the taskRun started %s", ttr.GetNamespacedName().String(), ttr.CreationTimestamp, ttr.Status.StartTime)
+			ttr.Status.StartTime = &ttr.CreationTimestamp
 		}
 		// Emit events. During the first reconcile the status of the TaskRun may change twice
 		// from not Started to Started and then to Running, so we need to sent the event here
 		// and at the end of 'Reconcile' again.
 		// We also want to send the "Started" event as soon as possible for anyone who may be waiting
 		// on the event to perform user facing initialisations, such has reset a CI check status
-		afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
-		events.Emit(ctx, nil, afterCondition, tr)
+		afterCondition := ttr.Status.GetCondition(apis.ConditionSucceeded)
+		events.Emit(ctx, nil, afterCondition, ttr)
 	}
 
 	// If the TaskTestRun is complete, run some post run fixtures when applicable
-	if tr.IsDone() {
-		logger.Infof("tasktestrun done : %s \n", tr.Name)
+	if ttr.IsDone() {
+		logger.Infof("tasktestrun done : %s \n", ttr.Name)
 
 		// We may be reading a version of the object that was stored at an older version
 		// and may not have had all of the assumed default specified.
-		tr.SetDefaults(ctx)
+		ttr.SetDefaults(ctx)
 
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, nil)
+		return c.finishReconcileUpdateEmitEvents(ctx, ttr, before, nil)
 	}
 
 	// If the TaskRun is cancelled, kill resources and update status
-	if tr.IsCancelled() {
-		message := fmt.Sprintf("TaskRun %q was cancelled. %s", tr.Name, tr.Spec.StatusMessage)
-		err := c.failTaskRun(ctx, tr, v1alpha1.TaskTestRunReasonCancelled, message)
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+	if ttr.IsCancelled() {
+		message := fmt.Sprintf("TaskRun %q was cancelled. %s", ttr.Name, ttr.Spec.StatusMessage)
+		err := c.failTaskRun(ctx, ttr, v1alpha1.TaskTestRunReasonCancelled, message)
+		return c.finishReconcileUpdateEmitEvents(ctx, ttr, before, err)
 	}
 
 	// Check if the TaskRun has timed out; if it is, this will set its status
 	// accordingly.
-	if tr.HasTimedOut(ctx, c.Clock) {
-		message := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, tr.GetTimeout(ctx))
-		err := c.failTaskRun(ctx, tr, v1alpha1.TaskTestRunReasonTimedOut, message)
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+	if ttr.HasTimedOut(ctx, c.Clock) {
+		message := fmt.Sprintf("TaskRun %q failed to finish within %q", ttr.Name, ttr.GetTimeout(ctx))
+		err := c.failTaskRun(ctx, ttr, v1alpha1.TaskTestRunReasonTimedOut, message)
+		return c.finishReconcileUpdateEmitEvents(ctx, ttr, before, err)
 	}
 
-	err := c.prepare(ctx, tr)
+	err := c.prepare(ctx, ttr)
 	if err != nil {
-		return fmt.Errorf("could not prepare reconciliation of task test run %s: %w", tr.Name, err)
+		return fmt.Errorf("could not prepare reconciliation of task test run %s: %w", ttr.Name, err)
 	}
 
-	if err := c.reconcile(ctx, tr, nil); err != nil {
+	if err := c.reconcile(ctx, ttr, nil); err != nil {
 		logger.Errorf("Reconcile: %v", err.Error())
+		events.Emit(ctx, nil, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
 		return err
 	}
 
-	if tr.Status.StartTime != nil {
+	if ttr.Status.StartTime != nil {
 		// Compute the time since the task started.
-		elapsed := c.Clock.Since(tr.Status.StartTime.Time)
+		elapsed := c.Clock.Since(ttr.Status.StartTime.Time)
 		// Snooze this resource until the timeout has elapsed.
-		timeout := tr.GetTimeout(ctx)
+		timeout := ttr.GetTimeout(ctx)
 		waitTime := timeout - elapsed
 		if timeout == config.NoTimeoutDuration {
 			waitTime = time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes) * time.Minute
@@ -171,6 +172,7 @@ func (c *Reconciler) prepare(ctx context.Context, ttr *v1alpha1.TaskTestRun) err
 	if ttr.Spec.TaskTestRef != nil {
 		taskTest, err := c.dereferenceTaskTestRef(ctx, ttr)
 		if err != nil {
+			events.Emit(ctx, nil, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
 			return err
 		}
 		observedTaskTestName = &ttr.Spec.TaskTestRef.Name
@@ -192,7 +194,6 @@ func (c *Reconciler) prepare(ctx context.Context, ttr *v1alpha1.TaskTestRun) err
 // events. `reconcile` consumes spec and resources returned by `prepare`
 func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, rtr *resources.ResolvedTask) error {
 	logger := logging.FromContext(ctx)
-	// recorder := controller.GetEventRecorder(ctx)
 	var err error
 
 	// Get the TaskTestRun's TaskRun if it should have one. Otherwise, create the TaskRun.
@@ -208,6 +209,7 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 			// the task test run condition, and return an error which will cause this key to
 			// be requeued for reconcile.
 			logger.Errorf("Error getting TaskRun %q: %v", ttr.Status.TaskRunName, err)
+			events.Emit(ctx, nil, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
 			return err
 		}
 	} else {
@@ -219,48 +221,18 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 		trs, err := c.taskRunLister.TaskRuns(ttr.Namespace).List(labelSelector.AsSelector())
 		if err != nil {
 			logger.Errorf("Error listing task runs: %v", err)
+			events.Emit(ctx, nil, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
 			return err
 		}
 		for index := range trs {
 			tr := trs[index]
 			if metav1.IsControlledBy(tr, ttr) {
+				logger.Infof("boom: Now found TaskRun %s in list controlled by TTR %s", tr.Name, ttr.Name)
 				taskRun = tr
+				ttr.Status.TaskRunName = &taskRun.Name
 			}
 		}
 	}
-
-	// // Please note that this block is required to run before `applyParamsContextsResultsAndWorkspaces` is called the first time,
-	// // and that `applyParamsContextsResultsAndWorkspaces` _must_ be called on every reconcile.
-	// if taskRun == nil && ttr.HasVolumeClaimTemplate() {
-	// 	for _, ws := range ttr.Spec.Workspaces {
-	// 		if err := c.pvcHandler.CreatePVCFromVolumeClaimTemplate(ctx, ws, *kmeta.NewControllerRef(ttr), ttr.Namespace); err != nil {
-	// 			logger.Errorf("Failed to create PVC for TaskRun %s: %v", ttr.Name, err)
-	// 			ttr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
-	// 				fmt.Errorf("failed to create PVC for TaskRun %s workspaces correctly: %w",
-	// 					fmt.Sprintf("%s/%s", ttr.Namespace, ttr.Name), err))
-	// 			return controller.NewPermanentError(err)
-	// 		}
-	// 	}
-
-	// 	taskRunWorkspaces := applyVolumeClaimTemplates(ttr.Spec.Workspaces, *kmeta.NewControllerRef(ttr))
-	// 	// This is used by createPod below. Changes to the Spec are not updated.
-	// 	ttr.Spec.Workspaces = taskRunWorkspaces
-	// }
-
-	// resources.ApplyParametersToWorkspaceBindings(rtr.TaskSpec, ttr)
-	// // Get the randomized volume names assigned to workspace bindings
-	// workspaceVolumes := workspace.CreateVolumes(ttr.Spec.Workspaces)
-
-	// ts, err := applyParamsContextsResultsAndWorkspaces(ctx, ttr, rtr, workspaceVolumes)
-	// if err != nil {
-	// 	logger.Errorf("Error updating task spec parameters, contexts, results and workspaces: %s", err)
-	// 	return err
-	// }
-	// ttr.Status.TaskSpec = ts
-
-	// if len(ttr.Status.TaskSpec.Steps) > 0 {
-	// 	logger.Debugf("set taskspec for %s/%s - script: %s", ttr.Namespace, ttr.Name, ttr.Status.TaskSpec.Steps[0].Script)
-	// }
 
 	if taskRun == nil {
 		logger.Infof("boom: Now creating TaskRun for TTR %s", ttr.Name)
@@ -270,46 +242,10 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 				ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunReasonFailedValidation, err)
 			}
 			logger.Errorf("Failed to create task run for taskTestRun %q: %v", ttr.Name, err)
-			return err
-		}
-	} else if taskRun.Status.CompletionTime != nil {
-		logger.Infof("boom: TaskRun for TTR %s has been detected as completed", ttr.Name)
-		if ttr.Status.StartTime == nil {
-			logger.Infof("boom: Now setting start time for TTR %s", ttr.Name)
-			ttr.Status.StartTime = &metav1.Time{Time: c.Clock.Now()}
-		}
-		if ttr.Status.CompletionTime == nil {
-			logger.Infof("boom: Now setting Completion time for TTR %s", ttr.Name)
-			ttr.Status.CompletionTime = &metav1.Time{Time: c.Clock.Now()}
-		}
-		if err := checkActualOutcomesAgainstExpectations(ctx, ttr, &taskRun.Status); err != nil {
+			events.Emit(ctx, nil, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
 			return err
 		}
 	}
-
-	// if podconvert.IsPodExceedingNodeResources(taskRun) {
-	// 	recorder.Eventf(ttr, corev1.EventTypeWarning, podconvert.ReasonExceededNodeResources, "Insufficient resources to schedule taskRun %q", taskRun.Name)
-	// }
-
-	// if podconvert.SidecarsReady(taskRun.Status) {
-	// 	if err := podconvert.UpdateReady(ctx, c.KubeClientSet, *taskRun); err != nil {
-	// 		return err
-	// 	}
-	// 	if err := c.metrics.RecordPodLatency(ctx, taskRun, ttr); err != nil {
-	// 		logger.Warnf("Failed to log the metrics : %v", err)
-	// 	}
-	// }
-
-	// // Convert the taskRun's status to the equivalent TaskRun Status.
-	// ttr.Status, err = podconvert.MakeTaskRunStatus(ctx, logger, *ttr, taskRun, c.KubeClientSet, rtr.TaskSpec)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// if err := validateTaskRunResults(ttr, rtr.TaskSpec); err != nil {
-	// 	ttr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
-	// 	return err
-	// }
 
 	if ttr.Status.TaskRunName == nil || *ttr.Status.TaskRunName != taskRun.Name {
 		logger.Infof("boom: Now setting task run name for TTR %s", ttr.Name)
@@ -321,12 +257,86 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 		ttr.Status.TaskRunStatus = &taskRun.Status
 	}
 
+	if taskRun.Status.CompletionTime != nil {
+		logger.Infof("boom: TaskRun for TTR %s has been detected as completed", ttr.Name)
+		if ttr.Status.StartTime == nil {
+			logger.Infof("boom: Now setting start time for TTR %s", ttr.Name)
+			ttr.Status.StartTime = &metav1.Time{Time: c.Clock.Now()}
+		}
+		if ttr.Status.CompletionTime == nil {
+			logger.Infof("boom: Now setting Completion time for TTR %s", ttr.Name)
+			ttr.Status.CompletionTime = &metav1.Time{Time: c.Clock.Now()}
+		}
+		if err := checkActualOutcomesAgainstExpectations(ctx, ttr, &taskRun.Status); err != nil {
+			events.Emit(ctx, nil, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
+			return err
+		}
+	}
+
 	logger.Infof("Successfully reconciled tasktestrun %s/%s with status: %#v", ttr.Name, ttr.Namespace, ttr.Status.GetCondition(apis.ConditionSucceeded))
 	return nil
 }
 
+// // Please note that this block is required to run before `applyParamsContextsResultsAndWorkspaces` is called the first time,
+// // and that `applyParamsContextsResultsAndWorkspaces` _must_ be called on every reconcile.
+// if taskRun == nil && ttr.HasVolumeClaimTemplate() {
+// 	for _, ws := range ttr.Spec.Workspaces {
+// 		if err := c.pvcHandler.CreatePVCFromVolumeClaimTemplate(ctx, ws, *kmeta.NewControllerRef(ttr), ttr.Namespace); err != nil {
+// 			logger.Errorf("Failed to create PVC for TaskRun %s: %v", ttr.Name, err)
+// 			ttr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
+// 				fmt.Errorf("failed to create PVC for TaskRun %s workspaces correctly: %w",
+// 					fmt.Sprintf("%s/%s", ttr.Namespace, ttr.Name), err))
+// 			return controller.NewPermanentError(err)
+// 		}
+// 	}
+
+// 	taskRunWorkspaces := applyVolumeClaimTemplates(ttr.Spec.Workspaces, *kmeta.NewControllerRef(ttr))
+// 	// This is used by createPod below. Changes to the Spec are not updated.
+// 	ttr.Spec.Workspaces = taskRunWorkspaces
+// }
+
+// resources.ApplyParametersToWorkspaceBindings(rtr.TaskSpec, ttr)
+// // Get the randomized volume names assigned to workspace bindings
+// workspaceVolumes := workspace.CreateVolumes(ttr.Spec.Workspaces)
+
+// ts, err := applyParamsContextsResultsAndWorkspaces(ctx, ttr, rtr, workspaceVolumes)
+// if err != nil {
+// 	logger.Errorf("Error updating task spec parameters, contexts, results and workspaces: %s", err)
+// 	return err
+// }
+// ttr.Status.TaskSpec = ts
+
+// if len(ttr.Status.TaskSpec.Steps) > 0 {
+// 	logger.Debugf("set taskspec for %s/%s - script: %s", ttr.Namespace, ttr.Name, ttr.Status.TaskSpec.Steps[0].Script)
+// }
+
+// if podconvert.IsPodExceedingNodeResources(taskRun) {
+// 	recorder.Eventf(ttr, corev1.EventTypeWarning, podconvert.ReasonExceededNodeResources, "Insufficient resources to schedule taskRun %q", taskRun.Name)
+// }
+
+// if podconvert.SidecarsReady(taskRun.Status) {
+// 	if err := podconvert.UpdateReady(ctx, c.KubeClientSet, *taskRun); err != nil {
+// 		return err
+// 	}
+// 	if err := c.metrics.RecordPodLatency(ctx, taskRun, ttr); err != nil {
+// 		logger.Warnf("Failed to log the metrics : %v", err)
+// 	}
+// }
+
+// // Convert the taskRun's status to the equivalent TaskRun Status.
+// ttr.Status, err = podconvert.MakeTaskRunStatus(ctx, logger, *ttr, taskRun, c.KubeClientSet, rtr.TaskSpec)
+// if err != nil {
+// 	return err
+// }
+
+// if err := validateTaskRunResults(ttr, rtr.TaskSpec); err != nil {
+// 	ttr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
+// 	return err
+// }
+
 func checkActualOutcomesAgainstExpectations(ctx context.Context, ttr *v1alpha1.TaskTestRun, taskRun *v1.TaskRunStatus) error {
 	logger := logging.FromContext(ctx)
+	var err error
 	logger.Infof("boom: Status.TaskTestSpec.Expected == %v and Status.GetCondition(apis.ConditionSucceeded).IsUnknown() == %v for TTR %s", ttr.Status.TaskTestSpec.Expected, ttr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown(), ttr.Name)
 	if ttr.Status.TaskTestSpec.Expected != nil && ttr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
 		logger.Infof("boom: Now checking outcomes for TTR %s", ttr.Name)
@@ -400,10 +410,12 @@ func checkActualOutcomesAgainstExpectations(ctx context.Context, ttr *v1alpha1.T
 		if ttr.Status.TaskTestSpec.Expected.Env != nil {
 			logger.Infof("boom: Now checking environment variables for TTR %s", ttr.Name)
 			idx := slices.IndexFunc(taskRun.Results, func(result v1.TaskRunResult) bool {
-				return result.Name == "environment"
+				return result.Name == v1alpha1.ResultNameEnvironmentDump
 			})
 			if idx < 0 {
-				ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunReasonFailedValidation, errors.New("could not find environment dump for stepEnv"))
+				err := errors.New("could not find environment dump for stepEnv")
+				ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunReasonFailedValidation, err)
+				return err
 			}
 
 			environments := taskRun.Results[idx].Value.StringVal
@@ -419,6 +431,7 @@ func checkActualOutcomesAgainstExpectations(ctx context.Context, ttr *v1alpha1.T
 			err := json.Unmarshal([]byte(environments), &stepEnvironments)
 			if err != nil {
 				logger.Errorf("problem while unmarshalling stepEnvironments: %v", err)
+				events.Emit(ctx, nil, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
 				return err
 			}
 			stepEnvironmentsMap := stepEnvironments.ToMap()
@@ -449,15 +462,16 @@ func checkActualOutcomesAgainstExpectations(ctx context.Context, ttr *v1alpha1.T
 
 		// set status and emit event
 		beforeCondition := ttr.Status.GetCondition(apis.ConditionSucceeded)
-		logger.Infof("boom: Now checking setting Status for TTR %s", ttr.Name)
+		logger.Infof("boom: Now setting Status for TTR %s", ttr.Name)
 		if expectationsMet {
 			ttr.Status.MarkSuccessful()
 			events.Emit(ctx, beforeCondition, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
 		} else {
-			ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunUnexpectatedOutcomes, errors.New("not all expectations were met:\n"+diffs))
+			err = errors.New("not all expectations were met:\n" + diffs)
+			ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunUnexpectatedOutcomes, err)
 		}
 	}
-	return nil
+	return err
 }
 
 func (c *Reconciler) dereferenceTaskTestRef(ctx context.Context, ttr *v1alpha1.TaskTestRun) (*v1alpha1.TaskTest, error) {
@@ -469,17 +483,21 @@ func (c *Reconciler) dereferenceTaskTestRef(ctx context.Context, ttr *v1alpha1.T
 }
 
 func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRun, _ *resources.ResolvedTask) (*v1.TaskRun, error) {
+	logger := logging.FromContext(ctx)
 	var taskRun *v1.TaskRun
 	var taskName string
+	taskRunNamespace := ttr.Namespace
 
 	if ttr.Status.TaskTestSpec != nil {
 		taskName = ttr.Status.TaskTestSpec.TaskRef.Name
 	}
 
-	task, err := c.PipelineClientSet.TektonV1().Tasks(ttr.Namespace).Get(ctx, taskName, metav1.GetOptions{})
+	task, err := c.PipelineClientSet.TektonV1().Tasks(taskRunNamespace).Get(ctx, taskName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not dereference task under test: %w", err)
 	}
+
+	logger.Infof(`Task successfully dereferenced: %v`, *task)
 
 	if ttr.Status.TaskTestSpec.Expected != nil && ttr.Status.TaskTestSpec.Expected.Results != nil {
 		declaredResults := task.Spec.Results
@@ -495,8 +513,8 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 	taskRun = &v1.TaskRun{
 		TypeMeta: metav1.TypeMeta{Kind: "TaskRun", APIVersion: "tekton.dev/v1"},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            ttr.GetObjectMeta().GetName() + "-run",
-			Namespace:       ttr.Namespace,
+			Name:            ttr.Name + "-run",
+			Namespace:       taskRunNamespace,
 			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(ttr, schema.GroupVersionKind{Group: "tekton.dev", Version: "v1alpha1", Kind: "TaskTestRun"})},
 			Labels:          map[string]string{"tekton.dev/taskTestRun": ttr.Name},
 		},
@@ -504,10 +522,25 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 	}
 	taskRun.Status.InitializeConditions()
 
-	taskRun, err = c.PipelineClientSet.TektonV1().TaskRuns(ttr.Namespace).Create(ctx, taskRun, metav1.CreateOptions{})
+	if ttr.Status.TaskTestSpec.Expected != nil {
+		logger.Infof(`filling annotations for task test run %s`, ttr.Name)
+		taskRun.Annotations = map[string]string{}
+		expectedValuesJSON, err := json.Marshal(ttr.Status.TaskTestSpec.Expected)
+		if err != nil {
+			return nil, err
+		}
+		taskRun.Annotations[v1alpha1.AnnotationKeyExpectedValuesJSON] = string(expectedValuesJSON)
+	}
+
+	taskRun, err = c.PipelineClientSet.TektonV1().TaskRuns(taskRunNamespace).Create(ctx, taskRun, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
+
+	logger.Infof(`TaskRun successfully created: %v`, *taskRun)
+
+	ttr.Status.TaskRunName = &taskRun.Name
+
 	ttr.Status.StartTime = &metav1.Time{
 		Time: c.Clock.Now(),
 	}

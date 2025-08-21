@@ -5680,4 +5680,7 @@ spec:
     categories:
       - tekton
       - tekton-pipelines
+    shortNames:
+      - ttr
+      - ttrs
   scope: Namespaced

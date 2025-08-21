@@ -47,6 +47,7 @@ import (
 	"knative.dev/pkg/changeset"
 	"knative.dev/pkg/kmap"
 	"knative.dev/pkg/kmeta"
+	"knative.dev/pkg/logging"
 )
 
 const (
@@ -232,11 +233,31 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	// If any are found, append an init container to initialize scripts.
 	if alphaAPIEnabled {
 		if v1alpha1.IsControlledByTaskTestRun(taskRun.ObjectMeta) {
-			scriptsInit, stepContainers, sidecarContainers = convertScriptsExpanded(b.Images.ShellImage, b.Images.ShellImageWin, steps, sidecars, taskRun.Spec.Debug, securityContextConfig, true)
-			taskSpec.Results = append(taskSpec.Results, v1.TaskResult{
-				Name: "environment",
-				Type: v1.ResultsTypeString,
-			})
+			expectedValues := &v1alpha1.ExpectedOutcomes{}
+			expectedValuesJSON := taskRun.Annotations[v1alpha1.AnnotationKeyExpectedValuesJSON]
+			logging.FromContext(ctx).Info(`Unmarshalling the expected values from the TaskRun's annotations %s into struct %v`, expectedValuesJSON, expectedValues)
+			err := json.Unmarshal([]byte(expectedValuesJSON), expectedValues)
+			if err != nil {
+				logging.FromContext(ctx).Errorf(`There was an arror while unmarshalling the expected values from the TaskRun's annotations: %w`, err)
+				return nil, err
+			}
+			logging.FromContext(ctx).Infof(`expected values: %v`, expectedValues)
+			logging.FromContext(ctx).Infof(`The expected values from the TaskRun's annotations are: %v`, expectedValues)
+			scriptsInit, stepContainers, sidecarContainers = convertScriptsWithTaskTestSpec(b.Images.ShellImage, b.Images.ShellImageWin, steps, sidecars, taskRun.Spec.Debug, securityContextConfig, &v1alpha1.TaskTestSpec{Expected: expectedValues})
+			logging.FromContext(ctx).Infof(`appending result "testing/environment"`)
+			if expectedValues.Env != nil {
+				taskSpec.Results = append(taskSpec.Results, v1.TaskResult{
+					Name: v1alpha1.ResultNameEnvironmentDump,
+					Type: v1.ResultsTypeString,
+				})
+			}
+
+			if expectedValues.FileSystemContents != nil {
+				taskSpec.Results = append(taskSpec.Results, v1.TaskResult{
+					Name: v1alpha1.ResultNameFileSystemContents,
+					Type: v1.ResultsTypeString,
+				})
+			}
 		} else {
 			scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, b.Images.ShellImageWin, steps, sidecars, taskRun.Spec.Debug, securityContextConfig)
 		}

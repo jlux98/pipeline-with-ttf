@@ -7150,4 +7150,7 @@ spec:
     categories:
       - tekton
       - tekton-pipelines
+    shortNames:
+      - tsr
+      - tsrs
   scope: Namespaced

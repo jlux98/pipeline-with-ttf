@@ -66,3 +66,6 @@ docs/pipeline-api.md.backup
 
 # Ignore generated kind.yaml
 kind.yaml
+
+# Ignore sidecarlogresults output
+internal/sidecarlogresults/cpu.prof

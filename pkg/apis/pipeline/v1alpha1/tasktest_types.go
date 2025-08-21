@@ -299,9 +299,18 @@ type FileSystemObjectType string
 
 const (
 	DirectoryType  FileSystemObjectType = "Directory"     // a directory
+	EmptyFileType  FileSystemObjectType = "EmptyFile"     // a text file of any encoding
 	TextFileType   FileSystemObjectType = "TextFile"      // a text file of any encoding
 	BinaryFileType FileSystemObjectType = "BinaryFile"    // any type of binary file
 	AnyFileType    FileSystemObjectType = "AnyFileType"   // any type of file
 	AnyObjectType  FileSystemObjectType = "AnyObjectType" // any file or directory
 	None           FileSystemObjectType = "None"          // no file at the given location
 )
+
+func (f FileSystemObjectType) String() string {
+	return string(f)
+}
+
+const AnnotationKeyExpectedValuesJSON string = "ExpectedValuesJSON"
+const ResultNameEnvironmentDump string = "Testing|Environment"
+const ResultNameFileSystemContents string = "Testing|FileSystemContent"

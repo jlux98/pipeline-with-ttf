@@ -1,0 +1,39 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: hello-task
+  namespace: foo
+spec:
+  results:
+  - description: |
+      The current time in the format hh:mm:ss
+    name: current-time
+    type: string
+  - description: |
+      The current date in the format yyyy-mm-dd
+    name: current-date
+    type: string
+  steps:
+  - computeResources: {}
+    image: alpine
+    name: date-step
+    script: |
+      set -x
+
+      echo -n $(date +%Y-%m-%d) > $(results.current-date.path)
+  - computeResources: {}
+    image: alpine
+    name: time-step
+    script: |
+      set -x
+
+      echo -n $(date +%H:%M:%S) > $(results.current-time.path)
+  # - computeResources: {}
+  #   image: alpine
+  #   name: jlux-print-step
+  #   script: |
+  #     set -x
+
+  #     ls /tekton
+  #     ls /tekton/environment
+  #     cat /tekton/environment/jlux-hello-step

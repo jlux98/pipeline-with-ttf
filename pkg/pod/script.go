@@ -20,11 +20,14 @@ import (
 	"encoding/base64"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -83,7 +86,7 @@ var (
 )
 
 func convertScripts(shellImageLinux string, shellImageWin string, steps []v1.Step, sidecars []v1.Sidecar, debugConfig *v1.TaskRunDebug, securityContext SecurityContextConfig) (*corev1.Container, []corev1.Container, []corev1.Container) {
-	return convertScriptsExpanded(shellImageLinux, shellImageWin, steps, sidecars, debugConfig, securityContext, false)
+	return convertScriptsWithTaskTestSpec(shellImageLinux, shellImageWin, steps, sidecars, debugConfig, securityContext, nil)
 }
 
 // convertScripts creates an init container that mounts any Scripts specified by
@@ -95,7 +98,7 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1.Ste
 //   - debugConfig: the TaskRun's debug configuration
 //   - setSecurityContext: whether the init container should include a security context that will
 //     allow it to run in a namespace with "restricted" pod security admission
-func convertScriptsExpanded(shellImageLinux string, shellImageWin string, steps []v1.Step, sidecars []v1.Sidecar, debugConfig *v1.TaskRunDebug, securityContext SecurityContextConfig, dumpEnvironment bool) (*corev1.Container, []corev1.Container, []corev1.Container) {
+func convertScriptsWithTaskTestSpec(shellImageLinux string, shellImageWin string, steps []v1.Step, sidecars []v1.Sidecar, debugConfig *v1.TaskRunDebug, securityContext SecurityContextConfig, taskTestSpec *v1alpha1.TaskTestSpec) (*corev1.Container, []corev1.Container, []corev1.Container) {
 	// Place scripts is an init container used for creating scripts in the
 	// /tekton/scripts directory which would be later used by the step containers
 	// as a Command
@@ -129,7 +132,7 @@ func convertScriptsExpanded(shellImageLinux string, shellImageWin string, steps 
 		placeScriptsInit.VolumeMounts = append(placeScriptsInit.VolumeMounts, debugScriptsVolumeMount)
 	}
 
-	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, debugConfig, "script", dumpEnvironment)
+	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, debugConfig, "script", taskTestSpec)
 	sidecarContainers := convertListOfSidecars(sidecars, &placeScriptsInit, "sidecar-script")
 
 	if hasScripts(steps, sidecars, debugConfig) {
@@ -145,7 +148,7 @@ func convertListOfSidecars(sidecars []v1.Sidecar, initContainer *corev1.Containe
 	for i, s := range sidecars {
 		c := s.ToK8sContainer()
 		if s.Script != "" {
-			placeScriptInContainer(s.Script, getScriptFile(scriptsDir, fmt.Sprintf("%s-%d", namePrefix, i)), c, initContainer, false)
+			placeScriptInContainer(s.Script, getScriptFile(scriptsDir, fmt.Sprintf("%s-%d", namePrefix, i)), c, initContainer, nil)
 		}
 		containers = append(containers, *c)
 	}
@@ -154,12 +157,12 @@ func convertListOfSidecars(sidecars []v1.Sidecar, initContainer *corev1.Containe
 
 // convertListOfSteps iterates through the list of steps, generates the script file name and heredoc termination string,
 // adds an entry to the init container args, sets up the step container to run the script, and sets the volume mounts.
-func convertListOfSteps(steps []v1.Step, initContainer *corev1.Container, debugConfig *v1.TaskRunDebug, namePrefix string, dumpEnvironment bool) []corev1.Container {
+func convertListOfSteps(steps []v1.Step, initContainer *corev1.Container, debugConfig *v1.TaskRunDebug, namePrefix string, taskTestSpec *v1alpha1.TaskTestSpec) []corev1.Container {
 	containers := []corev1.Container{}
 	for i, s := range steps {
 		c := steps[i].ToK8sContainer()
 		if s.Script != "" {
-			placeScriptInContainer(s.Script, getScriptFile(scriptsDir, fmt.Sprintf("%s-%d", namePrefix, i)), c, initContainer, dumpEnvironment)
+			placeScriptInContainer(s.Script, getScriptFile(scriptsDir, fmt.Sprintf("%s-%d", namePrefix, i)), c, initContainer, taskTestSpec)
 		}
 		containers = append(containers, *c)
 	}
@@ -174,7 +177,7 @@ func getScriptFile(scriptsDir, scriptName string) string {
 // placeScriptInContainer given a piece of script to be executed, placeScriptInContainer firstly modifies initContainer
 // so that it capsules the target script into scriptFile, then it modifies the container so that it can execute the scriptFile
 // in runtime.
-func placeScriptInContainer(script, scriptFile string, c *corev1.Container, initContainer *corev1.Container, dumpEnvironment bool) {
+func placeScriptInContainer(script, scriptFile string, c *corev1.Container, initContainer *corev1.Container, taskTestSpec *v1alpha1.TaskTestSpec) {
 	if script == "" {
 		return
 	}
@@ -201,19 +204,11 @@ func placeScriptInContainer(script, scriptFile string, c *corev1.Container, init
 		c.Args = args
 	} else {
 		// TODO(jlux98) add logic to only enable this when this is a step script and the TaskRun this container belongs to is controlled by a TaskTestRun that has expected values specified for the environment
-		if dumpEnvironment {
-			// 			script += fmt.Sprintf(`
-
-			// envDir="%s"
-			// envFile="${envDir}/%s"
-
-			// echo "In order to verify the correct functioning of this step the current state of all environment variables will now be dumped to ${envFile}"
-
-			// printenv > "$envFile"
-			// `, environmentDir, c.Name)
-			script += fmt.Sprintf(`
-
-envPath="%s/environment"
+		if diff := cmp.Diff(taskTestSpec, &v1alpha1.TaskTestSpec{}); diff != "" && taskTestSpec != nil {
+			if taskTestSpec.Expected.Env != nil {
+				script += fmt.Sprintf(`
+	
+envPath="%s/%s"
 
 echo "In order to verify the correct functioning of this step the current state of all environment variables will now be dumped to $envPath"
 
@@ -222,8 +217,44 @@ echo "$(printenv)" | while read -r line; do
 echo '"'"$line"'",' >> "$envPath"
 done
 echo '}},' >> "$envPath"
-`, pipeline.DefaultResultPath, c.Name)
-			c.VolumeMounts = append(c.VolumeMounts, writeEnvironmentVolumeMount)
+`, pipeline.DefaultResultPath, v1alpha1.ResultNameEnvironmentDump, c.Name)
+				c.VolumeMounts = append(c.VolumeMounts, writeEnvironmentVolumeMount)
+			}
+
+			if taskTestSpec.Expected.FileSystemContents != nil {
+				if idx := slices.IndexFunc(taskTestSpec.Expected.FileSystemContents, func(content v1alpha1.ExpectedStepFileSystemContent) bool { return content.StepName == c.Name }); idx >= 0 {
+					script += `
+echo "In order to verify the correct functioning of this step the current state of some file system objects will now be checked"
+
+
+objectsPath="`
+					testOperators := []string{}
+					for _, object := range taskTestSpec.Expected.FileSystemContents[idx].Objects {
+						var testOperator string
+						switch object.Type {
+						case v1alpha1.AnyFileType:
+							testOperator = `[ -f "` + object.Path + `" ] && echo '"` + object.Path + `": "` + v1alpha1.AnyFileType.String() + `",'`
+						case v1alpha1.AnyObjectType:
+							testOperator = `[ -e "` + object.Path + `" ] && echo '"` + object.Path + `": "` + v1alpha1.AnyObjectType.String() + `",'`
+						case v1alpha1.DirectoryType:
+							testOperator = `[ -d "` + object.Path + `" ] && echo '"` + object.Path + `": "` + v1alpha1.DirectoryType.String() + `",'`
+						case v1alpha1.None:
+							testOperator = `[! -e "` + object.Path + `" ] && echo '"` + object.Path + `": "` + v1alpha1.None.String() + `",'`
+						case v1alpha1.EmptyFileType:
+							testOperator = `[ -e "` + object.Path + `" -a ! -s "` + object.Path + `" ] && echo '"` + object.Path + `": "` + v1alpha1.EmptyFileType.String() + `",'`
+						case v1alpha1.TextFileType:
+							testOperator = `[ -f "` + object.Path + `" ] && [ -r "` + object.Path +
+								`" ] && dd if="$path" bs=1024 count=1 2>/dev/null | LC_ALL=C grep -qv '[^[:print:][:space:]]' && echo '"` + object.Path +
+								`": "` + v1alpha1.TextFileType.String() + `",' || { [ -e "` + object.Path + `" -a ! -s "` + object.Path + `" ] && echo '"` + object.Path + `": "` + v1alpha1.EmptyFileType.String() + `",'; } || { [ -e "` + object.Path + `" ] && [ ! -r "` + object.Path +
+								`" ] && echo '"` + object.Path + `": "file unreadable: consider changing its permissions to make it accessible or using type ` + v1alpha1.AnyFileType.String() + `"'; }`
+						case v1alpha1.BinaryFileType:
+						default:
+							panic(fmt.Sprintf("unexpected v1alpha1.FileSystemObjectType: %#v", object.Type))
+						}
+						testOperators = append(testOperators, testOperator)
+					}
+				}
+			}
 		}
 		// Only encode the script for linux scripts
 		// The decode-script subcommand of the entrypoint does not work under windows

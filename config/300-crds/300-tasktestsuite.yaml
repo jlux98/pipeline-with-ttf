@@ -799,4 +799,7 @@ spec:
     categories:
       - tekton
       - tekton-pipelines
+    shortNames:
+      - ts
+      - tss
   scope: Namespaced
