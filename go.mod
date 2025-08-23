@@ -38,6 +38,7 @@ require (
 
 require (
 	code.gitea.io/sdk/gitea v0.21.0
+	github.com/gabriel-vasile/mimetype v1.4.9
 	github.com/go-jose/go-jose/v3 v3.0.4
 	github.com/goccy/kpoward v0.1.0
 	github.com/google/cel-go v0.26.0
