@@ -56,6 +56,7 @@ var (
 		" Set to \"stopAndFail\" to declare a failure with a step error and stop executing the rest of the steps.")
 	stepMetadataDir        = flag.String("step_metadata_dir", "", "If specified, create directory to store the step metadata e.g. /tekton/steps/<step-name>/")
 	resultExtractionMethod = flag.String("result_from", entrypoint.ResultExtractionMethodTerminationMessage, "The method using which to extract results from tasks. Default is using the termination message.")
+	pathsToCheck           = flag.String("paths_to_check", "", "Comma separated list of paths to check for after running the script")
 )
 
 const (
@@ -149,6 +150,7 @@ func main() {
 		StepMetadataDir:        *stepMetadataDir,
 		SpireWorkloadAPI:       spireWorkloadAPI,
 		ResultExtractionMethod: *resultExtractionMethod,
+		PathsToCheck:           strings.Split(*pathsToCheck, ","),
 	}
 
 	// Copy any creds injected by the controller into the $HOME directory of the current

@@ -847,33 +847,62 @@ func schema_pkg_apis_pipeline_v1alpha1_ObservedFileSystemObject(ref common.Refer
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"want": {
+					"path": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Want describes the file system object the test expected to find at Path",
-							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.FileSystemObject"),
+							Description: "Path is the path to this file system object",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
-					"got": {
+					"wantType": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Got describes the file system object the test found at Path",
-							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.FileSystemObject"),
+							Description: "WantType describes the type of the file system object the test expected to find at Path",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
-					"diff": {
+					"gotType": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Diff describes, how Want and Got differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
+							Description: "GotType describes the type of the file system object the test found at Path",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"diffType": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DiffType describes, how WantType and GotType differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"wantContent": {
+						SchemaProps: spec.SchemaProps{
+							Description: "WantContent describes the type of the file system object the test expected to find at Path",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"gotContent": {
+						SchemaProps: spec.SchemaProps{
+							Description: "GotType describes the type of the file system object the test found at Path",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"diffContent": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DiffType describes, how WantContent and GotContent differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 				},
-				Required: []string{"want", "got"},
+				Required: []string{"path", "wantType", "gotType"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.FileSystemObject"},
 	}
 }
 
@@ -885,7 +914,15 @@ func schema_pkg_apis_pipeline_v1alpha1_ObservedOutcomes(ref common.ReferenceCall
 				Properties: map[string]spec.Schema{
 					"fileSystemObjects": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedFileSystemObject"),
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedStepFileSystemContent"),
+									},
+								},
+							},
 						},
 					},
 					"results": {
@@ -946,7 +983,7 @@ func schema_pkg_apis_pipeline_v1alpha1_ObservedOutcomes(ref common.ReferenceCall
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedFileSystemObject", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedResults", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedStepEnv", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessReason", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessStatus"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedResults", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedStepEnv", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedStepFileSystemContent", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessReason", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessStatus"},
 	}
 }
 

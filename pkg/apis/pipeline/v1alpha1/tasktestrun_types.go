@@ -227,7 +227,7 @@ type TaskTestRunStatusFields struct {
 
 type ObservedOutcomes struct {
 	// +optional
-	FileSystemObjects *ObservedFileSystemObject `json:"fileSystemObjects,omitempty"`
+	FileSystemObjects *[]ObservedStepFileSystemContent `json:"fileSystemObjects,omitempty"`
 
 	// Results contains a list of Results with both their expected and actual values
 	//
@@ -262,18 +262,39 @@ type ObservedStepFileSystemContent struct {
 }
 
 type ObservedFileSystemObject struct {
-	// Want describes the file system object the test expected to find at Path
-	Want FileSystemObject `json:"want"`
+	// Path is the path to this file system object
+	Path string `json:"path"`
 
-	// Got describes the file system object the test found at Path
-	Got FileSystemObject `json:"got"`
+	// WantType describes the type of the file system object the test expected to find at Path
+	WantType FileSystemObjectType `json:"wantType"`
 
-	// Diff describes, how Want and Got differ, using the typical
+	// GotType describes the type of the file system object the test found at Path
+	GotType FileSystemObjectType `json:"gotType"`
+
+	// DiffType describes, how WantType and GotType differ, using the typical
 	// notation for go tests (prefacing lines from want with a - and lines from
 	// got with a +)
 	//
 	// +optional
-	Diff string `json:"diff,omitempty"`
+	DiffType string `json:"diffType,omitempty"`
+
+	// WantContent describes the type of the file system object the test
+	// expected to find at Path
+	//
+	// +optional
+	WantContent string `json:"wantContent,omitempty"`
+
+	// GotType describes the type of the file system object the test found at Path
+	//
+	// +optional
+	GotContent string `json:"gotContent,omitempty"`
+
+	// DiffType describes, how WantContent and GotContent differ, using the typical
+	// notation for go tests (prefacing lines from want with a - and lines from
+	// got with a +)
+	//
+	// +optional
+	DiffContent string `json:"diffContent,omitempty"`
 }
 
 type ObservedResults struct {
@@ -447,6 +468,9 @@ func (trs *TaskTestRunStatus) MarkResourceFailed(reason TaskTestRunReason, err e
 	})
 	succeeded := trs.GetCondition(apis.ConditionSucceeded)
 	trs.CompletionTime = &succeeded.LastTransitionTime.Inner
+	if trs.CompletionTime == nil {
+		trs.CompletionTime = &metav1.Time{Time: time.Now()}
+	}
 }
 
 func GetControllingTaskTestRun(meta metav1.ObjectMeta) *metav1.OwnerReference {
@@ -474,6 +498,21 @@ func (sel StepEnvironmentList) ToMap() map[string]map[string]string {
 	result := map[string]map[string]string{}
 	for idx := range sel {
 		result[sel[idx].Step] = sel[idx].Environment
+	}
+	return result
+}
+
+type StepFileSystemList []ExpectedStepFileSystemContent
+
+func (fsl StepFileSystemList) ToMap() map[string]map[string]FileSystemObject {
+	result := map[string]map[string]FileSystemObject{}
+	for i := range fsl {
+		name := fsl[i].StepName
+		result[name] = map[string]FileSystemObject{}
+		for j := range fsl[i].Objects {
+			path := fsl[i].Objects[j].Path
+			result[name][path] = fsl[i].Objects[j]
+		}
 	}
 	return result
 }

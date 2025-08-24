@@ -229,35 +229,19 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		entrypointInitContainer(b.Images.EntrypointImage, steps, securityContextConfig, windows),
 	}
 
+	expectedValues := &v1alpha1.ExpectedOutcomes{}
 	// Convert any steps with Script to command+args.
 	// If any are found, append an init container to initialize scripts.
 	if alphaAPIEnabled {
 		if v1alpha1.IsControlledByTaskTestRun(taskRun.ObjectMeta) {
-			expectedValues := &v1alpha1.ExpectedOutcomes{}
 			expectedValuesJSON := taskRun.Annotations[v1alpha1.AnnotationKeyExpectedValuesJSON]
-			logging.FromContext(ctx).Info(`Unmarshalling the expected values from the TaskRun's annotations %s into struct %v`, expectedValuesJSON, expectedValues)
 			err := json.Unmarshal([]byte(expectedValuesJSON), expectedValues)
 			if err != nil {
 				logging.FromContext(ctx).Errorf(`There was an arror while unmarshalling the expected values from the TaskRun's annotations: %w`, err)
 				return nil, err
 			}
 			logging.FromContext(ctx).Infof(`expected values: %v`, expectedValues)
-			logging.FromContext(ctx).Infof(`The expected values from the TaskRun's annotations are: %v`, expectedValues)
-			scriptsInit, stepContainers, sidecarContainers = convertScriptsWithTaskTestSpec(b.Images.ShellImage, b.Images.ShellImageWin, steps, sidecars, taskRun.Spec.Debug, securityContextConfig, &v1alpha1.TaskTestSpec{Expected: expectedValues})
-			logging.FromContext(ctx).Infof(`appending result "testing/environment"`)
-			if expectedValues.Env != nil {
-				taskSpec.Results = append(taskSpec.Results, v1.TaskResult{
-					Name: v1alpha1.ResultNameEnvironmentDump,
-					Type: v1.ResultsTypeString,
-				})
-			}
-
-			if expectedValues.FileSystemContents != nil {
-				taskSpec.Results = append(taskSpec.Results, v1.TaskResult{
-					Name: v1alpha1.ResultNameFileSystemContents,
-					Type: v1.ResultsTypeString,
-				})
-			}
+			scriptsInit, stepContainers, sidecarContainers = convertScriptsWithExpectedValues(b.Images.ShellImage, b.Images.ShellImageWin, steps, sidecars, taskRun.Spec.Debug, securityContextConfig, expectedValues)
 		} else {
 			scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, b.Images.ShellImageWin, steps, sidecars, taskRun.Spec.Debug, securityContextConfig)
 		}
@@ -268,9 +252,6 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	if scriptsInit != nil {
 		initContainers = append(initContainers, *scriptsInit)
 		volumes = append(volumes, scriptsVolume)
-		if v1alpha1.IsControlledByTaskTestRun(taskRun.ObjectMeta) {
-			volumes = append(volumes, environmentVolume)
-		}
 	}
 	if alphaAPIEnabled && taskRun.Spec.Debug != nil && taskRun.Spec.Debug.NeedsDebug() {
 		volumes = append(volumes, debugScriptsVolume, debugInfoVolume)
@@ -296,7 +277,26 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	readyImmediately := isPodReadyImmediately(*featureFlags, taskSpec.Sidecars)
 
 	if alphaAPIEnabled {
-		stepContainers, err = orderContainers(ctx, commonExtraEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug, !readyImmediately, enableKeepPodOnCancel)
+		if (expectedValues != &v1alpha1.ExpectedOutcomes{}) {
+			if expectedValues.Env != nil {
+				taskSpec.Results = append(taskSpec.Results, v1.TaskResult{
+					Name: v1alpha1.ResultNameEnvironmentDump,
+					Type: v1.ResultsTypeString,
+				})
+			}
+
+			if expectedValues.FileSystemContents != nil {
+				taskSpec.Results = append(taskSpec.Results, v1.TaskResult{
+					Name: v1alpha1.ResultNameFileSystemContents,
+					Type: v1.ResultsTypeString,
+				})
+				stepContainers, err = orderContainersWithFileSystemContents(ctx, commonExtraEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug, !readyImmediately, enableKeepPodOnCancel, expectedValues.FileSystemContents)
+			} else {
+				stepContainers, err = orderContainers(ctx, commonExtraEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug, !readyImmediately, enableKeepPodOnCancel)
+			}
+		} else {
+			stepContainers, err = orderContainers(ctx, commonExtraEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug, !readyImmediately, enableKeepPodOnCancel)
+		}
 	} else {
 		stepContainers, err = orderContainers(ctx, commonExtraEntrypointArgs, stepContainers, &taskSpec, nil, !readyImmediately, enableKeepPodOnCancel)
 	}

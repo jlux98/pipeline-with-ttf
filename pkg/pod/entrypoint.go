@@ -23,12 +23,14 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -125,6 +127,17 @@ var (
 // method, using entrypoint_lookup.go.
 // Additionally, Step timeouts are added as entrypoint flag.
 func orderContainers(ctx context.Context, commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1.TaskSpec, breakpointConfig *v1.TaskRunDebug, waitForReadyAnnotation, enableKeepPodOnCancel bool) ([]corev1.Container, error) {
+	return orderContainersWithFileSystemContents(ctx, commonExtraEntrypointArgs, steps, taskSpec, breakpointConfig, waitForReadyAnnotation, enableKeepPodOnCancel, nil)
+}
+
+// orderContainers returns the specified steps, modified so that they are
+// executed in order by overriding the entrypoint binary.
+//
+// Containers must have Command specified; if the user didn't specify a
+// command, we must have fetched the image's ENTRYPOINT before calling this
+// method, using entrypoint_lookup.go.
+// Additionally, Step timeouts are added as entrypoint flag.
+func orderContainersWithFileSystemContents(ctx context.Context, commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1.TaskSpec, breakpointConfig *v1.TaskRunDebug, waitForReadyAnnotation, enableKeepPodOnCancel bool, fsContents []v1alpha1.ExpectedStepFileSystemContent) ([]corev1.Container, error) {
 	if len(steps) == 0 {
 		return nil, errors.New("no steps specified")
 	}
@@ -149,6 +162,18 @@ func orderContainers(ctx context.Context, commonExtraEntrypointArgs []string, st
 			"-termination_path", terminationPath,
 			"-step_metadata_dir", filepath.Join(RunDir, idx, "status"),
 		)
+
+		if fsContents != nil {
+			if stepIdx := slices.IndexFunc(fsContents, func(e v1alpha1.ExpectedStepFileSystemContent) bool {
+				return e.StepName == s.Name || e.StepName == "step-"+s.Name
+			}); stepIdx >= 0 {
+				var pathsToCheck []string
+				for _, o := range fsContents[stepIdx].Objects {
+					pathsToCheck = append(pathsToCheck, o.Path)
+				}
+				argsForEntrypoint = append(argsForEntrypoint, "-paths_to_check", strings.Join(pathsToCheck, ","))
+			}
+		}
 
 		argsForEntrypoint = append(argsForEntrypoint, commonExtraEntrypointArgs...)
 		if taskSpec != nil {

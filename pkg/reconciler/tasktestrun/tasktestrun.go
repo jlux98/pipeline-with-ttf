@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"maps"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -66,6 +66,11 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, ttr *v1alpha1.TaskTestRu
 
 	before := ttr.Status.GetCondition(apis.ConditionSucceeded)
 
+	err := c.prepare(ctx, ttr)
+	if err != nil {
+		return fmt.Errorf("could not prepare reconciliation of task test run %s: %w", ttr.Name, err)
+	}
+
 	if !ttr.HasStarted() {
 		ttr.Status.InitializeConditions()
 		// In case node time was not synchronized, when controller has been scheduled to other nodes.
@@ -106,11 +111,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, ttr *v1alpha1.TaskTestRu
 		message := fmt.Sprintf("TaskRun %q failed to finish within %q", ttr.Name, ttr.GetTimeout(ctx))
 		err := c.failTaskRun(ctx, ttr, v1alpha1.TaskTestRunReasonTimedOut, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, ttr, before, err)
-	}
-
-	err := c.prepare(ctx, ttr)
-	if err != nil {
-		return fmt.Errorf("could not prepare reconciliation of task test run %s: %w", ttr.Name, err)
 	}
 
 	if err := c.reconcile(ctx, ttr, nil); err != nil {
@@ -240,9 +240,10 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 		if err != nil {
 			if errors.Is(err, apiserver.ErrReferencedObjectValidationFailed) {
 				ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunReasonFailedValidation, err)
+				events.Emit(ctx, nil, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
+				return nil
 			}
 			logger.Errorf("Failed to create task run for taskTestRun %q: %v", ttr.Name, err)
-			events.Emit(ctx, nil, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
 			return err
 		}
 	}
@@ -438,7 +439,7 @@ func checkActualOutcomesAgainstExpectations(ctx context.Context, ttr *v1alpha1.T
 			if ttr.Status.Outcomes.StepEnvs == nil {
 				ttr.Status.Outcomes.StepEnvs = &[]v1alpha1.ObservedStepEnv{}
 			}
-			for step := range maps.Keys(stepEnvironmentsMap) {
+			for step := range stepEnvironmentsMap {
 				vars := []v1alpha1.ObservedEnvVar{}
 				for _, expectedEnvVar := range ttr.Status.TaskTestSpec.Expected.Env {
 					observation := v1alpha1.ObservedEnvVar{
@@ -457,6 +458,78 @@ func checkActualOutcomesAgainstExpectations(ctx context.Context, ttr *v1alpha1.T
 					StepName: step,
 					Env:      vars,
 				}))
+			}
+		}
+
+		if ttr.Status.TaskTestSpec.Expected.FileSystemContents != nil {
+			logger.Infof("boom: Now checking file system observations for TTR %s", ttr.Name)
+			idx := slices.IndexFunc(taskRun.Results, func(result v1.TaskRunResult) bool {
+				return result.Name == v1alpha1.ResultNameFileSystemContents
+			})
+			if idx < 0 {
+				err := errors.New("could not find result with file system observations")
+				ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunReasonFailedValidation, err)
+				return err
+			}
+			fileSystemObservationsJSON := taskRun.Results[idx].Value.StringVal
+			fileSystemObservations := &v1alpha1.StepFileSystemList{}
+			err := json.Unmarshal([]byte(fileSystemObservationsJSON), fileSystemObservations)
+			if err != nil {
+				logger.Errorf("problem while unmarshalling file system observations: %v", err)
+				events.Emit(ctx, nil, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
+				return err
+			}
+			logging.FromContext(ctx).Info(fileSystemObservations)
+			fileSystemObservationsMap := fileSystemObservations.ToMap()
+			if ttr.Status.Outcomes.FileSystemObjects == nil {
+				ttr.Status.Outcomes.FileSystemObjects = &[]v1alpha1.ObservedStepFileSystemContent{}
+			}
+			for step := range fileSystemObservationsMap {
+				pattern := regexp.MustCompile(`/tekton/run/(\d)/status`)
+				stepIndex, _ := strconv.Atoi(pattern.ReplaceAllString(step, `$1`))
+				var stepName string
+				if taskRun != nil {
+					stepName = taskRun.TaskSpec.Steps[stepIndex].Name
+				}
+
+				stepFileSystemContent := v1alpha1.ObservedStepFileSystemContent{
+					StepName: stepName,
+					Objects:  []v1alpha1.ObservedFileSystemObject{},
+				}
+				for i, expectedFileSystemContent := range ttr.Status.TaskTestSpec.Expected.FileSystemContents {
+					if i == stepIndex {
+						for _, object := range expectedFileSystemContent.Objects {
+							observation := v1alpha1.ObservedFileSystemObject{
+								Path:        object.Path,
+								WantType:    object.Type,
+								GotType:     fileSystemObservationsMap[step][object.Path].Type,
+								WantContent: object.Content,
+								GotContent:  fileSystemObservationsMap[step][object.Path].Content,
+							}
+
+							observation.DiffType = cmp.Diff(observation.WantType, observation.GotType)
+							if observation.DiffType != "" {
+								expectationsMet = false
+								diffs += fmt.Sprintf(`file system object %q type in step %s: `, observation.Path, stepName) + observation.DiffType
+							}
+
+							// we can assume, that the empty string here means,
+							// that no content was specified, since if the user
+							// wanted to check, if a file was empty, they would
+							// use the EmptyFile type instead.
+							if observation.WantContent != "" {
+								observation.DiffContent = cmp.Diff(observation.WantContent, observation.GotContent)
+								if observation.DiffContent != "" {
+									expectationsMet = false
+									diffs += fmt.Sprintf(`file system object %q content in step %s: `, observation.Path, stepName) + observation.DiffContent
+								}
+							}
+
+							stepFileSystemContent.Objects = append(stepFileSystemContent.Objects, observation)
+						}
+					}
+				}
+				ttr.Status.Outcomes.FileSystemObjects = ptr.To(append(*ttr.Status.Outcomes.FileSystemObjects, stepFileSystemContent))
 			}
 		}
 
@@ -483,6 +556,7 @@ func (c *Reconciler) dereferenceTaskTestRef(ctx context.Context, ttr *v1alpha1.T
 }
 
 func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRun, _ *resources.ResolvedTask) (*v1.TaskRun, error) {
+	ttr.SetDefaults(ctx)
 	logger := logging.FromContext(ctx)
 	var taskRun *v1.TaskRun
 	var taskName string
@@ -499,13 +573,36 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 
 	logger.Infof(`Task successfully dereferenced: %v`, *task)
 
-	if ttr.Status.TaskTestSpec.Expected != nil && ttr.Status.TaskTestSpec.Expected.Results != nil {
-		declaredResults := task.Spec.Results
-		for _, expectedResult := range ttr.Status.TaskTestSpec.Expected.Results {
-			if !slices.ContainsFunc(declaredResults, func(result v1.TaskResult) bool {
-				return result.Name == expectedResult.Name
-			}) {
-				return nil, fmt.Errorf("%w: Result %s expected but not declared by task \"%s\"", apiserver.ErrReferencedObjectValidationFailed, expectedResult.Name, task.Name)
+	if ttr.Status.TaskTestSpec.Expected != nil {
+		expected := ttr.Status.TaskTestSpec.Expected
+		if expected.Results != nil {
+			declaredResults := task.Spec.Results
+			for i, expectedResult := range ttr.Status.TaskTestSpec.Expected.Results {
+				if !slices.ContainsFunc(declaredResults, func(result v1.TaskResult) bool {
+					return result.Name == expectedResult.Name
+				}) {
+					return nil, fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed, apis.ErrInvalidValue(expectedResult.Name, fmt.Sprintf("status.taskTestSpec.expected.results[%d].name", i), fmt.Sprintf(`task %q has no Result named %q`, task.Name, expectedResult.Name)))
+				}
+			}
+		}
+		if ttr.Status.TaskTestSpec.Expected.StepEnvs != nil {
+			declaredSteps := task.Spec.Steps
+			for i, stepEnv := range ttr.Status.TaskTestSpec.Expected.StepEnvs {
+				if !slices.ContainsFunc(declaredSteps, func(step v1.Step) bool {
+					return step.Name == stepEnv.StepName
+				}) {
+					return nil, fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed, apis.ErrInvalidValue(stepEnv.StepName, fmt.Sprintf("status.taskTestSpec.expected.stepEnvs[%d].stepName", i), fmt.Sprintf(`task %q has no Step named %q`, task.Name, stepEnv.StepName)))
+				}
+			}
+		}
+		if ttr.Status.TaskTestSpec.Expected.FileSystemContents != nil {
+			declaredSteps := task.Spec.Steps
+			for i, stepFileSystem := range ttr.Status.TaskTestSpec.Expected.FileSystemContents {
+				if !slices.ContainsFunc(declaredSteps, func(step v1.Step) bool {
+					return step.Name == stepFileSystem.StepName
+				}) {
+					return nil, fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed, apis.ErrInvalidValue(stepFileSystem.StepName, fmt.Sprintf("status.taskTestSpec.expected.fileSystemContents[%d].stepName", i), fmt.Sprintf(`task %q has no Step named %q`, task.Name, stepFileSystem.StepName)))
+				}
 			}
 		}
 	}

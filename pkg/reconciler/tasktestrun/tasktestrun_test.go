@@ -2,6 +2,7 @@ package tasktestrun
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -13,13 +14,13 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	_ "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/tasktestrun/fake"
-	"github.com/tektoncd/pipeline/pkg/reconciler/apiserver"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	"github.com/tektoncd/pipeline/test/parse"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -189,6 +190,15 @@ status:
   - name: current-time
     type: string
     value: 15:17:59
+  - name: Testing|Environment
+    type: string
+    value: |
+      {"step": "hello-step", "environment": {
+      "HOME=/root",
+      }}
+  - name: Testing|FileSystemContent
+    type: string
+    value: '[{"stepName":"/tekton/run/0/status","objects":[{"path":"/tekton/results/current-date","type":"TextFile","content":"bar"},{"path":"/tekton/results/current-time","type":"TextFile","content":"bar"}]}]'
   startTime: "2025-08-15T15:17:55Z"
   steps:
   - container: step-hello-step
@@ -224,15 +234,20 @@ status:
 
 // Valid TaskTestRun manifests
 const (
-	ttrManifestNewTaskRun = `metadata:
+	ttrManifestNewTaskRun = "" +
+		`
+metadata:
   name: ttr-newly-created
   namespace: foo
 spec:
   taskTestSpec:
     taskRef:
-      name: task`
+      name: task
+    expected:
+      successStatus: true`
 
-	ttrManifestExistingTaskRun = `metadata:
+	ttrManifestExistingTaskRun = `
+metadata:
   name: ttr-existing-taskrun
 
   namespace: foo
@@ -247,7 +262,8 @@ status:
     reason: Started
     status: Unknown`
 
-	ttrManifestCompletedTaskRunWithTestSpec = `metadata:
+	ttrManifestCompletedTaskRunWithTestSpec = `
+metadata:
   name: ttr-completed-task-run
   namespace: foo
 spec:
@@ -262,6 +278,15 @@ spec:
       - name: current-time
         type: string
         value: "15:17:59"
+      env:
+      - name: HOME
+        value: "/root"
+      fileSystemContents:
+      - stepName: hello-step
+        objects:
+        - path: /tekton/results/current-date
+          type: TextFile
+          content: bar
       successStatus: true
       successReason: Succeeded
 status:
@@ -271,7 +296,8 @@ status:
     reason: Started
     status: Unknown`
 
-	ttrManifestCompletedTaskRunWithTestSpecUnexpectedResults = `metadata:
+	ttrManifestCompletedTaskRunWithTestSpecUnexpectedResults = `
+metadata:
   name: ttr-completed-task-run-unexpected-results
   namespace: foo
 spec:
@@ -286,6 +312,17 @@ spec:
       - name: current-time
         type: string
         value: "05:17:59"
+      env:
+      - name: HOME
+        value: "/groot"
+      fileSystemContents:
+      - stepName: hello-step
+        objects:
+        - path: /tekton/results/current-date
+          type: Directory
+        - path: /tekton/results/current-time
+          type: TextFile
+          content: foo
       successStatus: False
       successReason: "TaskRunCancelled"
 status:
@@ -295,7 +332,8 @@ status:
     reason: Started
     status: Unknown`
 
-	ttrManifestCompletedTaskRunWithTestRef = `metadata:
+	ttrManifestCompletedTaskRunWithTestRef = `
+metadata:
   name: ttr-completed-task-run-referenced-test
   namespace: foo
 spec:
@@ -311,17 +349,20 @@ status:
 
 // Invalid TaskTestRun manifests
 const (
-	ttrManifestAbsentTaskTest = `metadata:
+	ttrManifestAbsentTaskTest = `
+metadata:
   name: invalid-ttr-absent-task-test
   namespace: foo
 spec:
   taskTestRef:
     name: absent-task-test`
 
-	ttrManifestExpectsUndeclaredResult = `metadata:
+	ttrManifestExpectsUndeclaredResult = `
+metadata:
   name: invalid-ttr-expects-undeclared-result
   namespace: foo
 spec:
+  timeout: 1h
   taskTestSpec:
     taskRef:
       name: task
@@ -334,9 +375,55 @@ spec:
         type: string
         value: "15:17:59"
       successStatus: true
-      successReason: Succeeded`
+      successReason: Succeeded
+status:
+  startTime: %s`
 
-	ttrManifestAbsentTask = `metadata:
+	ttrManifestExpectsUndeclaredEnvStep = `
+metadata:
+  name: invalid-ttr-expects-undeclared-env-step
+  namespace: foo
+spec:
+  timeout: 1h
+  taskTestSpec:
+    taskRef:
+      name: task
+    expected:
+      stepEnvs:
+      - stepName: goodbye-step
+        env:
+        - name: HOME
+          value: /root
+      successStatus: true
+      successReason: Succeeded
+status:
+  startTime: %s`
+
+	ttrManifestExpectsUndeclaredFileSystemStep = `
+metadata:
+  name: invalid-ttr-expects-undeclared-fs-step
+  namespace: foo
+spec:
+  timeout: 1h
+  taskTestSpec:
+    taskRef:
+      name: task
+    expected:
+      fileSystemContents:
+      - stepName: goodbye-step
+        objects:
+        - path: /tekton/results/current-date
+          type: Directory
+        - path: /tekton/results/current-time
+          type: TextFile
+          content: foo
+      successStatus: true
+      successReason: Succeeded
+status:
+  startTime: %s`
+
+	ttrManifestAbsentTask = `
+metadata:
   name: invalid-ttr-absent-task
   namespace: foo
 spec:
@@ -346,6 +433,7 @@ spec:
 )
 
 func TestReconciler_ValidateReconcileKind(t *testing.T) {
+	// instanciate custom resources
 	task := parse.MustParseV1Task(t, tManifest)
 	taskHelloTask := parse.MustParseV1Task(t, tManifestHelloTask)
 	taskTestRun := parse.MustParseTaskTestRun(t, ttrManifestNewTaskRun)
@@ -354,15 +442,23 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 	taskTestRunCompletedTaskRunWithTestRef := parse.MustParseTaskTestRun(t, ttrManifestCompletedTaskRunWithTestRef)
 	ttrCompletedTaskRunWithTestSpecUnexpectedResults := parse.MustParseTaskTestRun(t, ttrManifestCompletedTaskRunWithTestSpecUnexpectedResults)
 	taskRunAlreadyStarted := parse.MustParseV1TaskRun(t, trManifestAlreadyStarted)
-	taskRunCompleted := parse.MustParseV1TaskRun(t, trManifestCompleted)
-	taskRunCompleted2 := parse.MustParseV1TaskRun(t, strings.ReplaceAll(trManifestCompleted, `ttr-completed-task-run`, `ttr-completed-task-run-referenced-test`))
-	taskRunCompleted3 := parse.MustParseV1TaskRun(t, strings.ReplaceAll(strings.ReplaceAll(trManifestCompleted, `ttr-completed-task-run`, `ttr-completed-task-run-unexpected-results`), `  - name: current-time
+	taskRunCompletedWithTestSpec := parse.MustParseV1TaskRun(t, trManifestCompleted)
+	taskRunCompletedWithTestRef := parse.MustParseV1TaskRun(t, strings.ReplaceAll(trManifestCompleted, `ttr-completed-task-run`, `ttr-completed-task-run-referenced-test`))
+	taskRunCompletedUnexpectedResults := parse.MustParseV1TaskRun(t, strings.ReplaceAll(strings.ReplaceAll(trManifestCompleted, `ttr-completed-task-run`, `ttr-completed-task-run-unexpected-results`), `  - name: current-time
     type: string
     value: 15:17:59
 `, ""))
-
 	taskTest := parse.MustParseTaskTest(t, ttManifest)
 
+	// load custom resources into data for the fake cluster
+	data := test.Data{
+		Tasks:        []*v1.Task{task, taskHelloTask},
+		TaskRuns:     []*v1.TaskRun{taskRunAlreadyStarted, taskRunCompletedWithTestSpec, taskRunCompletedWithTestRef, taskRunCompletedUnexpectedResults},
+		TaskTests:    []*v1alpha1.TaskTest{taskTest},
+		TaskTestRuns: []*v1alpha1.TaskTestRun{taskTestRun, taskTestRunExistingTaskRun, taskTestRunCompletedTaskRunWithTestSpec, taskTestRunCompletedTaskRunWithTestRef, ttrCompletedTaskRunWithTestSpecUnexpectedResults},
+	}
+
+	// declare some diffs that will be used in multiple places
 	diffCurrentDate := cmp.Diff(&v1.ResultValue{
 		Type:      "string",
 		StringVal: "2015-08-15",
@@ -370,18 +466,13 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 		Type:      "string",
 		StringVal: "2025-08-15",
 	})
-
 	diffCurrentTime := cmp.Diff(&v1.ResultValue{
 		Type:      "string",
 		StringVal: "05:17:59",
 	}, &v1.ResultValue{})
-
-	data := test.Data{
-		Tasks:        []*v1.Task{task, taskHelloTask},
-		TaskRuns:     []*v1.TaskRun{taskRunAlreadyStarted, taskRunCompleted, taskRunCompleted2, taskRunCompleted3},
-		TaskTests:    []*v1alpha1.TaskTest{taskTest},
-		TaskTestRuns: []*v1alpha1.TaskTestRun{taskTestRun, taskTestRunExistingTaskRun, taskTestRunCompletedTaskRunWithTestSpec, taskTestRunCompletedTaskRunWithTestRef, ttrCompletedTaskRunWithTestSpecUnexpectedResults},
-	}
+	diffEnv := cmp.Diff("/groot", "/root")
+	diffType := cmp.Diff(v1alpha1.DirectoryType, v1alpha1.TextFileType)
+	diffContent := cmp.Diff("foo", "bar")
 
 	type tc struct {
 		ttr                *v1alpha1.TaskTestRun
@@ -400,11 +491,18 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 					Reason: "Started",
 				}}},
 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
-					TaskRunName:  ptr.To("ttr-newly-created-run"),
-					TaskTestSpec: &v1alpha1.TaskTestSpec{TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"}},
+					TaskRunName: ptr.To("ttr-newly-created-run"),
+					TaskTestSpec: &v1alpha1.TaskTestSpec{
+						TaskRef:  &v1alpha1.SimpleTaskRef{Name: "task"},
+						Expected: &v1alpha1.ExpectedOutcomes{SuccessStatus: ptr.To(true)},
+					},
 				},
 			},
-			wantTr:        parse.MustParseV1TaskRun(t, trManifestJustStarted),
+			wantTr: parse.MustParseV1TaskRun(t, strings.ReplaceAll(trManifestJustStarted, `metadata:
+  name`, `metadata:
+  annotations:
+    ExpectedValuesJSON: '{"successStatus":true}'
+  name`)),
 			wantStartTime: true,
 		},
 		"run has already started": {
@@ -455,6 +553,18 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 									},
 								},
 							},
+							Env: []corev1.EnvVar{{
+								Name:  "HOME",
+								Value: "/root",
+							}},
+							FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
+								StepName: "hello-step",
+								Objects: []v1alpha1.FileSystemObject{{
+									Path:    "/tekton/results/current-date",
+									Type:    "TextFile",
+									Content: "bar",
+								}},
+							}},
 							SuccessStatus: ptr.To(true),
 							SuccessReason: ptr.To(v1.TaskRunReasonSuccessful),
 						},
@@ -484,6 +594,26 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 								},
 							},
 						},
+						StepEnvs: &[]v1alpha1.ObservedStepEnv{{
+							StepName: "hello-step",
+							Env: []v1alpha1.ObservedEnvVar{{
+								Name: "HOME",
+								Want: "/root",
+								Got:  "/root",
+							}},
+						}},
+						FileSystemObjects: ptr.To([]v1alpha1.ObservedStepFileSystemContent{
+							{
+								StepName: "hello-step",
+								Objects: []v1alpha1.ObservedFileSystemObject{
+									{
+										Path:        "/tekton/results/current-date",
+										WantType:    "TextFile",
+										GotType:     "TextFile",
+										WantContent: "bar",
+										GotContent:  "bar",
+									}}},
+						}),
 						SuccessStatus: &v1alpha1.ObservedSuccessStatus{
 							Want:           true,
 							Got:            true,
@@ -497,7 +627,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 					},
 				},
 			},
-			wantTr:             taskRunCompleted,
+			wantTr:             taskRunCompletedWithTestSpec,
 			wantStartTime:      true,
 			wantCompletionTime: true,
 		},
@@ -576,7 +706,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 					},
 				},
 			},
-			wantTr:             taskRunCompleted2,
+			wantTr:             taskRunCompletedWithTestRef,
 			wantStartTime:      true,
 			wantCompletionTime: true,
 		},
@@ -591,7 +721,10 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 						"Result current-date: " + diffCurrentDate +
 						"Result current-time: " + diffCurrentTime +
 						"observed success status did not match expectation\n" +
-						"SuccessReason: " + cmp.Diff(v1.TaskRunReason("TaskRunCancelled"), v1.TaskRunReason("Succeeded")),
+						"SuccessReason: " + cmp.Diff(v1.TaskRunReason("TaskRunCancelled"), v1.TaskRunReason("Succeeded")) +
+						"envVar HOME in step hello-step: " + diffEnv +
+						"file system object \"/tekton/results/current-date\" type in step hello-step: " + diffType +
+						"file system object \"/tekton/results/current-time\" content in step hello-step: " + diffContent,
 				}}},
 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
 					TaskRunName: ptr.To("ttr-completed-task-run-unexpected-results-run"),
@@ -616,6 +749,21 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 									},
 								},
 							},
+							Env: []corev1.EnvVar{{
+								Name:  "HOME",
+								Value: "/groot",
+							}},
+							FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
+								StepName: "hello-step",
+								Objects: []v1alpha1.FileSystemObject{{
+									Path: "/tekton/results/current-date",
+									Type: "Directory",
+								}, {
+									Path:    "/tekton/results/current-time",
+									Type:    "TextFile",
+									Content: "foo",
+								}},
+							}},
 							SuccessStatus: ptr.To(false),
 							SuccessReason: ptr.To(v1.TaskRunReason("TaskRunCancelled")),
 						},
@@ -644,6 +792,32 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 								Diff: diffCurrentTime,
 							},
 						},
+						StepEnvs: &[]v1alpha1.ObservedStepEnv{{
+							StepName: "hello-step",
+							Env: []v1alpha1.ObservedEnvVar{{
+								Name: "HOME",
+								Want: "/groot",
+								Got:  "/root",
+								Diff: diffEnv,
+							}},
+						}},
+						FileSystemObjects: &[]v1alpha1.ObservedStepFileSystemContent{{
+							StepName: "hello-step",
+							Objects: []v1alpha1.ObservedFileSystemObject{{
+								Path:       "/tekton/results/current-date",
+								WantType:   v1alpha1.DirectoryType,
+								GotType:    v1alpha1.TextFileType,
+								DiffType:   diffType,
+								GotContent: "bar",
+							}, {
+								Path:        "/tekton/results/current-time",
+								WantType:    v1alpha1.TextFileType,
+								GotType:     v1alpha1.TextFileType,
+								WantContent: "foo",
+								GotContent:  "bar",
+								DiffContent: diffContent,
+							}},
+						}},
 						SuccessStatus: &v1alpha1.ObservedSuccessStatus{
 							Want:           false,
 							Got:            true,
@@ -657,7 +831,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 					},
 				},
 			},
-			wantTr:             taskRunCompleted3,
+			wantTr:             taskRunCompletedUnexpectedResults,
 			wantStartTime:      true,
 			wantCompletionTime: true,
 		},
@@ -672,7 +846,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 			// gotErr := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tt.ttr))
 
 			// if gotErr != nil {
-			// 	t.Errorf("Go unexpected error: %v", gotErr)
+			//     t.Errorf("Go unexpected error: %v", gotErr)
 			// }
 
 			ttr, err := clients.Pipeline.TektonV1alpha1().TaskTestRuns(tt.ttr.Namespace).Get(testAssets.Ctx, tt.ttr.Name, metav1.GetOptions{})
@@ -733,16 +907,34 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 }
 
 func TestReconciler_InvalidateReconcileKind(t *testing.T) {
+	trCompletedNoEnvDump := parse.MustParseV1TaskRun(t, strings.ReplaceAll(trManifestCompleted, `  - name: Testing|Environment
+    type: string
+    value: |
+      {"step": "hello-step", "environment": {
+      "HOME=/root",
+      }}
+  - name: Testing|FileSystemContent
+    type: string
+    value: '[{"stepName":"/tekton/run/0/status","objects":[{"path":"/tekton/results/current-date","type":"TextFile","content":"bar"},{"path":"/tekton/results/current-time","type":"TextFile","content":"bar"}]}]'
+`, ""))
 	ttrAbsentTaskTest := parse.MustParseTaskTestRun(t, ttrManifestAbsentTaskTest)
 	ttrAbsentTask := parse.MustParseTaskTestRun(t, ttrManifestAbsentTask)
-	ttrExpectsUndeclaredResult := parse.MustParseTaskTestRun(t, ttrManifestExpectsUndeclaredResult)
+	ttrExpectsUndeclaredResult := parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrManifestExpectsUndeclaredResult, testClock.Now().Format(time.RFC3339)))
+	ttrExpectsUndeclaredEnvStep := parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrManifestExpectsUndeclaredEnvStep, testClock.Now().Format(time.RFC3339)))
+	ttrExpectsUndeclaredFileSystemStep := parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrManifestExpectsUndeclaredFileSystemStep, testClock.Now().Format(time.RFC3339)))
+	ttrCompletedWithTestSpec := parse.MustParseTaskTestRun(t, ttrManifestCompletedTaskRunWithTestSpec)
+	ttrCompletedWithTestSpecNoExpectedEnv := ttrCompletedWithTestSpec.DeepCopy()
+	ttrCompletedWithTestSpecNoExpectedEnv.Name += "-no-expected-env"
+	ttrCompletedWithTestSpecNoExpectedEnv.Spec.TaskTestSpec.Expected.Env = nil
+	ttrCompletedWithTestSpecNoExpectedEnv.Status.TaskRunName = ptr.To("ttr-completed-task-run-run")
+
 	task := parse.MustParseV1Task(t, tManifest)
 
 	data := test.Data{
 		Tasks:        []*v1.Task{task},
-		TaskRuns:     []*v1.TaskRun{},
+		TaskRuns:     []*v1.TaskRun{trCompletedNoEnvDump},
 		TaskTests:    []*v1alpha1.TaskTest{},
-		TaskTestRuns: []*v1alpha1.TaskTestRun{ttrAbsentTaskTest, ttrExpectsUndeclaredResult, ttrAbsentTask},
+		TaskTestRuns: []*v1alpha1.TaskTestRun{ttrAbsentTaskTest, ttrExpectsUndeclaredResult, ttrAbsentTask, ttrCompletedWithTestSpec, ttrCompletedWithTestSpecNoExpectedEnv, ttrExpectsUndeclaredFileSystemStep, ttrExpectsUndeclaredEnvStep},
 	}
 
 	type tc struct {
@@ -753,14 +945,7 @@ func TestReconciler_InvalidateReconcileKind(t *testing.T) {
 	}
 	tests := map[string]tc{
 		"ttr references absent task test": {
-			ttr: ttrAbsentTaskTest,
-			wantTtrStatus: &v1alpha1.TaskTestRunStatus{
-				Status: duckv1.Status{Conditions: duckv1.Conditions{{
-					Type:   "Succeeded",
-					Status: "Unknown",
-					Reason: "Started",
-				}}},
-			},
+			ttr:     ttrAbsentTaskTest,
 			wantErr: fmt.Errorf("could not prepare reconciliation of task test run invalid-ttr-absent-task-test: %w", apierrors.NewNotFound(schema.GroupResource{Group: "tekton.dev", Resource: "tasktests"}, "absent-task-test")),
 		},
 		"ttr expects result not declared in task": {
@@ -769,10 +954,11 @@ func TestReconciler_InvalidateReconcileKind(t *testing.T) {
 				Status: duckv1.Status{
 					Conditions: duckv1.Conditions{
 						{
-							Type:    "Succeeded",
-							Status:  "False",
-							Reason:  "TaskTestRunValidationFailed",
-							Message: `validation failed for referenced object: Result current-date expected but not declared by task "task"`,
+							Type:   "Succeeded",
+							Status: "False",
+							Reason: "TaskTestRunValidationFailed",
+							Message: `validation failed for referenced object: invalid value: current-date: status.taskTestSpec.expected.results[0].name
+task "task" has no Result named "current-date"`,
 						},
 					},
 				},
@@ -798,7 +984,80 @@ func TestReconciler_InvalidateReconcileKind(t *testing.T) {
 					},
 				},
 			},
-			wantErr:            fmt.Errorf(`%w: Result current-date expected but not declared by task "task"`, apiserver.ErrReferencedObjectValidationFailed),
+			wantErr: controller.NewRequeueAfter(
+				ttrExpectsUndeclaredResult.GetTimeout(context.TODO())),
+			wantCompletionTime: true,
+		},
+		"ttr expects step for stepEnv not declared in task": {
+			ttr: ttrExpectsUndeclaredEnvStep,
+			wantTtrStatus: &v1alpha1.TaskTestRunStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{
+						{
+							Type:   "Succeeded",
+							Status: "False",
+							Reason: "TaskTestRunValidationFailed",
+							Message: `validation failed for referenced object: invalid value: goodbye-step: status.taskTestSpec.expected.stepEnvs[0].stepName
+task "task" has no Step named "goodbye-step"`,
+						},
+					},
+				},
+				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
+					TaskTestSpec: &v1alpha1.TaskTestSpec{
+						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
+						Expected: &v1alpha1.ExpectedOutcomes{
+							StepEnvs: []v1alpha1.StepEnv{{
+								StepName: "goodbye-step",
+								Env: []corev1.EnvVar{{
+									Name:  "HOME",
+									Value: "/root",
+								}},
+							}},
+							SuccessStatus: ptr.To(true),
+							SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
+						},
+					},
+				},
+			},
+			wantErr:            controller.NewRequeueAfter(ttrExpectsUndeclaredEnvStep.GetTimeout(context.TODO())),
+			wantCompletionTime: true,
+		},
+		"ttr expects file system step not declared in task": {
+			ttr: ttrExpectsUndeclaredFileSystemStep,
+			wantTtrStatus: &v1alpha1.TaskTestRunStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{
+						{
+							Type:   "Succeeded",
+							Status: "False",
+							Reason: "TaskTestRunValidationFailed",
+							Message: `validation failed for referenced object: invalid value: goodbye-step: status.taskTestSpec.expected.fileSystemContents[0].stepName
+task "task" has no Step named "goodbye-step"`,
+						},
+					},
+				},
+				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
+					TaskTestSpec: &v1alpha1.TaskTestSpec{
+						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
+						Expected: &v1alpha1.ExpectedOutcomes{
+							FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
+								StepName: "goodbye-step",
+								Objects: []v1alpha1.FileSystemObject{{
+									Path: "/tekton/results/current-date",
+									Type: "Directory",
+								}, {
+									Path:    "/tekton/results/current-time",
+									Type:    "TextFile",
+									Content: "foo",
+								}},
+							}},
+							SuccessStatus: ptr.To(true),
+							SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
+						},
+					},
+				},
+			},
+			wantErr:            controller.NewRequeueAfter(ttrExpectsUndeclaredEnvStep.GetTimeout(context.TODO())),
 			wantCompletionTime: true,
 		},
 		"tt references absent task": {
@@ -815,6 +1074,180 @@ func TestReconciler_InvalidateReconcileKind(t *testing.T) {
 				},
 			},
 		},
+		"ttr expects env value but no dump in tr": {
+			ttr:     ttrCompletedWithTestSpec,
+			wantErr: errors.New("could not find environment dump for stepEnv"),
+			wantTtrStatus: &v1alpha1.TaskTestRunStatus{
+				Status: duckv1.Status{Conditions: duckv1.Conditions{{
+					Type:    "Succeeded",
+					Status:  "False",
+					Reason:  "TaskTestRunValidationFailed",
+					Message: "could not find environment dump for stepEnv",
+				}}},
+				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
+					TaskRunName: ptr.To("ttr-completed-task-run-run"),
+					TaskTestSpec: &v1alpha1.TaskTestSpec{
+						TaskRef: &v1alpha1.SimpleTaskRef{Name: "hello-task"},
+						Expected: &v1alpha1.ExpectedOutcomes{
+							Results: []v1.TaskResult{
+								{
+									Name: "current-date",
+									Type: "string",
+									Value: &v1.ResultValue{
+										StringVal: "2025-08-15",
+										Type:      "string",
+									},
+								},
+								{
+									Name: "current-time",
+									Type: "string",
+									Value: &v1.ResultValue{
+										StringVal: "15:17:59",
+										Type:      "string",
+									},
+								},
+							},
+							Env: []corev1.EnvVar{{
+								Name:  "HOME",
+								Value: "/root",
+							}},
+							FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
+								StepName: "hello-step",
+								Objects: []v1alpha1.FileSystemObject{{
+									Path:    "/tekton/results/current-date",
+									Type:    "TextFile",
+									Content: "bar",
+								}},
+							}},
+							SuccessStatus: ptr.To(true),
+							SuccessReason: ptr.To(v1.TaskRunReasonSuccessful),
+						},
+					},
+					Outcomes: &v1alpha1.ObservedOutcomes{
+						Results: &[]v1alpha1.ObservedResults{
+							{
+								Name: "current-date",
+								Want: &v1.ResultValue{
+									Type:      "string",
+									StringVal: "2025-08-15",
+								},
+								Got: &v1.ResultValue{
+									Type:      "string",
+									StringVal: "2025-08-15",
+								},
+							},
+							{
+								Name: "current-time",
+								Want: &v1.ResultValue{
+									Type:      "string",
+									StringVal: "15:17:59",
+								},
+								Got: &v1.ResultValue{
+									Type:      "string",
+									StringVal: "15:17:59",
+								},
+							},
+						},
+						SuccessStatus: &v1alpha1.ObservedSuccessStatus{
+							Want:           true,
+							Got:            true,
+							WantMatchesGot: true,
+						},
+						SuccessReason: &v1alpha1.ObservedSuccessReason{
+							Want: v1.TaskRunReasonSuccessful,
+							Got:  v1.TaskRunReasonSuccessful,
+							Diff: "",
+						},
+					},
+				},
+			},
+			wantCompletionTime: true,
+		},
+		"ttr expects fs observations but no observations in tr": {
+			ttr:     ttrCompletedWithTestSpecNoExpectedEnv,
+			wantErr: errors.New("could not find result with file system observations"),
+			wantTtrStatus: &v1alpha1.TaskTestRunStatus{
+				Status: duckv1.Status{Conditions: duckv1.Conditions{{
+					Type:    "Succeeded",
+					Status:  "False",
+					Reason:  "TaskTestRunValidationFailed",
+					Message: "could not find result with file system observations",
+				}}},
+				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
+					TaskRunName: ptr.To("ttr-completed-task-run-run"),
+					TaskTestSpec: &v1alpha1.TaskTestSpec{
+						TaskRef: &v1alpha1.SimpleTaskRef{Name: "hello-task"},
+						Expected: &v1alpha1.ExpectedOutcomes{
+							Results: []v1.TaskResult{
+								{
+									Name: "current-date",
+									Type: "string",
+									Value: &v1.ResultValue{
+										StringVal: "2025-08-15",
+										Type:      "string",
+									},
+								},
+								{
+									Name: "current-time",
+									Type: "string",
+									Value: &v1.ResultValue{
+										StringVal: "15:17:59",
+										Type:      "string",
+									},
+								},
+							},
+							FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
+								StepName: "hello-step",
+								Objects: []v1alpha1.FileSystemObject{{
+									Path:    "/tekton/results/current-date",
+									Type:    "TextFile",
+									Content: "bar",
+								}},
+							}},
+							SuccessStatus: ptr.To(true),
+							SuccessReason: ptr.To(v1.TaskRunReasonSuccessful),
+						},
+					},
+					Outcomes: &v1alpha1.ObservedOutcomes{
+						Results: &[]v1alpha1.ObservedResults{
+							{
+								Name: "current-date",
+								Want: &v1.ResultValue{
+									Type:      "string",
+									StringVal: "2025-08-15",
+								},
+								Got: &v1.ResultValue{
+									Type:      "string",
+									StringVal: "2025-08-15",
+								},
+							},
+							{
+								Name: "current-time",
+								Want: &v1.ResultValue{
+									Type:      "string",
+									StringVal: "15:17:59",
+								},
+								Got: &v1.ResultValue{
+									Type:      "string",
+									StringVal: "15:17:59",
+								},
+							},
+						},
+						SuccessStatus: &v1alpha1.ObservedSuccessStatus{
+							Want:           true,
+							Got:            true,
+							WantMatchesGot: true,
+						},
+						SuccessReason: &v1alpha1.ObservedSuccessReason{
+							Want: v1.TaskRunReasonSuccessful,
+							Got:  v1.TaskRunReasonSuccessful,
+							Diff: "",
+						},
+					},
+				},
+			},
+			wantCompletionTime: true,
+		},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -829,11 +1262,17 @@ func TestReconciler_InvalidateReconcileKind(t *testing.T) {
 			gotErr := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tt.ttr))
 
 			if gotErr == nil {
-				t.Errorf("expected error but got none")
-			}
-
-			if d := cmp.Diff(tt.wantErr.Error(), gotErr.Error()); d != "" {
-				t.Errorf("Didn't get expected error: %v", diff.PrintWantGot(d))
+				if tt.wantErr != nil {
+					t.Errorf("expected error but got none")
+				}
+			} else {
+				if tt.wantErr == nil {
+					t.Errorf("unexpected error: %v", gotErr)
+				} else {
+					if d := cmp.Diff(tt.wantErr.Error(), gotErr.Error()); d != "" {
+						t.Errorf("Didn't get expected error: %v", diff.PrintWantGot(d))
+					}
+				}
 			}
 
 			ttr, err := clients.Pipeline.TektonV1alpha1().TaskTestRuns(tt.ttr.Namespace).Get(testAssets.Ctx, tt.ttr.Name, metav1.GetOptions{})
@@ -849,6 +1288,7 @@ func TestReconciler_InvalidateReconcileKind(t *testing.T) {
 			}
 
 			if d := cmp.Diff(*tt.wantTtrStatus, ttr.Status,
+				ignoreTaskRunStatus,
 				ignoreResourceVersion,
 				ignoreLastTransitionTime,
 				ignoreStartTimeTaskTestRun,

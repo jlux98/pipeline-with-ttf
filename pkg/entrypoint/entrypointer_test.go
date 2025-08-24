@@ -34,6 +34,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1/types"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/result"
@@ -2130,6 +2131,122 @@ func TestApplyStepArtifactSubstitutionsEnv(t *testing.T) {
 				t.Fatalf("env doesn't match %s", diff.PrintWantGot(d))
 			}
 		})
+	}
+}
+
+func TestCheckType(t *testing.T) {
+	tests := []struct {
+		name        string
+		fso         v1alpha1.FileSystemObject
+		expectError bool
+	}{
+		// normal cases
+		{
+			name: "nonexistent path",
+			fso: v1alpha1.FileSystemObject{
+				Path: "/path/does/not/exist",
+				Type: v1alpha1.None,
+			},
+		},
+		{
+			name: "directory",
+			fso: v1alpha1.FileSystemObject{
+				Type: v1alpha1.DirectoryType,
+			},
+		},
+		{
+			name: "empty file",
+			fso: v1alpha1.FileSystemObject{
+				Type: v1alpha1.EmptyFileType,
+			},
+		},
+		{
+			name: "text file",
+			fso: v1alpha1.FileSystemObject{
+				Type:    v1alpha1.TextFileType,
+				Content: "Hello world",
+			},
+		},
+		{
+			name: "binary file",
+			fso: v1alpha1.FileSystemObject{
+				Type: v1alpha1.BinaryFileType,
+			},
+		},
+
+		// error cases
+		{
+			name: "invalid path triggers Stat error",
+			fso: v1alpha1.FileSystemObject{
+				Type: v1alpha1.FileSystemObjectType("statError"),
+			},
+			expectError: true,
+		},
+		{
+			name: "permission denied file",
+			fso: v1alpha1.FileSystemObject{
+				Type: v1alpha1.AnyFileType,
+			},
+			expectError: false, // checkType handles permission errors internally
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.fso.Path == "" {
+				tt.fso.Path = setupTestPath(t, tt.fso)
+			}
+
+			got, err := checkType(tt.fso.Path)
+
+			if (err != nil) != tt.expectError {
+				t.Fatalf("expected error, got: %v", got)
+			}
+
+			if diff := cmp.Diff(tt.fso, got); diff != "" && !tt.expectError {
+				t.Errorf("FileSystemObject mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func setupTestPath(t *testing.T, fso v1alpha1.FileSystemObject) string {
+	t.Helper()
+
+	switch fso.Type {
+	case v1alpha1.None:
+		return "/path/does/not/exist"
+	case v1alpha1.DirectoryType:
+		return t.TempDir()
+	case v1alpha1.EmptyFileType:
+		f, _ := os.CreateTemp("", "emptyfile")
+		f.Close()
+		return f.Name()
+	case v1alpha1.TextFileType:
+		f, _ := os.CreateTemp("", "file")
+		if fso.Content != "" {
+			_, _ = f.WriteString(fso.Content)
+		}
+		f.Close()
+		return f.Name()
+	case v1alpha1.BinaryFileType:
+		f, _ := os.CreateTemp("", "file")
+		_, _ = f.WriteString("\000, \001, \002")
+		f.Close()
+		return f.Name()
+	case v1alpha1.AnyFileType:
+		f, _ := os.CreateTemp("", "permfile")
+		f.Close()
+		_ = os.Chmod(f.Name(), 0000) // remove all permissions
+		return f.Name()
+
+	// special error-inducing cases
+	case v1alpha1.FileSystemObjectType("statError"):
+		return string([]byte{0}) // invalid path to provoke os.Stat error
+
+	default:
+		t.Fatalf("unsupported FileSystemObjectType for test: %v", fso)
+		return ""
 	}
 }
 

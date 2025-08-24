@@ -1458,59 +1458,58 @@ spec:
                   type: object
                   properties:
                     fileSystemObjects:
-                      type: object
-                      required:
-                        - got
-                        - want
-                      properties:
-                        diff:
-                          description: |-
-                            Diff describes, how Want and Got differ, using the typical
-                            notation for go tests (prefacing lines from want with a - and lines from
-                            got with a +)
-                          type: string
-                        got:
-                          description: Got describes the file system object the test found at Path
-                          type: object
-                          required:
-                            - path
-                          properties:
-                            content:
-                              description: |-
-                                The content of the file system object. Setting this value is only
-                                acceptable, if the field Type is set to 'TextFile'.
-                                N2H: it might be useful to be able to populate the contents field using
-                                values from a ConfigMap or Secret.
-                              type: string
-                            path:
-                              description: Path is the path to this file system object
-                              type: string
-                            type:
-                              description: |-
-                                Type is the type of this file system object. The values, which are
-                                acceptable for this field, are defined in the enum FileSystemObjectType
-                              type: string
-                        want:
-                          description: Want describes the file system object the test expected to find at Path
-                          type: object
-                          required:
-                            - path
-                          properties:
-                            content:
-                              description: |-
-                                The content of the file system object. Setting this value is only
-                                acceptable, if the field Type is set to 'TextFile'.
-                                N2H: it might be useful to be able to populate the contents field using
-                                values from a ConfigMap or Secret.
-                              type: string
-                            path:
-                              description: Path is the path to this file system object
-                              type: string
-                            type:
-                              description: |-
-                                Type is the type of this file system object. The values, which are
-                                acceptable for this field, are defined in the enum FileSystemObjectType
-                              type: string
+                      type: array
+                      items:
+                        type: object
+                        required:
+                          - stepName
+                        properties:
+                          objects:
+                            description: |-
+                              Objects is a list of Observed File System Objects (currently possible:
+                              text files, binary files and empty directories), which were expected to be
+                              in the container's file system after the step had finished executing
+                            type: array
+                            items:
+                              type: object
+                              required:
+                                - gotType
+                                - path
+                                - wantType
+                              properties:
+                                diffContent:
+                                  description: |-
+                                    DiffType describes, how WantContent and GotContent differ, using the typical
+                                    notation for go tests (prefacing lines from want with a - and lines from
+                                    got with a +)
+                                  type: string
+                                diffType:
+                                  description: |-
+                                    DiffType describes, how WantType and GotType differ, using the typical
+                                    notation for go tests (prefacing lines from want with a - and lines from
+                                    got with a +)
+                                  type: string
+                                gotContent:
+                                  description: GotType describes the type of the file system object the test found at Path
+                                  type: string
+                                gotType:
+                                  description: GotType describes the type of the file system object the test found at Path
+                                  type: string
+                                path:
+                                  description: Path is the path to this file system object
+                                  type: string
+                                wantContent:
+                                  description: |-
+                                    WantContent describes the type of the file system object the test
+                                    expected to find at Path
+                                  type: string
+                                wantType:
+                                  description: WantType describes the type of the file system object the test expected to find at Path
+                                  type: string
+                            x-kubernetes-list-type: atomic
+                          stepName:
+                            description: StepName is the name of the step, whose file system was checked.
+                            type: string
                     results:
                       description: Results contains a list of Results with both their expected and actual values
                       type: array

@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
 )
@@ -53,6 +54,31 @@ func TestTask_SetDefaults(t *testing.T) {
 							Path: "/my/path",
 							Type: "AnyObjectType",
 						}},
+					}},
+				},
+			},
+		},
+	}, {
+		name: "expected result type set to string",
+		in: &v1alpha1.TaskTest{
+			Spec: v1alpha1.TaskTestSpec{
+				Expected: &v1alpha1.ExpectedOutcomes{
+					Results: []v1.TaskResult{{
+						Name:  "name",
+						Value: &v1.ResultValue{StringVal: "value"},
+					}},
+				},
+			},
+		},
+		want: &v1alpha1.TaskTest{
+			Spec: v1alpha1.TaskTestSpec{
+				Expected: &v1alpha1.ExpectedOutcomes{
+					Results: []v1.TaskResult{{
+						Name: "name",
+						Type: "string",
+						Value: &v1.ResultValue{
+							StringVal: "value",
+							Type:      "string"},
 					}},
 				},
 			},

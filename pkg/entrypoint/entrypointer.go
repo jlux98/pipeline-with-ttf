@@ -33,9 +33,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/google/cel-go/cel"
 	"github.com/tektoncd/pipeline/internal/artifactref"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1/types"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/entrypoint/pipeline"
 	"github.com/tektoncd/pipeline/pkg/internal/resultref"
 	"github.com/tektoncd/pipeline/pkg/result"
@@ -175,9 +177,9 @@ type Entrypointer struct {
 	// ArtifactsDirectory is the directory to find artifacts, defaults to pipeline.ArtifactsDir
 	ArtifactsDirectory string
 
-	// DumpEnvironment bool specifies, whether the environment of the container
-	// should be dumped as an internal result after the container has finished executing
-	DumpEnvironment bool
+	// PathsToCheck is the list of paths which the program checks after it is
+	// done executing the script.
+	PathsToCheck []string
 }
 
 // Waiter encapsulates waiting for files to exist.
@@ -317,6 +319,10 @@ func (e Entrypointer) Go() error {
 	default:
 		// for a step without continue on error and any error, write a post file with .err
 		e.WritePostFile(e.PostFile, err)
+	}
+
+	if len(e.PathsToCheck) > 0 {
+		e.WriteFileSystemObservations()
 	}
 
 	// strings.Split(..) with an empty string returns an array that contains one element, an empty string.
@@ -477,45 +483,6 @@ func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string,
 	return nil
 }
 
-// func (e Entrypointer) readEnvironmentsFromDisk(ctx context.Context, resultDir string, resultType result.ResultType) error {
-// 	output := map[string]string{}
-// 	results := e.Results
-// 	if resultType == result.StepResultType {
-// 		results = e.StepResults
-// 	}
-// 	for _, resultFile := range results {
-// 		if resultFile == "" {
-// 			continue
-// 		}
-// 		fileContents, err := os.ReadFile(filepath.Join(resultDir, resultFile))
-// 		if os.IsNotExist(err) {
-// 			continue
-// 		} else if err != nil {
-// 			return err
-// 		}
-// 		// if the file doesn't exist, ignore it
-// 		output = append(output, result.RunResult{
-// 			Key:        resultFile,
-// 			Value:      string(fileContents),
-// 			ResultType: resultType,
-// 		})
-// 	}
-
-// 	signed, err := signResults(ctx, e.SpireWorkloadAPI, output)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	output = append(output, signed...)
-
-// 	// push output to termination path
-// 	if e.ResultExtractionMethod == ResultExtractionMethodTerminationMessage && len(output) != 0 {
-// 		if err := termination.WriteMessage(e.TerminationPath, output); err != nil {
-// 			return err
-// 		}
-// 	}
-// 	return nil
-// }
-
 // BreakpointExitCode reads the post file and returns the exit code it contains
 func (e Entrypointer) BreakpointExitCode(breakpointExitPostFile string) (int, error) {
 	exitCode, err := os.ReadFile(breakpointExitPostFile)
@@ -536,6 +503,36 @@ func (e Entrypointer) WritePostFile(postFile string, err error) {
 	if postFile != "" {
 		e.PostWriter.Write(postFile, "")
 	}
+}
+
+func (e Entrypointer) WriteFileSystemObservations() error {
+	filePath := filepath.Join(pipeline.DefaultResultPath, v1alpha1.ResultNameFileSystemContents)
+
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			data = []byte{}
+		} else {
+			return (err)
+		}
+	}
+
+	var existingObjects []v1alpha1.ExpectedStepFileSystemContent
+	if err := json.Unmarshal(data, &existingObjects); err != nil {
+		return (err)
+	}
+
+	existingObjects = append(existingObjects, e.getFileSystemObservations())
+	updatedData, err := json.Marshal(existingObjects)
+	if err != nil {
+		return (err)
+	}
+
+	if err := os.WriteFile(filePath, updatedData, 0644); err != nil {
+		return (err)
+	}
+
+	return nil
 }
 
 // WriteExitCodeFile write the exitCodeFile
@@ -936,4 +933,77 @@ func replaceValue(regex *regexp.Regexp, src string, stepDir string, getValue fun
 		t = strings.ReplaceAll(t, m[0], v)
 	}
 	return t, nil
+}
+
+func (e Entrypointer) getFileSystemObservations() v1alpha1.ExpectedStepFileSystemContent {
+	stepName := e.StepMetadataDir
+
+	objects := []v1alpha1.FileSystemObject{}
+	for _, path := range e.PathsToCheck {
+		fso, _ := checkType(path)
+		objects = append(objects, fso)
+	}
+
+	res := v1alpha1.ExpectedStepFileSystemContent{
+		StepName: stepName,
+		Objects:  objects,
+	}
+
+	return res
+}
+
+func checkType(path string) (v1alpha1.FileSystemObject, error) {
+	info, err := os.Stat(path)
+	res := v1alpha1.FileSystemObject{Path: path}
+	if os.IsNotExist(err) {
+		res.Type = v1alpha1.None
+		return res, nil
+	}
+	if err != nil {
+		return res, fmt.Errorf(`object at path %s could not be described: %w`, path, err)
+	}
+
+	if info.IsDir() {
+		res.Type = v1alpha1.DirectoryType
+		return res, nil
+	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		if errors.Is(err, os.ErrPermission) {
+			if info.Mode().IsRegular() {
+				res.Type = v1alpha1.AnyFileType
+				return res, nil
+			}
+			res.Type = v1alpha1.AnyObjectType
+			return res, nil
+		}
+		return res, fmt.Errorf(`file at path "%s" could not be opened: %w`, path, err)
+	}
+	defer file.Close()
+
+	// Check if file is empty
+	if info.Size() == 0 {
+		res.Type = v1alpha1.EmptyFileType
+		return res, nil
+	}
+
+	// Use mimetype to detect the type from the file content
+	mime, err := mimetype.DetectReader(file)
+	if err != nil {
+		return res, fmt.Errorf(`mime type of file at path "%s" could not be detected: %w`, path, err)
+	}
+
+	if strings.HasPrefix(mime.String(), "text/") {
+		fileContent, err := os.ReadFile(path)
+		if err != nil {
+			return res, fmt.Errorf(`file at path "%s" could not be read: %w`, path, err)
+		}
+		res.Content = string(fileContent)
+		res.Type = v1alpha1.TextFileType
+		return res, nil
+	}
+
+	res.Type = v1alpha1.BinaryFileType
+	return res, nil
 }

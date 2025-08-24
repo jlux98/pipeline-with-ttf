@@ -499,8 +499,8 @@ func TestTaskTest_Valid(t *testing.T) {
 								Path: "/object/path0",
 								Type: "TextFile",
 								Content: `
-							content
-							`,
+content
+`,
 							}, {
 								Path:    "/object/path1",
 								Type:    "TextFile",

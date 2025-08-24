@@ -135,8 +135,8 @@ func extractPathsFromFileSystemObjects(list []FileSystemObject) []string {
 // test and a list of environment variable declarations to be set for this step.
 // TODO(jlux98) find a better name for this type
 type StepEnv struct {
-	// Name is the name of the step for whom these environment variables will be set.
-	Name string `json:"name"`
+	// StepName is the name of the step for whom these environment variables will be set.
+	StepName string `json:"stepName"`
 
 	// List of environment variables to set for this step.
 	//

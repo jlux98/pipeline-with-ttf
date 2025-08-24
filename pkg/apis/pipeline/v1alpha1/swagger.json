@@ -421,23 +421,41 @@
     "v1alpha1.ObservedFileSystemObject": {
       "type": "object",
       "required": [
-        "want",
-        "got"
+        "path",
+        "wantType",
+        "gotType"
       ],
       "properties": {
-        "diff": {
-          "description": "Diff describes, how Want and Got differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
+        "diffContent": {
+          "description": "DiffType describes, how WantContent and GotContent differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
           "type": "string"
         },
-        "got": {
-          "description": "Got describes the file system object the test found at Path",
-          "default": {},
-          "$ref": "#/definitions/v1alpha1.FileSystemObject"
+        "diffType": {
+          "description": "DiffType describes, how WantType and GotType differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
+          "type": "string"
         },
-        "want": {
-          "description": "Want describes the file system object the test expected to find at Path",
-          "default": {},
-          "$ref": "#/definitions/v1alpha1.FileSystemObject"
+        "gotContent": {
+          "description": "GotType describes the type of the file system object the test found at Path",
+          "type": "string"
+        },
+        "gotType": {
+          "description": "GotType describes the type of the file system object the test found at Path",
+          "type": "string",
+          "default": ""
+        },
+        "path": {
+          "description": "Path is the path to this file system object",
+          "type": "string",
+          "default": ""
+        },
+        "wantContent": {
+          "description": "WantContent describes the type of the file system object the test expected to find at Path",
+          "type": "string"
+        },
+        "wantType": {
+          "description": "WantType describes the type of the file system object the test expected to find at Path",
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -445,7 +463,11 @@
       "type": "object",
       "properties": {
         "fileSystemObjects": {
-          "$ref": "#/definitions/v1alpha1.ObservedFileSystemObject"
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.ObservedStepFileSystemContent"
+          }
         },
         "results": {
           "description": "Results contains a list of Results with both their expected and actual values",

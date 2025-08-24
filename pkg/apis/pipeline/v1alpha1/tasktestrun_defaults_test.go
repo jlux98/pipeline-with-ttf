@@ -30,33 +30,41 @@ import (
 func TestTaskTestRunSpec_SetDefaults(t *testing.T) {
 	cases := []struct {
 		desc string
-		trs  *v1alpha1.TaskTestRunSpec
-		want *v1alpha1.TaskTestRunSpec
+		trs  *v1alpha1.TaskTestRun
+		want *v1alpha1.TaskTestRun
 	}{{
 		desc: "timeout is empty",
-		trs: &v1alpha1.TaskTestRunSpec{
-			TaskTestRef:         &v1alpha1.TaskTestRef{Name: "task"},
-			Timeout:             nil,
-			AllTriesMustSucceed: ptr.To(false),
+		trs: &v1alpha1.TaskTestRun{
+			Spec: v1alpha1.TaskTestRunSpec{
+				TaskTestRef:         &v1alpha1.TaskTestRef{Name: "task"},
+				Timeout:             nil,
+				AllTriesMustSucceed: ptr.To(false),
+			},
 		},
-		want: &v1alpha1.TaskTestRunSpec{
-			TaskTestRef:         &v1alpha1.TaskTestRef{Name: "task"},
-			Timeout:             &metav1.Duration{Duration: 60 * time.Minute},
-			AllTriesMustSucceed: ptr.To(false),
-			Retries:             0,
+		want: &v1alpha1.TaskTestRun{
+			Spec: v1alpha1.TaskTestRunSpec{
+				TaskTestRef:         &v1alpha1.TaskTestRef{Name: "task"},
+				Timeout:             &metav1.Duration{Duration: 60 * time.Minute},
+				AllTriesMustSucceed: ptr.To(false),
+				Retries:             0,
+			},
 		},
 	}, {
 		desc: "allRetriesMustSucceed is empty",
-		trs: &v1alpha1.TaskTestRunSpec{
-			TaskTestRef:         &v1alpha1.TaskTestRef{Name: "task"},
-			Timeout:             &metav1.Duration{Duration: 500 * time.Millisecond},
-			AllTriesMustSucceed: nil,
+		trs: &v1alpha1.TaskTestRun{
+			Spec: v1alpha1.TaskTestRunSpec{
+				TaskTestRef:         &v1alpha1.TaskTestRef{Name: "task"},
+				Timeout:             &metav1.Duration{Duration: 500 * time.Millisecond},
+				AllTriesMustSucceed: nil,
+			},
 		},
-		want: &v1alpha1.TaskTestRunSpec{
-			TaskTestRef:         &v1alpha1.TaskTestRef{Name: "task"},
-			Timeout:             &metav1.Duration{Duration: 500 * time.Millisecond},
-			AllTriesMustSucceed: ptr.To(false),
-			Retries:             0,
+		want: &v1alpha1.TaskTestRun{
+			Spec: v1alpha1.TaskTestRunSpec{
+				TaskTestRef:         &v1alpha1.TaskTestRef{Name: "task"},
+				Timeout:             &metav1.Duration{Duration: 500 * time.Millisecond},
+				AllTriesMustSucceed: ptr.To(false),
+				Retries:             0,
+			},
 		},
 	}}
 	for _, tc := range cases {

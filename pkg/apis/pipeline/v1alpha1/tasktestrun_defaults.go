@@ -23,6 +23,10 @@ func (trs *TaskTestRunSpec) SetDefaults(ctx context.Context) {
 		trs.Timeout = &metav1.Duration{Duration: time.Duration(cfg.Defaults.DefaultTimeoutMinutes) * time.Minute}
 	}
 
+	if trs.TaskTestSpec != nil {
+		trs.TaskTestSpec.SetDefaults(ctx)
+	}
+
 	if trs.AllTriesMustSucceed == nil {
 		trs.AllTriesMustSucceed = ptr.To(false)
 	}
