@@ -2219,23 +2219,23 @@ func setupTestPath(t *testing.T, fso v1alpha1.FileSystemObject) string {
 	case v1alpha1.DirectoryType:
 		return t.TempDir()
 	case v1alpha1.EmptyFileType:
-		f, _ := os.CreateTemp("", "emptyfile")
+		f, _ := os.CreateTemp(t.TempDir(), "emptyfile")
 		f.Close()
 		return f.Name()
 	case v1alpha1.TextFileType:
-		f, _ := os.CreateTemp("", "file")
+		f, _ := os.CreateTemp(t.TempDir(), "file")
 		if fso.Content != "" {
 			_, _ = f.WriteString(fso.Content)
 		}
 		f.Close()
 		return f.Name()
 	case v1alpha1.BinaryFileType:
-		f, _ := os.CreateTemp("", "file")
+		f, _ := os.CreateTemp(t.TempDir(), "file")
 		_, _ = f.WriteString("\000, \001, \002")
 		f.Close()
 		return f.Name()
 	case v1alpha1.AnyFileType:
-		f, _ := os.CreateTemp("", "permfile")
+		f, _ := os.CreateTemp(t.TempDir(), "permfile")
 		f.Close()
 		_ = os.Chmod(f.Name(), 0000) // remove all permissions
 		return f.Name()
@@ -2243,6 +2243,10 @@ func setupTestPath(t *testing.T, fso v1alpha1.FileSystemObject) string {
 	// special error-inducing cases
 	case v1alpha1.FileSystemObjectType("statError"):
 		return string([]byte{0}) // invalid path to provoke os.Stat error
+
+	case v1alpha1.AnyObjectType:
+		t.Fatalf("unsupported FileSystemObjectType for test: %v", fso)
+		return ""
 
 	default:
 		t.Fatalf("unsupported FileSystemObjectType for test: %v", fso)

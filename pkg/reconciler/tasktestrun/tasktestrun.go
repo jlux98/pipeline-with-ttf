@@ -268,10 +268,24 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 			logger.Infof("boom: Now setting Completion time for TTR %s", ttr.Name)
 			ttr.Status.CompletionTime = &metav1.Time{Time: c.Clock.Now()}
 		}
-		if err := checkActualOutcomesAgainstExpectations(ctx, ttr, &taskRun.Status); err != nil {
-			events.Emit(ctx, nil, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
-			return err
+
+		resultErr, expectationsMet, diffs := checkActualOutcomesAgainstExpectations(&ttr.Status, &taskRun.Status)
+
+		// set status and emit event
+		beforeCondition := ttr.Status.GetCondition(apis.ConditionSucceeded)
+		if resultErr != nil {
+			resultErr = fmt.Errorf("error occurred while checking expectations: %w", resultErr)
+			ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunReasonFailedValidation, resultErr)
+		} else {
+			if expectationsMet {
+				ttr.Status.MarkSuccessful()
+			} else {
+				resultErr = errors.New("not all expectations were met:\n" + diffs)
+				ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunUnexpectatedOutcomes, resultErr)
+			}
 		}
+		events.Emit(ctx, beforeCondition, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
+		return resultErr
 	}
 
 	logger.Infof("Successfully reconciled tasktestrun %s/%s with status: %#v", ttr.Name, ttr.Namespace, ttr.Status.GetCondition(apis.ConditionSucceeded))
@@ -335,216 +349,73 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 // 	return err
 // }
 
-func checkActualOutcomesAgainstExpectations(ctx context.Context, ttr *v1alpha1.TaskTestRun, taskRun *v1.TaskRunStatus) error {
-	logger := logging.FromContext(ctx)
-	var err error
-	logger.Infof("boom: Status.TaskTestSpec.Expected == %v and Status.GetCondition(apis.ConditionSucceeded).IsUnknown() == %v for TTR %s", ttr.Status.TaskTestSpec.Expected, ttr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown(), ttr.Name)
-	if ttr.Status.TaskTestSpec.Expected != nil && ttr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
-		logger.Infof("boom: Now checking outcomes for TTR %s", ttr.Name)
-		ttr.Status.Outcomes = &v1alpha1.ObservedOutcomes{}
-		expectationsMet := true
-		diffs := ""
-
-		// check results
-		if ttr.Status.TaskTestSpec.Expected.Results != nil && ttr.Status.Outcomes.Results == nil {
-			logger.Infof("boom: Now checking results for TTR %s", ttr.Name)
-			ttr.Status.CompletionTime = taskRun.CompletionTime
-			taskResults := taskRun.Results
-			ttr.Status.Outcomes.Results = &[]v1alpha1.ObservedResults{}
-
-			for _, expectedResult := range ttr.Status.TaskTestSpec.Expected.Results {
-				var gotValue *v1.ResultValue
-				i := slices.IndexFunc(taskResults, func(actualResult v1.TaskRunResult) bool {
-					return actualResult.Name == expectedResult.Name
-				})
-				if i == -1 {
-					gotValue = &v1.ResultValue{}
-				} else {
-					gotValue = &taskResults[i].Value
-				}
-				diff := cmp.Diff(expectedResult.Value, gotValue)
-				ttr.Status.Outcomes.Results = ptr.To(append(*ttr.Status.Outcomes.Results, v1alpha1.ObservedResults{
-					Name: expectedResult.Name,
-					Want: expectedResult.Value,
-					Got:  gotValue,
-					Diff: diff,
-				}))
-				if diff != "" {
-					expectationsMet = false
-					diffs += fmt.Sprintf(`Result %s: `, expectedResult.Name) + diff
-				}
-			}
-		}
+func checkActualOutcomesAgainstExpectations(ttrs *v1alpha1.TaskTestRunStatus, trs *v1.TaskRunStatus) (error, bool, string) {
+	expectationsMet := true
+	diffs := ""
+	var resultErr error = nil
+	if ttrs.TaskTestSpec.Expected != nil && ttrs.GetCondition(apis.ConditionSucceeded).IsUnknown() {
+		ttrs.Outcomes = &v1alpha1.ObservedOutcomes{}
 
 		// check success status
-		if ttr.Status.TaskTestSpec.Expected.SuccessStatus != nil {
-			logger.Infof("boom: Now checking success status for TTR %s", ttr.Name)
-			ttr.Status.Outcomes.SuccessStatus = &v1alpha1.ObservedSuccessStatus{
-				Want: *ttr.Status.TaskTestSpec.Expected.SuccessStatus,
-				Got:  taskRun.GetCondition(apis.ConditionSucceeded).IsTrue(),
+		if ttrs.TaskTestSpec.Expected.SuccessStatus != nil {
+			ttrs.Outcomes.SuccessStatus = &v1alpha1.ObservedSuccessStatus{
+				Want: *ttrs.TaskTestSpec.Expected.SuccessStatus,
+				Got:  trs.GetCondition(apis.ConditionSucceeded).IsTrue(),
 			}
-			ttr.Status.Outcomes.SuccessStatus.WantMatchesGot = ttr.Status.Outcomes.SuccessStatus.Want == ttr.Status.Outcomes.SuccessStatus.Got
+			ttrs.Outcomes.SuccessStatus.WantMatchesGot = ttrs.Outcomes.SuccessStatus.Want == ttrs.Outcomes.SuccessStatus.Got
 
-			if !ttr.Status.Outcomes.SuccessStatus.WantMatchesGot {
+			if !ttrs.Outcomes.SuccessStatus.WantMatchesGot {
 				expectationsMet = false
 				diffs += "observed success status did not match expectation\n"
 			}
 		}
 
 		// check success reason
-		if ttr.Status.TaskTestSpec.Expected.SuccessReason != nil {
-			logger.Infof("boom: Now checking success reason for TTR %s", ttr.Name)
-			ttr.Status.Outcomes.SuccessReason = &v1alpha1.ObservedSuccessReason{
-				Want: *ttr.Status.TaskTestSpec.Expected.SuccessReason,
-				Got:  v1.TaskRunReason(taskRun.Conditions[0].Reason),
+		if ttrs.TaskTestSpec.Expected.SuccessReason != nil {
+			ttrs.Outcomes.SuccessReason = &v1alpha1.ObservedSuccessReason{
+				Want: *ttrs.TaskTestSpec.Expected.SuccessReason,
+				Got:  v1.TaskRunReason(trs.Conditions[0].Reason),
 			}
-			diff := cmp.Diff(ttr.Status.Outcomes.SuccessReason.Want, ttr.Status.Outcomes.SuccessReason.Got)
-			ttr.Status.Outcomes.SuccessReason.Diff = diff
+			ttrs.Outcomes.SuccessReason.Diff = cmp.Diff(ttrs.Outcomes.SuccessReason.Want, ttrs.Outcomes.SuccessReason.Got)
 
-			if ttr.Status.Outcomes.SuccessReason.Diff != "" {
+			if ttrs.Outcomes.SuccessReason.Diff != "" {
 				expectationsMet = false
-				diffs += "SuccessReason: " + diff
+				diffs += "SuccessReason: " + ttrs.Outcomes.SuccessReason.Diff
+			}
+		}
+
+		// check results
+		if ttrs.TaskTestSpec.Expected.Results != nil && ttrs.Outcomes.Results == nil {
+			if err := checkExpectationsForResults(ttrs, trs, &expectationsMet, &diffs); err != nil {
+				resultErr = fmt.Errorf(`error while checking the expectations for results: %w`, err)
 			}
 		}
 
 		// check environment variables
-		if ttr.Status.TaskTestSpec.Expected.Env != nil {
-			logger.Infof("boom: Now checking environment variables for TTR %s", ttr.Name)
-			idx := slices.IndexFunc(taskRun.Results, func(result v1.TaskRunResult) bool {
-				return result.Name == v1alpha1.ResultNameEnvironmentDump
-			})
-			if idx < 0 {
-				err := errors.New("could not find environment dump for stepEnv")
-				ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunReasonFailedValidation, err)
-				return err
-			}
-
-			environments := taskRun.Results[idx].Value.StringVal
-			pattern := regexp.MustCompile(`(".+?)=(.+",
-)`)
-			// environments = strings.ReplaceAll("["+environments+"]", "=", `":"`)
-			environments = pattern.ReplaceAllString("["+environments+"]", `$1":"$2`)
-			environments = strings.ReplaceAll(environments, ",\n}", "}")
-			environments = strings.ReplaceAll(environments, ",\n]", "]")
-			logging.FromContext(ctx).Info(environments)
-
-			var stepEnvironments v1alpha1.StepEnvironmentList
-			err := json.Unmarshal([]byte(environments), &stepEnvironments)
-			if err != nil {
-				logger.Errorf("problem while unmarshalling stepEnvironments: %v", err)
-				events.Emit(ctx, nil, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
-				return err
-			}
-			stepEnvironmentsMap := stepEnvironments.ToMap()
-			if ttr.Status.Outcomes.StepEnvs == nil {
-				ttr.Status.Outcomes.StepEnvs = &[]v1alpha1.ObservedStepEnv{}
-			}
-			for step := range stepEnvironmentsMap {
-				vars := []v1alpha1.ObservedEnvVar{}
-				for _, expectedEnvVar := range ttr.Status.TaskTestSpec.Expected.Env {
-					observation := v1alpha1.ObservedEnvVar{
-						Name: expectedEnvVar.Name,
-						Want: expectedEnvVar.Value,
-						Got:  stepEnvironmentsMap[step][expectedEnvVar.Name],
-					}
-					observation.Diff = cmp.Diff(observation.Want, observation.Got)
-					if observation.Diff != "" {
-						expectationsMet = false
-						diffs += fmt.Sprintf(`envVar %s in step %s: `, expectedEnvVar.Name, step) + observation.Diff
-					}
-					vars = append(vars, observation)
+		if ttrs.TaskTestSpec.Expected.Env != nil {
+			if err := checkExpectationsForEnv(ttrs, trs, &expectationsMet, &diffs); err != nil {
+				err = fmt.Errorf(`error while checking the expectations for env: %w`, err)
+				if resultErr == nil {
+					resultErr = err
+				} else {
+					resultErr = fmt.Errorf("%w\n%w", resultErr, err)
 				}
-				ttr.Status.Outcomes.StepEnvs = ptr.To(append(*ttr.Status.Outcomes.StepEnvs, v1alpha1.ObservedStepEnv{
-					StepName: step,
-					Env:      vars,
-				}))
 			}
 		}
 
-		if ttr.Status.TaskTestSpec.Expected.FileSystemContents != nil {
-			logger.Infof("boom: Now checking file system observations for TTR %s", ttr.Name)
-			idx := slices.IndexFunc(taskRun.Results, func(result v1.TaskRunResult) bool {
-				return result.Name == v1alpha1.ResultNameFileSystemContents
-			})
-			if idx < 0 {
-				err := errors.New("could not find result with file system observations")
-				ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunReasonFailedValidation, err)
-				return err
-			}
-			fileSystemObservationsJSON := taskRun.Results[idx].Value.StringVal
-			fileSystemObservations := &v1alpha1.StepFileSystemList{}
-			err := json.Unmarshal([]byte(fileSystemObservationsJSON), fileSystemObservations)
-			if err != nil {
-				logger.Errorf("problem while unmarshalling file system observations: %v", err)
-				events.Emit(ctx, nil, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
-				return err
-			}
-			logging.FromContext(ctx).Info(fileSystemObservations)
-			fileSystemObservationsMap := fileSystemObservations.ToMap()
-			if ttr.Status.Outcomes.FileSystemObjects == nil {
-				ttr.Status.Outcomes.FileSystemObjects = &[]v1alpha1.ObservedStepFileSystemContent{}
-			}
-			for step := range fileSystemObservationsMap {
-				pattern := regexp.MustCompile(`/tekton/run/(\d)/status`)
-				stepIndex, _ := strconv.Atoi(pattern.ReplaceAllString(step, `$1`))
-				var stepName string
-				if taskRun != nil {
-					stepName = taskRun.TaskSpec.Steps[stepIndex].Name
+		// check file system contents
+		if ttrs.TaskTestSpec.Expected.FileSystemContents != nil {
+			if err := checkExpectationsForFileSystemObjects(ttrs, trs, &expectationsMet, &diffs); err != nil {
+				err = fmt.Errorf(`error while checking the expectations for file system objects: %w`, err)
+				if resultErr == nil {
+					resultErr = err
+				} else {
+					resultErr = fmt.Errorf("%w\n%w", resultErr, err)
 				}
-
-				stepFileSystemContent := v1alpha1.ObservedStepFileSystemContent{
-					StepName: stepName,
-					Objects:  []v1alpha1.ObservedFileSystemObject{},
-				}
-				for i, expectedFileSystemContent := range ttr.Status.TaskTestSpec.Expected.FileSystemContents {
-					if i == stepIndex {
-						for _, object := range expectedFileSystemContent.Objects {
-							observation := v1alpha1.ObservedFileSystemObject{
-								Path:        object.Path,
-								WantType:    object.Type,
-								GotType:     fileSystemObservationsMap[step][object.Path].Type,
-								WantContent: object.Content,
-								GotContent:  fileSystemObservationsMap[step][object.Path].Content,
-							}
-
-							observation.DiffType = cmp.Diff(observation.WantType, observation.GotType)
-							if observation.DiffType != "" {
-								expectationsMet = false
-								diffs += fmt.Sprintf(`file system object %q type in step %s: `, observation.Path, stepName) + observation.DiffType
-							}
-
-							// we can assume, that the empty string here means,
-							// that no content was specified, since if the user
-							// wanted to check, if a file was empty, they would
-							// use the EmptyFile type instead.
-							if observation.WantContent != "" {
-								observation.DiffContent = cmp.Diff(observation.WantContent, observation.GotContent)
-								if observation.DiffContent != "" {
-									expectationsMet = false
-									diffs += fmt.Sprintf(`file system object %q content in step %s: `, observation.Path, stepName) + observation.DiffContent
-								}
-							}
-
-							stepFileSystemContent.Objects = append(stepFileSystemContent.Objects, observation)
-						}
-					}
-				}
-				ttr.Status.Outcomes.FileSystemObjects = ptr.To(append(*ttr.Status.Outcomes.FileSystemObjects, stepFileSystemContent))
 			}
-		}
-
-		// set status and emit event
-		beforeCondition := ttr.Status.GetCondition(apis.ConditionSucceeded)
-		logger.Infof("boom: Now setting Status for TTR %s", ttr.Name)
-		if expectationsMet {
-			ttr.Status.MarkSuccessful()
-			events.Emit(ctx, beforeCondition, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
-		} else {
-			err = errors.New("not all expectations were met:\n" + diffs)
-			ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunUnexpectatedOutcomes, err)
 		}
 	}
-	return err
+	return resultErr, expectationsMet, diffs
 }
 
 func (c *Reconciler) dereferenceTaskTestRef(ctx context.Context, ttr *v1alpha1.TaskTestRun) (*v1alpha1.TaskTest, error) {
@@ -643,6 +514,166 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 	}
 
 	return taskRun, nil
+}
+
+func checkExpectationsForResults(ttrs *v1alpha1.TaskTestRunStatus, trs *v1.TaskRunStatus, expectationsMet *bool, diffs *string) error {
+	ttrs.CompletionTime = trs.CompletionTime
+	taskResults := trs.Results
+	ttrs.Outcomes.Results = &[]v1alpha1.ObservedResults{}
+
+	for i, expectedResult := range ttrs.TaskTestSpec.Expected.Results {
+		var gotValue *v1.ResultValue
+		j := slices.IndexFunc(taskResults, func(actualResult v1.TaskRunResult) bool {
+			return actualResult.Name == expectedResult.Name
+		})
+		if j == -1 {
+			if slices.ContainsFunc(ttrs.TaskRunStatus.TaskSpec.Results, func(res v1.TaskResult) bool {
+				return res.Name == expectedResult.Name
+			}) {
+				gotValue = &v1.ResultValue{}
+			} else {
+				return apis.ErrInvalidValue(expectedResult.Name, fmt.Sprintf("status.taskTestSpec.expected.results[%d].name", i), fmt.Sprintf(`task %q has no Result named %q`, ttrs.TaskRunStatus.TaskSpec.DisplayName, expectedResult.Name))
+			}
+		} else {
+			gotValue = &taskResults[j].Value
+		}
+		diff := cmp.Diff(expectedResult.Value, gotValue)
+		ttrs.Outcomes.Results = ptr.To(append(*ttrs.Outcomes.Results, v1alpha1.ObservedResults{
+			Name: expectedResult.Name,
+			Want: expectedResult.Value,
+			Got:  gotValue,
+			Diff: diff,
+		}))
+		if diff != "" {
+			*expectationsMet = false
+			*diffs += fmt.Sprintf(`Result %s: `, expectedResult.Name) + diff
+		}
+	}
+
+	return nil
+}
+
+func checkExpectationsForEnv(ttrs *v1alpha1.TaskTestRunStatus, trs *v1.TaskRunStatus, expectationsMet *bool, diffs *string) error {
+	idx := slices.IndexFunc(trs.Results, func(result v1.TaskRunResult) bool {
+		return result.Name == v1alpha1.ResultNameEnvironmentDump
+	})
+	if idx < 0 {
+		err := errors.New("could not find environment dump for stepEnv")
+		ttrs.MarkResourceFailed(v1alpha1.TaskTestRunReasonFailedValidation, err)
+		return err
+	}
+
+	environments := trs.Results[idx].Value.StringVal
+	pattern := regexp.MustCompile(`(".+?)=(.+",
+)`)
+	// environments = strings.ReplaceAll("["+environments+"]", "=", `":"`)
+	environments = pattern.ReplaceAllString("["+environments+"]", `$1":"$2`)
+	environments = strings.ReplaceAll(environments, ",\n}", "}")
+	environments = strings.ReplaceAll(environments, ",\n]", "]")
+
+	var stepEnvironments v1alpha1.StepEnvironmentList
+	err := json.Unmarshal([]byte(environments), &stepEnvironments)
+	if err != nil {
+		return fmt.Errorf("problem while unmarshalling stepEnvironments: %w", err)
+	}
+	stepEnvironmentsMap := stepEnvironments.ToMap()
+	if ttrs.Outcomes.StepEnvs == nil {
+		ttrs.Outcomes.StepEnvs = &[]v1alpha1.ObservedStepEnv{}
+	}
+	for step := range stepEnvironmentsMap {
+		vars := []v1alpha1.ObservedEnvVar{}
+		for _, expectedEnvVar := range ttrs.TaskTestSpec.Expected.Env {
+			observation := v1alpha1.ObservedEnvVar{
+				Name: expectedEnvVar.Name,
+				Want: expectedEnvVar.Value,
+				Got:  stepEnvironmentsMap[step][expectedEnvVar.Name],
+			}
+			observation.Diff = cmp.Diff(observation.Want, observation.Got)
+			if observation.Diff != "" {
+				*expectationsMet = false
+				if diffs == nil {
+					diffs = ptr.To("")
+				}
+				*diffs += fmt.Sprintf(`envVar %s in step %s: `, expectedEnvVar.Name, step) + observation.Diff
+			}
+			vars = append(vars, observation)
+		}
+		ttrs.Outcomes.StepEnvs = ptr.To(append(*ttrs.Outcomes.StepEnvs, v1alpha1.ObservedStepEnv{
+			StepName: step,
+			Env:      vars,
+		}))
+	}
+	return nil
+}
+
+func checkExpectationsForFileSystemObjects(ttrs *v1alpha1.TaskTestRunStatus, trs *v1.TaskRunStatus, expectationsMet *bool, diffs *string) error {
+	idx := slices.IndexFunc(trs.Results, func(result v1.TaskRunResult) bool {
+		return result.Name == v1alpha1.ResultNameFileSystemContents
+	})
+	if idx < 0 {
+		err := errors.New("could not find result with file system observations")
+		ttrs.MarkResourceFailed(v1alpha1.TaskTestRunReasonFailedValidation, err)
+		return err
+	}
+	fileSystemObservationsJSON := trs.Results[idx].Value.StringVal
+	fileSystemObservations := &v1alpha1.StepFileSystemList{}
+	err := json.Unmarshal([]byte(fileSystemObservationsJSON), fileSystemObservations)
+	if err != nil {
+		return fmt.Errorf("problem while unmarshalling file system observations: %w", err)
+	}
+	fileSystemObservationsMap := fileSystemObservations.ToMap()
+	if ttrs.Outcomes.FileSystemObjects == nil {
+		ttrs.Outcomes.FileSystemObjects = &[]v1alpha1.ObservedStepFileSystemContent{}
+	}
+	for step := range fileSystemObservationsMap {
+		pattern := regexp.MustCompile(`/tekton/run/(\d)/status`)
+		stepIndex, _ := strconv.Atoi(pattern.ReplaceAllString(step, `$1`))
+		var stepName string
+		if trs != nil {
+			stepName = trs.TaskSpec.Steps[stepIndex].Name
+		}
+
+		stepFileSystemContent := v1alpha1.ObservedStepFileSystemContent{
+			StepName: stepName,
+			Objects:  []v1alpha1.ObservedFileSystemObject{},
+		}
+		for i, expectedFileSystemContent := range ttrs.TaskTestSpec.Expected.FileSystemContents {
+			if i == stepIndex {
+				for _, object := range expectedFileSystemContent.Objects {
+					observation := v1alpha1.ObservedFileSystemObject{
+						Path:        object.Path,
+						WantType:    object.Type,
+						GotType:     fileSystemObservationsMap[step][object.Path].Type,
+						WantContent: object.Content,
+						GotContent:  fileSystemObservationsMap[step][object.Path].Content,
+					}
+
+					observation.DiffType = cmp.Diff(observation.WantType, observation.GotType)
+					if observation.DiffType != "" {
+						*expectationsMet = false
+						*diffs += fmt.Sprintf(`file system object %q type in step %s: `, observation.Path, stepName) + observation.DiffType
+					}
+
+					// we can assume, that the empty string here means,
+					// that no content was specified, since if the user
+					// wanted to check, if a file was empty, they would
+					// use the EmptyFile type instead.
+					if observation.WantContent != "" {
+						observation.DiffContent = cmp.Diff(observation.WantContent, observation.GotContent)
+						if observation.DiffContent != "" {
+							*expectationsMet = false
+
+							*diffs += fmt.Sprintf(`file system object %q content in step %s: `, observation.Path, stepName) + observation.DiffContent
+						}
+					}
+
+					stepFileSystemContent.Objects = append(stepFileSystemContent.Objects, observation)
+				}
+			}
+		}
+		*ttrs.Outcomes.FileSystemObjects = append(*ttrs.Outcomes.FileSystemObjects, stepFileSystemContent)
+	}
+	return nil
 }
 
 // Check that our Reconciler implements taskrunreconciler.Interface

@@ -433,7 +433,7 @@ spec:
 )
 
 func TestReconciler_ValidateReconcileKind(t *testing.T) {
-	// instanciate custom resources
+	// instantiate custom resources
 	task := parse.MustParseV1Task(t, tManifest)
 	taskHelloTask := parse.MustParseV1Task(t, tManifestHelloTask)
 	taskTestRun := parse.MustParseTaskTestRun(t, ttrManifestNewTaskRun)
@@ -718,10 +718,10 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 					Status: "False",
 					Reason: "TaskTestRunUnexpectedOutcomes",
 					Message: "not all expectations were met:\n" +
-						"Result current-date: " + diffCurrentDate +
-						"Result current-time: " + diffCurrentTime +
 						"observed success status did not match expectation\n" +
 						"SuccessReason: " + cmp.Diff(v1.TaskRunReason("TaskRunCancelled"), v1.TaskRunReason("Succeeded")) +
+						"Result current-date: " + diffCurrentDate +
+						"Result current-time: " + diffCurrentTime +
 						"envVar HOME in step hello-step: " + diffEnv +
 						"file system object \"/tekton/results/current-date\" type in step hello-step: " + diffType +
 						"file system object \"/tekton/results/current-time\" content in step hello-step: " + diffContent,
@@ -985,7 +985,7 @@ task "task" has no Result named "current-date"`,
 				},
 			},
 			wantErr: controller.NewRequeueAfter(
-				ttrExpectsUndeclaredResult.GetTimeout(context.TODO())),
+				ttrExpectsUndeclaredResult.GetTimeout(t.Context())),
 			wantCompletionTime: true,
 		},
 		"ttr expects step for stepEnv not declared in task": {
@@ -1019,7 +1019,7 @@ task "task" has no Step named "goodbye-step"`,
 					},
 				},
 			},
-			wantErr:            controller.NewRequeueAfter(ttrExpectsUndeclaredEnvStep.GetTimeout(context.TODO())),
+			wantErr:            controller.NewRequeueAfter(ttrExpectsUndeclaredEnvStep.GetTimeout(t.Context())),
 			wantCompletionTime: true,
 		},
 		"ttr expects file system step not declared in task": {
@@ -1057,7 +1057,7 @@ task "task" has no Step named "goodbye-step"`,
 					},
 				},
 			},
-			wantErr:            controller.NewRequeueAfter(ttrExpectsUndeclaredEnvStep.GetTimeout(context.TODO())),
+			wantErr:            controller.NewRequeueAfter(ttrExpectsUndeclaredEnvStep.GetTimeout(t.Context())),
 			wantCompletionTime: true,
 		},
 		"tt references absent task": {
@@ -1075,14 +1075,16 @@ task "task" has no Step named "goodbye-step"`,
 			},
 		},
 		"ttr expects env value but no dump in tr": {
-			ttr:     ttrCompletedWithTestSpec,
-			wantErr: errors.New("could not find environment dump for stepEnv"),
+			ttr: ttrCompletedWithTestSpec,
+			wantErr: errors.New(`error occurred while checking expectations: error while checking the expectations for env: could not find environment dump for stepEnv
+error while checking the expectations for file system objects: could not find result with file system observations`),
 			wantTtrStatus: &v1alpha1.TaskTestRunStatus{
 				Status: duckv1.Status{Conditions: duckv1.Conditions{{
-					Type:    "Succeeded",
-					Status:  "False",
-					Reason:  "TaskTestRunValidationFailed",
-					Message: "could not find environment dump for stepEnv",
+					Type:   "Succeeded",
+					Status: "False",
+					Reason: "TaskTestRunValidationFailed",
+					Message: `error occurred while checking expectations: error while checking the expectations for env: could not find environment dump for stepEnv
+error while checking the expectations for file system objects: could not find result with file system observations`,
 				}}},
 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
 					TaskRunName: ptr.To("ttr-completed-task-run-run"),
@@ -1165,13 +1167,13 @@ task "task" has no Step named "goodbye-step"`,
 		},
 		"ttr expects fs observations but no observations in tr": {
 			ttr:     ttrCompletedWithTestSpecNoExpectedEnv,
-			wantErr: errors.New("could not find result with file system observations"),
+			wantErr: errors.New("error occurred while checking expectations: error while checking the expectations for file system objects: could not find result with file system observations"),
 			wantTtrStatus: &v1alpha1.TaskTestRunStatus{
 				Status: duckv1.Status{Conditions: duckv1.Conditions{{
 					Type:    "Succeeded",
 					Status:  "False",
 					Reason:  "TaskTestRunValidationFailed",
-					Message: "could not find result with file system observations",
+					Message: "error occurred while checking expectations: error while checking the expectations for file system objects: could not find result with file system observations",
 				}}},
 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
 					TaskRunName: ptr.To("ttr-completed-task-run-run"),

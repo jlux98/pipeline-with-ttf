@@ -322,7 +322,9 @@ func (e Entrypointer) Go() error {
 	}
 
 	if len(e.PathsToCheck) > 0 {
-		e.WriteFileSystemObservations()
+		if err := e.WriteFileSystemObservations(); err != nil {
+			return fmt.Errorf(`error while writing file system observation: %w`, err)
+		}
 	}
 
 	// strings.Split(..) with an empty string returns an array that contains one element, an empty string.
@@ -528,7 +530,7 @@ func (e Entrypointer) WriteFileSystemObservations() error {
 		return (err)
 	}
 
-	if err := os.WriteFile(filePath, updatedData, 0644); err != nil {
+	if err := os.WriteFile(filePath, updatedData, 0600); err != nil {
 		return (err)
 	}
 
