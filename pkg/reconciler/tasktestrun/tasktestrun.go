@@ -241,7 +241,7 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 			if errors.Is(err, apiserver.ErrReferencedObjectValidationFailed) {
 				ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunReasonFailedValidation, err)
 				events.Emit(ctx, nil, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
-				return nil
+				return controller.NewPermanentError(err)
 			}
 			logger.Errorf("Failed to create task run for taskTestRun %q: %v", ttr.Name, err)
 			return err
@@ -362,9 +362,9 @@ func checkActualOutcomesAgainstExpectations(ttrs *v1alpha1.TaskTestRunStatus, tr
 				Want: *ttrs.TaskTestSpec.Expected.SuccessStatus,
 				Got:  trs.GetCondition(apis.ConditionSucceeded).IsTrue(),
 			}
-			ttrs.Outcomes.SuccessStatus.WantMatchesGot = ttrs.Outcomes.SuccessStatus.Want == ttrs.Outcomes.SuccessStatus.Got
+			ttrs.Outcomes.SuccessStatus.WantDiffersFromGot = ttrs.Outcomes.SuccessStatus.Want != ttrs.Outcomes.SuccessStatus.Got
 
-			if !ttrs.Outcomes.SuccessStatus.WantMatchesGot {
+			if ttrs.Outcomes.SuccessStatus.WantDiffersFromGot {
 				expectationsMet = false
 				diffs += "observed success status did not match expectation\n"
 			}
@@ -376,11 +376,11 @@ func checkActualOutcomesAgainstExpectations(ttrs *v1alpha1.TaskTestRunStatus, tr
 				Want: *ttrs.TaskTestSpec.Expected.SuccessReason,
 				Got:  v1.TaskRunReason(trs.Conditions[0].Reason),
 			}
-			ttrs.Outcomes.SuccessReason.Diff = cmp.Diff(ttrs.Outcomes.SuccessReason.Want, ttrs.Outcomes.SuccessReason.Got)
+			ttrs.Outcomes.SuccessReason.WantDiffersFromGot = ttrs.Outcomes.SuccessReason.Want != ttrs.Outcomes.SuccessReason.Got
 
-			if ttrs.Outcomes.SuccessReason.Diff != "" {
+			if ttrs.Outcomes.SuccessReason.WantDiffersFromGot {
 				expectationsMet = false
-				diffs += "SuccessReason: " + ttrs.Outcomes.SuccessReason.Diff
+				diffs += "observed success reason did not match expectation\n"
 			}
 		}
 
@@ -478,6 +478,36 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 		}
 	}
 
+	taskRunSpec := v1.TaskRunSpec{TaskSpec: &task.Spec}
+	if ttr.Status.TaskTestSpec.Inputs != nil {
+		if ttr.Status.TaskTestSpec.Inputs.Params != nil {
+			for i, param := range ttr.Status.TaskTestSpec.Inputs.Params {
+				if !slices.ContainsFunc(task.Spec.Params, func(ps v1.ParamSpec) bool {
+					return ps.Name == param.Name
+				}) {
+					return nil, fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed,
+						apis.ErrInvalidValue(param.Name, fmt.Sprintf(
+							"status.taskTestSpec.inputs.params[%d].name", i),
+							fmt.Sprintf(`task %q has no Param named %q`, task.Name, param.Name)))
+				}
+			}
+		}
+		taskRunSpec.Params = ttr.Status.TaskTestSpec.Inputs.Params
+
+		if ttr.Status.TaskTestSpec.Inputs.StepEnvs != nil {
+			for i, stepEnv := range ttr.Status.TaskTestSpec.Inputs.StepEnvs {
+				logger.Infof("checking stepEnv for step %q", stepEnv.StepName)
+				if idx := slices.IndexFunc(task.Spec.Steps, func(s v1.Step) bool {
+					return s.Name == stepEnv.StepName
+				}); idx >= 0 {
+					task.Spec.Steps[idx].Env = append(task.Spec.Steps[idx].Env, stepEnv.Env...)
+				} else {
+					return nil, fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed, apis.ErrInvalidValue(stepEnv.StepName, fmt.Sprintf("status.taskTestSpec.inputs.stepEnvs[%d].stepName", i), fmt.Sprintf(`task %q has no Step named %q`, task.Name, stepEnv.StepName)))
+				}
+			}
+		}
+	}
+
 	taskRun = &v1.TaskRun{
 		TypeMeta: metav1.TypeMeta{Kind: "TaskRun", APIVersion: "tekton.dev/v1"},
 		ObjectMeta: metav1.ObjectMeta{
@@ -486,7 +516,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(ttr, schema.GroupVersionKind{Group: "tekton.dev", Version: "v1alpha1", Kind: "TaskTestRun"})},
 			Labels:          map[string]string{"tekton.dev/taskTestRun": ttr.Name},
 		},
-		Spec: v1.TaskRunSpec{TaskRef: &v1.TaskRef{Name: task.Name}},
+		Spec: taskRunSpec,
 	}
 	taskRun.Status.InitializeConditions()
 

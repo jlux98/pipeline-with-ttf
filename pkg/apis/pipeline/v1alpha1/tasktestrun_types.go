@@ -359,10 +359,10 @@ type ObservedSuccessStatus struct {
 	// Got reports, whether the task under test actually succeeded
 	Got bool `json:"got"`
 
-	// WantMatchesGot describes, whether Want and Got have the same value.
+	// WantDiffersFromGot describes, whether Want and Got have the same value.
 	//
 	// +optional
-	WantMatchesGot bool `json:"wantMatchesGot,omitempty"`
+	WantDiffersFromGot bool `json:"wantDiffersFromGot,omitempty"`
 }
 
 type ObservedSuccessReason struct {
@@ -374,15 +374,13 @@ type ObservedSuccessReason struct {
 	// under test
 	Got v1.TaskRunReason `json:"got"`
 
-	//  Diff describes, how Want and Got differ, using the typical
-	// notation for go tests (prefacing lines from want with a - and lines from
-	// got with a +)
+	// WantDiffersFromGot describes, whether Want and Got have the same value.
 	//
 	// +optional
-	Diff string `json:"diff,omitempty"`
+	WantDiffersFromGot bool `json:"wantDiffersFromGot,omitempty"`
 }
 
-// HasStarted function check whether TaskRun has valid start time set in its status
+// HasStarted function check whether TaskTestRun has valid start time set in its status
 func (ttr *TaskTestRun) HasStarted() bool {
 	return ttr.Status.StartTime != nil && !ttr.Status.StartTime.IsZero()
 }

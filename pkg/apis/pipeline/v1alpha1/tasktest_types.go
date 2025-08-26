@@ -86,7 +86,7 @@ type TaskTestInputs struct {
 	// values set in 'env'.
 	//
 	// +listType=map
-	// +listMapKey=name
+	// +listMapKey=stepName
 	// +optional
 	StepEnvs []StepEnv `json:"stepEnvs,omitempty"`
 
