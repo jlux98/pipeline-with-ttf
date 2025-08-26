@@ -1,0 +1,131 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskTestSuiteRun
+metadata:
+  name: example-tasktestsuiterun
+spec:
+  executionMode: Parallel
+  taskTestSuiteSpec:
+    taskTests:
+      - allTriesMustSucceed: true
+        name: sample-name
+        onError: sample-onError
+        retries: 1
+        taskTestRef:
+          name: sample-name
+        taskTestSpec:
+          expected:
+            env:
+              - name: sample-name
+                value: sample-value
+                valueFrom:
+                  configMapKeyRef: {}
+                  fieldRef: {}
+                  resourceFieldRef: {}
+                  secretKeyRef: {}
+            fileSystemContents:
+              - objects:
+                  - {}
+                stepName: sample-stepName
+            results:
+              - description: sample-description
+                name: sample-name
+                properties: {}
+                type: sample-type
+            stepEnvs:
+              - env:
+                  - {}
+                stepName: sample-stepName
+            successReason: sample-successReason
+            successStatus: true
+          inputs:
+            env:
+              - name: sample-name
+                value: sample-value
+                valueFrom:
+                  configMapKeyRef: {}
+                  fieldRef: {}
+                  resourceFieldRef: {}
+                  secretKeyRef: {}
+            params:
+              - name: sample-name
+            stepEnvs:
+              - env:
+                  - {}
+                stepName: sample-stepName
+            workspaceContents:
+              - name: sample-name
+                objects:
+                  - {}
+          taskRef:
+            name: sample-name
+        timeout: sample-timeout
+  timeout: sample-timeout
+status:
+  annotations: {}
+  completionTime: '2025-08-25T14:39:59.806Z'
+  conditions:
+    - lastTransitionTime: sample-lastTransitionTime
+      message: sample-message
+      reason: sample-reason
+      severity: sample-severity
+      status: sample-status
+      type: sample-type
+  observedGeneration: 1
+  startTime: '2025-08-25T14:39:59.806Z'
+  taskTestRunStatuses: {}
+  taskTestSuiteName: sample-taskTestSuiteName
+  taskTestSuiteSpec:
+    taskTests:
+      - allTriesMustSucceed: true
+        name: sample-name
+        onError: sample-onError
+        retries: 1
+        taskTestRef:
+          name: sample-name
+        taskTestSpec:
+          expected:
+            env:
+              - name: sample-name
+                value: sample-value
+                valueFrom:
+                  configMapKeyRef: {}
+                  fieldRef: {}
+                  resourceFieldRef: {}
+                  secretKeyRef: {}
+            fileSystemContents:
+              - objects:
+                  - {}
+                stepName: sample-stepName
+            results:
+              - description: sample-description
+                name: sample-name
+                properties: {}
+                type: sample-type
+            stepEnvs:
+              - env:
+                  - {}
+                stepName: sample-stepName
+            successReason: sample-successReason
+            successStatus: true
+          inputs:
+            env:
+              - name: sample-name
+                value: sample-value
+                valueFrom:
+                  configMapKeyRef: {}
+                  fieldRef: {}
+                  resourceFieldRef: {}
+                  secretKeyRef: {}
+            params:
+              - name: sample-name
+            stepEnvs:
+              - env:
+                  - {}
+                stepName: sample-stepName
+            workspaceContents:
+              - name: sample-name
+                objects:
+                  - {}
+          taskRef:
+            name: sample-name
+        timeout: sample-timeout
