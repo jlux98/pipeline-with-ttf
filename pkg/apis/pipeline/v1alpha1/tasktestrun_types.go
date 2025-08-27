@@ -7,6 +7,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -513,4 +514,12 @@ func (fsl StepFileSystemList) ToMap() map[string]map[string]FileSystemObject {
 		}
 	}
 	return result
+}
+
+func (ttr *TaskTestRun) GetSuiteTestName() string {
+	if ttr.ObjectMeta.Labels == nil {
+		return ""
+	} else {
+		return ttr.ObjectMeta.Labels[pipeline.SuiteTestLabelKey]
+	}
 }

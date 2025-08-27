@@ -329,7 +329,7 @@ spec:
                                     test and a list of environment variable declarations to be set for this step.
                                   type: object
                                   required:
-                                    - name
+                                    - stepName
                                   properties:
                                     env:
                                       description: List of environment variables to set for this step.
@@ -441,8 +441,8 @@ spec:
                                                     type: boolean
                                                 x-kubernetes-map-type: atomic
                                       x-kubernetes-list-type: atomic
-                                    name:
-                                      description: Name is the name of the step for whom these environment variables will be set.
+                                    stepName:
+                                      description: StepName is the name of the step for whom these environment variables will be set.
                                       type: string
                                 x-kubernetes-list-type: atomic
                               successReason:
@@ -597,7 +597,7 @@ spec:
                                     test and a list of environment variable declarations to be set for this step.
                                   type: object
                                   required:
-                                    - name
+                                    - stepName
                                   properties:
                                     env:
                                       description: List of environment variables to set for this step.
@@ -709,11 +709,11 @@ spec:
                                                     type: boolean
                                                 x-kubernetes-map-type: atomic
                                       x-kubernetes-list-type: atomic
-                                    name:
-                                      description: Name is the name of the step for whom these environment variables will be set.
+                                    stepName:
+                                      description: StepName is the name of the step for whom these environment variables will be set.
                                       type: string
                                 x-kubernetes-list-map-keys:
-                                  - name
+                                  - stepName
                                 x-kubernetes-list-type: map
                               workspaceContents:
                                 description: |-

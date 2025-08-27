@@ -210,6 +210,17 @@ kind: TaskTestRun
 	return &v
 }
 
+// MustParseTaskTestSuiteRun takes YAML and parses it into a *v1alpha1.TaskTestSuiteRun
+func MustParseTaskTestSuiteRun(t *testing.T, yaml string) *v1alpha1.TaskTestSuiteRun {
+	t.Helper()
+	var v v1alpha1.TaskTestSuiteRun
+	yaml = `apiVersion: tekton.dev/v1alpha1
+kind: TaskTestSuiteRun
+` + yaml
+	mustParseYAML(t, yaml, &v)
+	return &v
+}
+
 func mustParseYAML(t *testing.T, yaml string, i runtime.Object) {
 	t.Helper()
 	if _, _, err := scheme.Codecs.UniversalDeserializer().Decode([]byte(yaml), nil, i); err != nil {

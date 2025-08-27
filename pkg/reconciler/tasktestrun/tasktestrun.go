@@ -514,7 +514,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 			Name:            ttr.Name + "-run",
 			Namespace:       taskRunNamespace,
 			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(ttr, schema.GroupVersionKind{Group: "tekton.dev", Version: "v1alpha1", Kind: "TaskTestRun"})},
-			Labels:          map[string]string{"tekton.dev/taskTestRun": ttr.Name},
+			Labels:          map[string]string{pipeline.TaskTestRunLabelKey: ttr.Name},
 		},
 		Spec: taskRunSpec,
 	}

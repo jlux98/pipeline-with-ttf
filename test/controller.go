@@ -39,6 +39,7 @@ import (
 	faketaskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/taskrun/fake"
 	faketasktestinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/tasktest/fake"
 	faketasktestruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/tasktestrun/fake"
+	faketasktestsuiteruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/tasktestsuiterun/fake"
 	fakeverificationpolicyinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/verificationpolicy/fake"
 	fakecustomruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/customrun/fake"
 	fakestepactioninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/stepaction/fake"
@@ -88,6 +89,7 @@ type Data struct {
 	Secrets                 []*corev1.Secret
 	TaskTests               []*v1alpha1.TaskTest
 	TaskTestRuns            []*v1alpha1.TaskTestRun
+	TaskTestSuiteRuns       []*v1alpha1.TaskTestSuiteRun
 }
 
 // Clients holds references to clients which are useful for reconciler tests.
@@ -116,6 +118,7 @@ type Informers struct {
 	Secret             coreinformers.SecretInformer
 	TaskTest           informersv1alpha1.TaskTestInformer
 	TaskTestRun        informersv1alpha1.TaskTestRunInformer
+	TaskTestSuiteRun   informersv1alpha1.TaskTestSuiteRunInformer
 }
 
 // Assets holds references to the controller, logs, clients, and informers.
@@ -204,6 +207,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		Secret:             fakesecretinformer.Get(ctx),
 		TaskTest:           faketasktestinformer.Get(ctx),
 		TaskTestRun:        faketasktestruninformer.Get(ctx),
+		TaskTestSuiteRun:   faketasktestsuiteruninformer.Get(ctx),
 	}
 
 	// Attach reactors that add resource mutations to the appropriate
@@ -312,6 +316,13 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	for _, tr := range d.TaskTestRuns {
 		tr := tr.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if _, err := c.Pipeline.TektonV1alpha1().TaskTestRuns(tr.Namespace).Create(ctx, tr, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	c.Pipeline.PrependReactor("*", "tasktestsuiteruns", AddToInformer(t, i.TaskTestSuiteRun.Informer().GetIndexer()))
+	for _, tr := range d.TaskTestSuiteRuns {
+		tr := tr.DeepCopy() // Avoid assumptions that the informer's copy is modified.
+		if _, err := c.Pipeline.TektonV1alpha1().TaskTestSuiteRuns(tr.Namespace).Create(ctx, tr, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}

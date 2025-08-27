@@ -893,7 +893,7 @@
       "description": "StepEnv contains the name of a step as defined the manifest of the Task under test and a list of environment variable declarations to be set for this step.",
       "type": "object",
       "required": [
-        "name"
+        "stepName"
       ],
       "properties": {
         "env": {
@@ -907,8 +907,8 @@
           "x-kubernetes-patch-merge-key": "name",
           "x-kubernetes-patch-strategy": "merge"
         },
-        "name": {
-          "description": "Name is the name of the step for whom these environment variables will be set.",
+        "stepName": {
+          "description": "StepName is the name of the step for whom these environment variables will be set.",
           "type": "string",
           "default": ""
         }
@@ -1074,7 +1074,7 @@
             "$ref": "#/definitions/v1alpha1.StepEnv"
           },
           "x-kubernetes-list-map-keys": [
-            "name"
+            "stepName"
           ],
           "x-kubernetes-list-type": "map"
         },
@@ -1504,8 +1504,6 @@
       "description": "TaskTestSuiteRunSpec",
       "type": "object",
       "required": [
-        "taskTestSuiteRef",
-        "taskTestSuiteSpec",
         "executionMode"
       ],
       "properties": {
@@ -1540,11 +1538,11 @@
           "type": "string"
         },
         "taskTestSuiteRef": {
-          "description": "TaskTestSuiteRef is a reference to a task test suite definition.",
+          "description": "TaskTestSuiteRef is a reference to a task test suite definition. Either this or TaskTestSuiteSpec must be set, if neither or both are set then validation of this TaskTestSuiteRun fails.",
           "$ref": "#/definitions/v1alpha1.TaskTestSuiteRef"
         },
         "taskTestSuiteSpec": {
-          "description": "TaskTestSuiteSpec is a definition of a task test suite.",
+          "description": "TaskTestSuiteSpec is a definition of a task test suite. TaskTestSuiteRef is a reference to a task test suite definition. Either this or TaskTestSuiteSpec must be set, if neither or both are set then validation of this TaskTestSuiteRun fails.",
           "$ref": "#/definitions/v1alpha1.TaskTestSuiteSpec"
         },
         "timeout": {
@@ -1556,7 +1554,8 @@
     "v1alpha1.TaskTestSuiteRunStatus": {
       "type": "object",
       "required": [
-        "taskTestSpecs",
+        "taskTestSuiteName",
+        "taskTestSuiteSpec",
         "taskTestRunStatuses"
       ],
       "properties": {
@@ -1587,36 +1586,32 @@
           "type": "integer",
           "format": "int64"
         },
+        "startTime": {
+          "description": "StartTime is the time the build is actually started.",
+          "$ref": "#/definitions/v1.Time"
+        },
         "taskTestRunStatuses": {
           "description": "TaskTestRunStatuses is the list containing the status fields of the TaskTestRuns responsible for executing this suite's TasksTests.",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1alpha1.SuiteTaskTestRunStatus"
-          },
-          "x-kubernetes-list-map-keys": [
-            "taskTestRunName"
-          ],
-          "x-kubernetes-list-type": "map"
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/v1alpha1.TaskTestRunStatus"
+          }
         },
-        "taskTestSpecs": {
-          "description": "TaskTestSpecs is the list containing the spec fields of the TaskTests being executed in this suite.",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1alpha1.NamedTaskTestSpec"
-          },
-          "x-kubernetes-list-map-keys": [
-            "name"
-          ],
-          "x-kubernetes-list-type": "map"
+        "taskTestSuiteName": {
+          "description": "TaskTestSuiteName is the name of the referenced TaskTestSuite, if one is referenced. If the TaskTestSuite is declared inline, then this field will be nil.",
+          "type": "string"
+        },
+        "taskTestSuiteSpec": {
+          "description": "TaskTestSuiteSpec is the spec of the TaskTestSuite being run. This spec can either be declared inline in the TaskTestSuiteRun manifest or it can come from referencing a pre-existing TaskTestSuite",
+          "$ref": "#/definitions/v1alpha1.TaskTestSuiteSpec"
         }
       }
     },
     "v1alpha1.TaskTestSuiteRunStatusFields": {
       "type": "object",
       "required": [
-        "taskTestSpecs",
+        "taskTestSuiteName",
+        "taskTestSuiteSpec",
         "taskTestRunStatuses"
       ],
       "properties": {
@@ -1624,29 +1619,24 @@
           "description": "CompletionTime is the time the test completed.",
           "$ref": "#/definitions/v1.Time"
         },
+        "startTime": {
+          "description": "StartTime is the time the build is actually started.",
+          "$ref": "#/definitions/v1.Time"
+        },
         "taskTestRunStatuses": {
           "description": "TaskTestRunStatuses is the list containing the status fields of the TaskTestRuns responsible for executing this suite's TasksTests.",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1alpha1.SuiteTaskTestRunStatus"
-          },
-          "x-kubernetes-list-map-keys": [
-            "taskTestRunName"
-          ],
-          "x-kubernetes-list-type": "map"
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/v1alpha1.TaskTestRunStatus"
+          }
         },
-        "taskTestSpecs": {
-          "description": "TaskTestSpecs is the list containing the spec fields of the TaskTests being executed in this suite.",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1alpha1.NamedTaskTestSpec"
-          },
-          "x-kubernetes-list-map-keys": [
-            "name"
-          ],
-          "x-kubernetes-list-type": "map"
+        "taskTestSuiteName": {
+          "description": "TaskTestSuiteName is the name of the referenced TaskTestSuite, if one is referenced. If the TaskTestSuite is declared inline, then this field will be nil.",
+          "type": "string"
+        },
+        "taskTestSuiteSpec": {
+          "description": "TaskTestSuiteSpec is the spec of the TaskTestSuite being run. This spec can either be declared inline in the TaskTestSuiteRun manifest or it can come from referencing a pre-existing TaskTestSuite",
+          "$ref": "#/definitions/v1alpha1.TaskTestSuiteSpec"
         }
       }
     },

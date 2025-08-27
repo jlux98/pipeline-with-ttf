@@ -1,9 +1,19 @@
 package v1alpha1
 
 import (
+	"context"
+	"time"
+
+	"github.com/tektoncd/pipeline/pkg/apis/config"
+	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/clock"
+	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
@@ -27,6 +37,30 @@ type TaskTestSuiteRun struct {
 	Status TaskTestSuiteRunStatus `json:"status,omitempty"`
 }
 
+func (tsr *TaskTestSuiteRun) GetNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Namespace: tsr.Namespace, Name: tsr.Name}
+}
+
+// HasStarted function check whether TaskTestRun has valid start time set in its status
+func (ttr *TaskTestSuiteRun) HasStarted() bool {
+	return ttr.Status.StartTime != nil && !ttr.Status.StartTime.IsZero()
+}
+
+// GetGroupVersionKind implements kmeta.OwnerRefable.
+func (tsr *TaskTestSuiteRun) GetGroupVersionKind() schema.GroupVersionKind {
+	return schema.GroupVersionKind{
+		Group:   "tekton.dev",
+		Version: "v1alpha1",
+		Kind:    "TaskTestSuiteRun",
+	}
+}
+
+// GetObjectMeta implements kmeta.OwnerRefable.
+// Subtle: this method shadows the method (ObjectMeta).GetObjectMeta of TaskTestSuiteRun.ObjectMeta.
+func (tsr *TaskTestSuiteRun) GetObjectMeta() metav1.Object {
+	return &tsr.ObjectMeta
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // TaskTestRunList contains a list of TaskTestRuns
@@ -42,14 +76,24 @@ type TaskTestSuiteRunList struct {
 // TaskTestSuiteRunSpec
 type TaskTestSuiteRunSpec struct {
 	// TaskTestSuiteRef is a reference to a task test suite definition.
-	TaskTestSuiteRef *TaskTestSuiteRef `json:"taskTestSuiteRef"`
+	// Either this or TaskTestSuiteSpec must be set, if neither or both are set then
+	// validation of this TaskTestSuiteRun fails.
+	//
+	// +optional
+	TaskTestSuiteRef *TaskTestSuiteRef `json:"taskTestSuiteRef,omitempty"`
 
 	// TaskTestSuiteSpec is a definition of a task test suite.
-	TaskTestSuiteSpec *TaskTestSuiteSpec `json:"taskTestSuiteSpec"`
+	// Either this or TaskTestSuiteSpec must be set, if neither or both are set then
+	// validation of this TaskTestSuiteRun fails.
+	//
+	// +optional
+	TaskTestSuiteSpec *TaskTestSuiteSpec `json:"taskTestSuiteSpec,omitempty"`
 
 	// ExecutionMode specifies, whether the tests in this run will be executed
 	// in parallel or sequentially. Valid values for this field are "Parallel"
 	// and "Sequential".
+	//
+	// +kubebuilder:validation:Enum=Parallel;Sequential
 	ExecutionMode TestSuiteExecutionMode `json:"executionMode"`
 
 	// DefaultRunSpecTemplate defines the template after which the
@@ -139,19 +183,22 @@ type TaskTestSuiteRunStatus struct {
 }
 
 type TaskTestSuiteRunStatusFields struct {
-	// TaskTestSpecs is the list containing the spec fields of the
-	// TaskTests being executed in this suite.
-	//
-	// +listType=map
-	// +listMapKey=name
-	TaskTestSpecs []NamedTaskTestSpec `json:"taskTestSpecs"`
+	// StartTime is the time the build is actually started.
+	StartTime *metav1.Time `json:"startTime,omitempty"`
+
+	// TaskTestSuiteName is the name of the referenced TaskTestSuite, if one is
+	// referenced. If the TaskTestSuite is declared inline, then this field will
+	// be nil.
+	TaskTestSuiteName *string `json:"taskTestSuiteName"`
+
+	// TaskTestSuiteSpec is the spec of the TaskTestSuite being run. This spec
+	// can either be declared inline in the TaskTestSuiteRun manifest or it can
+	// come from referencing a pre-existing TaskTestSuite
+	TaskTestSuiteSpec *TaskTestSuiteSpec `json:"taskTestSuiteSpec"`
 
 	// TaskTestRunStatuses is the list containing the status fields of the
 	// TaskTestRuns responsible for executing this suite's TasksTests.
-	//
-	// +listType=map
-	// +listMapKey=taskTestRunName
-	TaskTestRunStatuses []SuiteTaskTestRunStatus `json:"taskTestRunStatuses"`
+	TaskTestRunStatuses map[string]*TaskTestRunStatus `json:"taskTestRunStatuses"`
 
 	// CompletionTime is the time the test completed.
 	//
@@ -174,4 +221,80 @@ type SuiteTaskTestRunStatus struct {
 	// Status is the status field of the TaskTestRun responsible for executing
 	// this specific TaskTest
 	TaskTestRunStatus TaskTestRunStatus `json:"taskTestRunStatus"`
+}
+
+// InitializeConditions will set all conditions in taskRunCondSet to unknown for the TaskRun
+// and set the started time to the current time
+func (trs *TaskTestSuiteRunStatus) InitializeConditions() {
+	started := false
+	if trs.StartTime.IsZero() {
+		trs.StartTime = &metav1.Time{Time: time.Now()}
+		started = true
+	}
+	conditionManager := taskTestRunCondSet.Manage(trs)
+	conditionManager.InitializeConditions()
+	// Ensure the started reason is set for the "Succeeded" condition
+	if started {
+		initialCondition := conditionManager.GetCondition(apis.ConditionSucceeded)
+		initialCondition.Reason = v1.TaskRunReasonStarted.String()
+		conditionManager.SetCondition(*initialCondition)
+	}
+}
+
+func (ttr *TaskTestSuiteRun) IsDone() bool {
+	return !ttr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown()
+}
+
+func (ttr *TaskTestSuiteRun) IsCancelled() bool {
+	return ttr.Spec.Status == TaskTestRunSpecStatusCancelled
+}
+
+// GetTimeout returns the timeout for the TaskTestRun, or the default if not specified
+func (ttr *TaskTestSuiteRun) GetTimeout(ctx context.Context) time.Duration {
+	// Use the platform default is no timeout is set
+	if ttr.Spec.Timeout == nil {
+		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
+		return defaultTimeout * time.Minute //nolint:durationcheck
+	}
+	return ttr.Spec.Timeout.Duration
+}
+
+func (ttr *TaskTestSuiteRun) HasTimedOut(ctx context.Context, c clock.PassiveClock) bool {
+	if ttr.Status.StartTime.IsZero() {
+		return false
+	}
+	timeout := ttr.GetTimeout(ctx)
+	// If timeout is set to 0 or defaulted to 0, there is no timeout.
+	if timeout == apisconfig.NoTimeoutDuration {
+		return false
+	}
+	runtime := c.Since(ttr.Status.StartTime.Time)
+	return runtime > timeout
+}
+
+// MarkResourceFailed sets the ConditionSucceeded condition to ConditionFalse
+// based on an error that occurred and a reason
+func (trs *TaskTestSuiteRunStatus) MarkResourceFailed(reason TaskTestRunReason, err error) {
+	taskTestRunCondSet.Manage(trs).SetCondition(apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionFalse,
+		Reason:  reason.String(),
+		Message: pipelineErrors.GetErrorMessage(err),
+	})
+	succeeded := trs.GetCondition(apis.ConditionSucceeded)
+	trs.CompletionTime = &succeeded.LastTransitionTime.Inner
+	if trs.CompletionTime == nil {
+		trs.CompletionTime = &metav1.Time{Time: time.Now()}
+	}
+}
+
+// MarkSuccessful sets the ConditionSucceeded condition to ConditionUnknown
+// with the reason and message.
+func (trs *TaskTestSuiteRunStatus) MarkSuccessful() {
+	taskTestRunCondSet.Manage(trs).SetCondition(apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionTrue,
+		Reason:  TaskTestRunReasonSuccessful.String(),
+		Message: "TaskRun completed executing and outcomes were as expected",
+	})
 }

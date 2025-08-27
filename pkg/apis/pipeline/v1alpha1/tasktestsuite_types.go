@@ -47,12 +47,16 @@ type TaskTestSuiteSpec struct {
 type SuiteTest struct {
 	// Name is the identifier for a test in the context of this suite.
 	Name string `json:"name"`
-	// TaskTestRef is a reference to an existing Task
+	// TaskTestRef is a reference to an existing Task.
+	// Either this or TaskTestSpec must be set, if neither or both are
+	// set then validation of this SuiteTest fails.
 	//
 	// +optional
 	TaskTestRef *TaskTestRef `json:"taskTestRef"`
 
 	// TaskTestSpec is a specification of a task test
+	// Either this or TaskTestRef must be set, if neither or both are
+	// set then validation of this SuiteTest fails.
 	//
 	// +optional
 	TaskTestSpec *TaskTestSpec `json:"taskTestSpec"`
@@ -106,3 +110,15 @@ const (
 	// Continue indicates continue executing the rest of the steps irrespective of the container exit code
 	Continue OnTestErrorType = "Continue"
 )
+
+func (st SuiteTest) GetTaskTestRunName() string {
+	return st.Name + "-test-run"
+}
+
+func (st SuiteTest) GetTaskRunName() string {
+	return st.GetTaskTestRunName() + "-task-run"
+}
+
+func (st SuiteTest) GetPodName() string {
+	return st.GetTaskRunName() + "-pod"
+}

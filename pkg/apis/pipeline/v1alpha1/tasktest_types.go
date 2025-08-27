@@ -57,6 +57,7 @@ type TaskTestSpec struct {
 	// use to check, whether a TaskTestRun was successful or not.
 	// If this field is left empty, then the TaskTestRun is deemed successful,
 	// if the TaskRun completes without a failure occurring.
+	//
 	// +optional
 	Expected *ExpectedOutcomes `json:"expected,omitempty"`
 }
