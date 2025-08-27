@@ -53,7 +53,7 @@ spec:
           - content: sample-content
             path: sample-path
             type: sample-type
-  expected:
+  expects:
     env:
       - name: sample-name
         value: sample-value

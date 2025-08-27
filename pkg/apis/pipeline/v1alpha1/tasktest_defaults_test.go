@@ -34,7 +34,7 @@ func TestTask_SetDefaults(t *testing.T) {
 		name: "expected file system object type set to AnyObjectType",
 		in: &v1alpha1.TaskTest{
 			Spec: v1alpha1.TaskTestSpec{
-				Expected: &v1alpha1.ExpectedOutcomes{
+				Expects: &v1alpha1.ExpectedOutcomes{
 					FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
 						StepName: "MyStep",
 						Objects: []v1alpha1.FileSystemObject{{
@@ -47,7 +47,7 @@ func TestTask_SetDefaults(t *testing.T) {
 		},
 		want: &v1alpha1.TaskTest{
 			Spec: v1alpha1.TaskTestSpec{
-				Expected: &v1alpha1.ExpectedOutcomes{
+				Expects: &v1alpha1.ExpectedOutcomes{
 					FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
 						StepName: "MyStep",
 						Objects: []v1alpha1.FileSystemObject{{
@@ -62,7 +62,7 @@ func TestTask_SetDefaults(t *testing.T) {
 		name: "expected result type set to string",
 		in: &v1alpha1.TaskTest{
 			Spec: v1alpha1.TaskTestSpec{
-				Expected: &v1alpha1.ExpectedOutcomes{
+				Expects: &v1alpha1.ExpectedOutcomes{
 					Results: []v1.TaskResult{{
 						Name:  "name",
 						Value: &v1.ResultValue{StringVal: "value"},
@@ -72,7 +72,7 @@ func TestTask_SetDefaults(t *testing.T) {
 		},
 		want: &v1alpha1.TaskTest{
 			Spec: v1alpha1.TaskTestSpec{
-				Expected: &v1alpha1.ExpectedOutcomes{
+				Expects: &v1alpha1.ExpectedOutcomes{
 					Results: []v1.TaskResult{{
 						Name: "name",
 						Type: "string",
@@ -87,7 +87,7 @@ func TestTask_SetDefaults(t *testing.T) {
 		name: "non-default expected file system object type not overwritten",
 		in: &v1alpha1.TaskTest{
 			Spec: v1alpha1.TaskTestSpec{
-				Expected: &v1alpha1.ExpectedOutcomes{
+				Expects: &v1alpha1.ExpectedOutcomes{
 					FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
 						StepName: "MyStep",
 						Objects: []v1alpha1.FileSystemObject{{
@@ -100,7 +100,7 @@ func TestTask_SetDefaults(t *testing.T) {
 		},
 		want: &v1alpha1.TaskTest{
 			Spec: v1alpha1.TaskTestSpec{
-				Expected: &v1alpha1.ExpectedOutcomes{
+				Expects: &v1alpha1.ExpectedOutcomes{
 					FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
 						StepName: "MyStep",
 						Objects: []v1alpha1.FileSystemObject{{

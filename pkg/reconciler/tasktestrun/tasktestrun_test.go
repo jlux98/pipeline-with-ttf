@@ -111,7 +111,7 @@ metadata:
 spec:
   taskRef:
     name: hello-task
-  expected:
+  expects:
     results:
     - name: current-date
       type: string
@@ -287,7 +287,7 @@ spec:
         env:
         - name: ANOTHER_FOO
           value: ANOTHER_BAR
-    expected:
+    expects:
       successStatus: true`
 
 	ttrManifestExistingTaskRun = `
@@ -314,7 +314,7 @@ spec:
   taskTestSpec:
     taskRef:
       name: hello-task
-    expected:
+    expects:
       results:
       - name: current-date
         type: string
@@ -348,7 +348,7 @@ spec:
   taskTestSpec:
     taskRef:
       name: hello-task
-    expected:
+    expects:
       results:
       - name: current-date
         type: string
@@ -410,7 +410,7 @@ spec:
   taskTestSpec:
     taskRef:
       name: task
-    expected:
+    expects:
       results:
       - name: current-date
         type: string
@@ -466,7 +466,7 @@ spec:
   taskTestSpec:
     taskRef:
       name: task
-    expected:
+    expects:
       stepEnvs:
       - stepName: goodbye-step
         env:
@@ -486,7 +486,7 @@ spec:
   taskTestSpec:
     taskRef:
       name: task
-    expected:
+    expects:
       fileSystemContents:
       - stepName: goodbye-step
         objects:
@@ -642,7 +642,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 					TaskTestName: ptr.To("task-test"),
 					TaskTestSpec: &v1alpha1.TaskTestSpec{
 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "hello-task"},
-						Expected: &v1alpha1.ExpectedOutcomes{
+						Expects: &v1alpha1.ExpectedOutcomes{
 							Results: []v1.TaskResult{{
 								Name:  "current-date",
 								Type:  "string",
@@ -835,7 +835,7 @@ func TestReconciler_InvalidateReconcileKind(t *testing.T) {
 	ttrCompletedButNoEnvDumpInTR := parse.MustParseTaskTestRun(t, ttrManifestCompletedTaskRunWithTestSpec)
 	ttrCompletedButNoFileSystemObservationsInTR := ttrCompletedButNoEnvDumpInTR.DeepCopy()
 	ttrCompletedButNoFileSystemObservationsInTR.Name += "-no-expected-env"
-	ttrCompletedButNoFileSystemObservationsInTR.Spec.TaskTestSpec.Expected.Env = nil
+	ttrCompletedButNoFileSystemObservationsInTR.Spec.TaskTestSpec.Expects.Env = nil
 	ttrCompletedButNoFileSystemObservationsInTR.Status.TaskRunName = ptr.To("ttr-completed-task-run-run")
 
 	task := parse.MustParseV1Task(t, tManifest)
@@ -937,7 +937,7 @@ task "task" has no Result named "current-date"`,
 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
 					TaskTestSpec: &v1alpha1.TaskTestSpec{
 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-						Expected: &v1alpha1.ExpectedOutcomes{
+						Expects: &v1alpha1.ExpectedOutcomes{
 							Results: []v1.TaskResult{
 								{
 									Name:  "current-date",
@@ -977,7 +977,7 @@ task "task" has no Step named "goodbye-step"`,
 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
 					TaskTestSpec: &v1alpha1.TaskTestSpec{
 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-						Expected: &v1alpha1.ExpectedOutcomes{
+						Expects: &v1alpha1.ExpectedOutcomes{
 							StepEnvs: []v1alpha1.StepEnv{{
 								StepName: "goodbye-step",
 								Env: []corev1.EnvVar{{
@@ -1012,7 +1012,7 @@ task "task" has no Step named "goodbye-step"`,
 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
 					TaskTestSpec: &v1alpha1.TaskTestSpec{
 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-						Expected: &v1alpha1.ExpectedOutcomes{
+						Expects: &v1alpha1.ExpectedOutcomes{
 							FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
 								StepName: "goodbye-step",
 								Objects: []v1alpha1.FileSystemObject{{
@@ -1064,7 +1064,7 @@ error while checking the expectations for file system objects: could not find re
 					TaskRunName: ptr.To("ttr-completed-task-run-run"),
 					TaskTestSpec: &v1alpha1.TaskTestSpec{
 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "hello-task"},
-						Expected: &v1alpha1.ExpectedOutcomes{
+						Expects: &v1alpha1.ExpectedOutcomes{
 							Results: []v1.TaskResult{
 								{
 									Name: "current-date",
@@ -1151,7 +1151,7 @@ error while checking the expectations for file system objects: could not find re
 					TaskRunName: ptr.To("ttr-completed-task-run-run"),
 					TaskTestSpec: &v1alpha1.TaskTestSpec{
 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "hello-task"},
-						Expected: &v1alpha1.ExpectedOutcomes{
+						Expects: &v1alpha1.ExpectedOutcomes{
 							Results: []v1.TaskResult{
 								{
 									Name: "current-date",

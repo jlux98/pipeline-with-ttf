@@ -32,7 +32,7 @@ spec:
     #           veniam, quis nostrud exercitation ullamco laboris nisi ut aliquid ...
     #       - path: "/build/misc/bin"
     #         type: "EmptyDir"
-    #   expected:
+    #   expects:
     #     results:
     #     - name: <Result1>
     #       value: <expectedValue1>

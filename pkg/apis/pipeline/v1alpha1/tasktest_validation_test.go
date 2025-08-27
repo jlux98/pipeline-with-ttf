@@ -288,7 +288,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 				taskTest: &v1alpha1.TaskTest{
 					ObjectMeta: metav1.ObjectMeta{Name: "taskname"},
 					Spec: v1alpha1.TaskTestSpec{
-						Expected: &v1alpha1.ExpectedOutcomes{
+						Expects: &v1alpha1.ExpectedOutcomes{
 							FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{
 								{
 									StepName: "step0",
@@ -327,7 +327,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 					},
 					Spec: v1alpha1.TaskTestSpec{
 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-						Expected: &v1alpha1.ExpectedOutcomes{
+						Expects: &v1alpha1.ExpectedOutcomes{
 							Results: []v1.TaskResult{
 								{
 									Name: "result",
@@ -349,7 +349,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 					},
 					Spec: v1alpha1.TaskTestSpec{
 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-						Expected: &v1alpha1.ExpectedOutcomes{
+						Expects: &v1alpha1.ExpectedOutcomes{
 							FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
 								StepName: "step",
 								Objects: []v1alpha1.FileSystemObject{{
@@ -477,7 +477,7 @@ func TestTaskTest_Valid(t *testing.T) {
 				},
 				Spec: v1alpha1.TaskTestSpec{
 					TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-					Expected: &v1alpha1.ExpectedOutcomes{
+					Expects: &v1alpha1.ExpectedOutcomes{
 						Env: []corev1.EnvVar{{
 							Name:  "name0",
 							Value: "value",
@@ -574,7 +574,7 @@ content
 							}}},
 						},
 					},
-					Expected: &v1alpha1.ExpectedOutcomes{
+					Expects: &v1alpha1.ExpectedOutcomes{
 						Env: []corev1.EnvVar{{
 							Name:  "name",
 							Value: "value",

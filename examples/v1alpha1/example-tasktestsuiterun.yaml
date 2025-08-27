@@ -13,7 +13,7 @@ spec:
         taskTestRef:
           name: sample-name
         taskTestSpec:
-          expected:
+          expects:
             env:
               - name: sample-name
                 value: sample-value
@@ -83,7 +83,7 @@ status:
         taskTestRef:
           name: sample-name
         taskTestSpec:
-          expected:
+          expects:
             env:
               - name: sample-name
                 value: sample-value

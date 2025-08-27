@@ -150,10 +150,10 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 	return joinedErr
 }
 
-func retryTaskRun(tr *v1alpha1.TaskTestSuiteRun, s string) {
-	// TODO(jlux98) implement this
-	panic("unimplemented")
-}
+// TODO(jlux98) implement this
+// func retryTaskRun(tr *v1alpha1.TaskTestSuiteRun, s string) {
+// 	panic("unimplemented")
+// }
 
 func (c *Reconciler) prepare(ctx context.Context, ttsr *v1alpha1.TaskTestSuiteRun) error {
 	var observedTaskTestSuiteSpec *v1alpha1.TaskTestSuiteSpec
@@ -202,68 +202,9 @@ func (c *Reconciler) reconcile(ctx context.Context, ttsr *v1alpha1.TaskTestSuite
 
 	for _, taskTest := range ttsr.Status.TaskTestSuiteSpec.TaskTests {
 		logger.Infof("doing reconciliation loop for suite test %q", taskTest.Name)
-		// Get the TaskTest's TaskTestRun if it should have one. Otherwise, create the TaskRun.
-		var taskTestRun *v1alpha1.TaskTestRun
-		if ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName()] != nil {
-			logger.Infof("boom: Now retrieving TaskTestRun %s for TTSR %s", taskTest.GetTaskTestRunName(), ttsr.Name)
-			taskTestRun, err = c.TaskTestRunLister.TaskTestRuns(ttsr.Namespace).Get(taskTest.GetTaskTestRunName())
-			if k8serrors.IsNotFound(err) {
-				// Keep going, this will result in the TaskRun being created below.
-			} else if err != nil {
-				// This is considered a transient error, so we return error, do not update
-				// the task test run condition, and return an error which will cause this key to
-				// be requeued for reconcile.
-				logger.Errorf("Error getting TaskTestRun %q: %v", taskTest.GetTaskTestRunName(), err)
-				events.Emit(ctx, nil, ttsr.Status.GetCondition(apis.ConditionSucceeded), ttsr)
-				return err
-			}
-		} else {
-			// List TaskRuns that have a label with this TaskTestSuiteRun name.  Do not include other labels from the
-			// TaskTestSuiteRun in this selector.  The user could change them during the lifetime of the TaskTestSuiteRun so the
-			// current labels may not be set on a previously created TaskRun.
-			logger.Infof("boom: Now retrieving TaskRun from list for TTR %s", ttsr.Name)
-			labelSelector := labels.Set{pipeline.TaskTestSuiteRunLabelKey: ttsr.Name}
-			ttrs, err := c.TaskTestRunLister.TaskTestRuns(ttsr.Namespace).List(labelSelector.AsSelector())
-			if err != nil {
-				logger.Errorf("Error listing task test runs: %v", err)
-				events.Emit(ctx, nil, ttsr.Status.GetCondition(apis.ConditionSucceeded), ttsr)
-				return err
-			}
-			for index := range ttrs {
-				tr := ttrs[index]
-				if metav1.IsControlledBy(tr, ttsr) && tr.GetSuiteTestName() == taskTest.Name {
-					logger.Infof("boom: Now found TaskRun %s in list controlled by TTR %s", tr.Name, ttsr.Name)
-					taskTestRun = tr
-					ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName()] = &taskTestRun.Status
-				}
-			}
-		}
-
-		if taskTestRun == nil {
-			logger.Infof("boom: Now creating TaskTestRun for TTSR %s", ttsr.Name)
-			taskTestRun, err = c.createTaskTestRun(ctx, ttsr, &taskTest, ttsr.Namespace)
-			if err != nil {
-				logger.Errorf("Failed to create task test run %q for taskTestSuiteRun %q: %v", taskTest.GetTaskTestRunName(), ttsr.Name, err)
-				return err
-			}
-
-			if ttsr.Status.TaskTestRunStatuses == nil {
-				ttsr.Status.TaskTestRunStatuses = map[string]*v1alpha1.TaskTestRunStatus{}
-			}
-			ttsr.Status.TaskTestRunStatuses[taskTestRun.Name] = &taskTestRun.Status
-			ttsr.Status.StartTime = &metav1.Time{
-				Time: c.Clock.Now(),
-			}
-
-		}
-
-		if ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName()] == nil || !cmp.Equal(ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName()], taskTestRun.Status) {
-			logger.Infof("boom: Now setting task run name for TTR %s", ttsr.Name)
-			ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName()] = &taskTestRun.Status
-		}
-
-		if taskTestRun.Status.CompletionTime == nil {
-			allTaskTestRunsFinished = false
+		err = c.reconcileSuiteTest(ctx, ttsr, taskTest, &allTaskTestRunsFinished)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -291,6 +232,75 @@ func (c *Reconciler) reconcile(ctx context.Context, ttsr *v1alpha1.TaskTestSuite
 		}
 		events.Emit(ctx, beforeCondition, ttsr.Status.GetCondition(apis.ConditionSucceeded), ttsr)
 		return resultErr
+	}
+	return nil
+}
+
+func (c *Reconciler) reconcileSuiteTest(ctx context.Context, ttsr *v1alpha1.TaskTestSuiteRun, taskTest v1alpha1.SuiteTest, allTaskTestRunsFinished *bool) error {
+	logger := logging.FromContext(ctx)
+	var err error
+
+	// Get the TaskTest's TaskTestRun if it should have one. Otherwise, create the TaskRun.
+	var taskTestRun *v1alpha1.TaskTestRun
+	if ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName()] != nil {
+		logger.Infof("boom: Now retrieving TaskTestRun %s for TTSR %s", taskTest.GetTaskTestRunName(), ttsr.Name)
+		taskTestRun, err = c.TaskTestRunLister.TaskTestRuns(ttsr.Namespace).Get(taskTest.GetTaskTestRunName())
+		if k8serrors.IsNotFound(err) {
+			// Keep going, this will result in the TaskRun being created below.
+		} else if err != nil {
+			// This is considered a transient error, so we return error, do not update
+			// the task test run condition, and return an error which will cause this key to
+			// be requeued for reconcile.
+			logger.Errorf("Error getting TaskTestRun %q: %v", taskTest.GetTaskTestRunName(), err)
+			events.Emit(ctx, nil, ttsr.Status.GetCondition(apis.ConditionSucceeded), ttsr)
+			return err
+		}
+	} else {
+		// List TaskRuns that have a label with this TaskTestSuiteRun name.  Do not include other labels from the
+		// TaskTestSuiteRun in this selector.  The user could change them during the lifetime of the TaskTestSuiteRun so the
+		// current labels may not be set on a previously created TaskRun.
+		logger.Infof("boom: Now retrieving TaskRun from list for TTR %s", ttsr.Name)
+		labelSelector := labels.Set{pipeline.TaskTestSuiteRunLabelKey: ttsr.Name}
+		ttrs, err := c.TaskTestRunLister.TaskTestRuns(ttsr.Namespace).List(labelSelector.AsSelector())
+		if err != nil {
+			logger.Errorf("Error listing task test runs: %v", err)
+			events.Emit(ctx, nil, ttsr.Status.GetCondition(apis.ConditionSucceeded), ttsr)
+			return err
+		}
+		for index := range ttrs {
+			tr := ttrs[index]
+			if metav1.IsControlledBy(tr, ttsr) && tr.GetSuiteTestName() == taskTest.Name {
+				logger.Infof("boom: Now found TaskRun %s in list controlled by TTR %s", tr.Name, ttsr.Name)
+				taskTestRun = tr
+				ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName()] = &taskTestRun.Status
+			}
+		}
+	}
+
+	if taskTestRun == nil {
+		logger.Infof("boom: Now creating TaskTestRun for TTSR %s", ttsr.Name)
+		taskTestRun, err = c.createTaskTestRun(ctx, ttsr, &taskTest, ttsr.Namespace)
+		if err != nil {
+			logger.Errorf("Failed to create task test run %q for taskTestSuiteRun %q: %v", taskTest.GetTaskTestRunName(), ttsr.Name, err)
+			return err
+		}
+
+		if ttsr.Status.TaskTestRunStatuses == nil {
+			ttsr.Status.TaskTestRunStatuses = map[string]*v1alpha1.TaskTestRunStatus{}
+		}
+		ttsr.Status.TaskTestRunStatuses[taskTestRun.Name] = &taskTestRun.Status
+		ttsr.Status.StartTime = &metav1.Time{
+			Time: c.Clock.Now(),
+		}
+	}
+
+	if ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName()] == nil || !cmp.Equal(ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName()], taskTestRun.Status) {
+		logger.Infof("boom: Now setting task run name for TTR %s", ttsr.Name)
+		ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName()] = &taskTestRun.Status
+	}
+
+	if taskTestRun.Status.CompletionTime == nil {
+		*allTaskTestRunsFinished = false
 	}
 	return nil
 }

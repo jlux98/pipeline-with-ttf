@@ -44,7 +44,7 @@ spec:
               description: Spec holds the desired state of the TaskTest from the client
               type: object
               properties:
-                expected:
+                expects:
                   description: |-
                     Expected contains the data, which the TaskTestRun controller will
                     use to check, whether a TaskTestRun was successful or not.

@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	clock "k8s.io/utils/clock/testing"
+	"k8s.io/utils/ptr"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	cminformer "knative.dev/pkg/configmap/informer"
@@ -58,8 +59,12 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 	taskTestMap := map[string]*v1alpha1.TaskTest{
 		"simple_task_test": parse.MustParseTaskTest(t, ttManifest),
 	}
+	taskTestSuiteMap := map[string]*v1alpha1.TaskTestSuite{
+		"simple_task_test_suite": parse.MustParseTaskTestSuite(t, ttsManifestSimpleSuite),
+	}
 	taskTestSuiteRunMap := map[string]*v1alpha1.TaskTestSuiteRun{
-		"simple_ttsr_inline_tts": parse.MustParseTaskTestSuiteRun(t, ttsrManifestSimpleInlineTts),
+		"start_new_ttr_inline_tts":     parse.MustParseTaskTestSuiteRun(t, ttsrManifestStartNewRunsWithInlineTts),
+		"start_new_ttr_referenced_tts": parse.MustParseTaskTestSuiteRun(t, ttsrManifestStartNewRunsWithReferencedTts),
 	}
 
 	// load custom resources into data for the fake cluster
@@ -68,6 +73,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 		TaskRuns:          []*v1.TaskRun{},
 		TaskTests:         slices.Collect(maps.Values(taskTestMap)),
 		TaskTestRuns:      []*v1alpha1.TaskTestRun{},
+		TaskTestSuites:    slices.Collect(maps.Values(taskTestSuiteMap)),
 		TaskTestSuiteRuns: slices.Collect(maps.Values(taskTestSuiteRunMap)),
 	}
 
@@ -79,19 +85,48 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 		wantCompletionTime bool
 	}
 	tests := map[string]tc{
-		"simple_ttsr_inline_tts": {
-			wantTtsrStatus: patchTaskTestSuiteRun(taskTestSuiteRunMap["simple_ttsr_inline_tts"], func(ttsr *v1alpha1.TaskTestSuiteRun) {
+		"start_new_ttr_inline_tts": {
+			wantTtsrStatus: patchTaskTestSuiteRun(taskTestSuiteRunMap["start_new_ttr_inline_tts"], func(ttsr *v1alpha1.TaskTestSuiteRun) {
 				ttsr.Status.Conditions = duckv1.Conditions{{
 					Type:   "Succeeded",
 					Status: "Unknown",
 					Reason: "Started",
 				}}
 				ttsr.Status.TaskTestSuiteSpec = ttsr.Spec.TaskTestSuiteSpec
-				ttsr.Status.TaskTestSuiteSpec.TaskTests[0].TaskTestSpec = &v1alpha1.TaskTestSpec{TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"}}
+				ttsr.Status.TaskTestSuiteSpec.TaskTests[0].TaskTestSpec = &v1alpha1.TaskTestSpec{
+					TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
+					Expects: &v1alpha1.ExpectedOutcomes{
+						SuccessStatus: ptr.To(true),
+						SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
+					},
+				}
 			}),
 			wantTtrs: []v1alpha1.TaskTestRun{
-				*parse.MustParseTaskTestRun(t, ttrManifestSimpleInlineTtsTask0),
-				*parse.MustParseTaskTestRun(t, ttrManifestSimpleInlineTtsTask1),
+				generateTaskTestRun(t, ttrManifestStartNewRunsWithInlineTts, taskTestSuiteRunMap["start_new_ttr_inline_tts"].Name, "task-0"),
+				generateTaskTestRun(t, ttrManifestStartNewRunsWithInlineTts, taskTestSuiteRunMap["start_new_ttr_inline_tts"].Name, "task-1"),
+			},
+			wantStartTime: true,
+		},
+		"start_new_ttr_referenced_tts": {
+			wantTtsrStatus: patchTaskTestSuiteRun(taskTestSuiteRunMap["start_new_ttr_referenced_tts"], func(ttsr *v1alpha1.TaskTestSuiteRun) {
+				ttsr.Status.Conditions = duckv1.Conditions{{
+					Type:   "Succeeded",
+					Status: "Unknown",
+					Reason: "Started",
+				}}
+				ttsr.Status.TaskTestSuiteName = ptr.To("suite")
+				ttsr.Status.TaskTestSuiteSpec = &(taskTestSuiteMap["simple_task_test_suite"].Spec)
+				ttsr.Status.TaskTestSuiteSpec.TaskTests[0].TaskTestSpec = &v1alpha1.TaskTestSpec{
+					TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
+					Expects: &v1alpha1.ExpectedOutcomes{
+						SuccessStatus: ptr.To(true),
+						SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
+					},
+				}
+			}),
+			wantTtrs: []v1alpha1.TaskTestRun{
+				generateTaskTestRun(t, ttrManifestStartNewRunsWithInlineTts, taskTestSuiteRunMap["start_new_ttr_referenced_tts"].Name, "task-0"),
+				generateTaskTestRun(t, ttrManifestStartNewRunsWithInlineTts, taskTestSuiteRunMap["start_new_ttr_referenced_tts"].Name, "task-1"),
 			},
 			wantStartTime: true,
 		},
@@ -193,7 +228,6 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 					t.Errorf("TaskTestRun %d Status not mirrored properly to TaskTestSuiteRun: %v", i, diff.PrintWantGot(d))
 				}
 			}
-
 		})
 	}
 }
@@ -314,4 +348,9 @@ func patchTaskTestSuiteRun(ttrs *v1alpha1.TaskTestSuiteRun, pf statusPatchFunc) 
 
 func taskTestRunSortFunc(a, b v1alpha1.TaskTestRun) int {
 	return strings.Compare(a.GetNamespacedName().String(), b.GetNamespacedName().String())
+}
+
+func generateTaskTestRun(t *testing.T, yaml, suiteRunName, suiteTaskName string) v1alpha1.TaskTestRun {
+	t.Helper()
+	return *(parse.MustParseTaskTestRun(t, fmt.Sprintf(yaml, suiteRunName, suiteTaskName, suiteRunName, suiteTaskName, suiteRunName)))
 }

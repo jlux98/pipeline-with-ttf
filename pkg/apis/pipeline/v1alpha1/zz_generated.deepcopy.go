@@ -1224,8 +1224,8 @@ func (in *TaskTestSpec) DeepCopyInto(out *TaskTestSpec) {
 		*out = new(TaskTestInputs)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.Expected != nil {
-		in, out := &in.Expected, &out.Expected
+	if in.Expects != nil {
+		in, out := &in.Expects, &out.Expects
 		*out = new(ExpectedOutcomes)
 		(*in).DeepCopyInto(*out)
 	}

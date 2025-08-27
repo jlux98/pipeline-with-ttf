@@ -53,13 +53,13 @@ type TaskTestSpec struct {
 	// +optional
 	Inputs *TaskTestInputs `json:"inputs,omitempty"`
 
-	// Expected contains the data, which the TaskTestRun controller will
+	// Expects contains the data, which the TaskTestRun controller will
 	// use to check, whether a TaskTestRun was successful or not.
 	// If this field is left empty, then the TaskTestRun is deemed successful,
 	// if the TaskRun completes without a failure occurring.
 	//
 	// +optional
-	Expected *ExpectedOutcomes `json:"expected,omitempty"`
+	Expects *ExpectedOutcomes `json:"expects,omitempty"`
 }
 
 type SimpleTaskRef struct {

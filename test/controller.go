@@ -39,6 +39,7 @@ import (
 	faketaskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/taskrun/fake"
 	faketasktestinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/tasktest/fake"
 	faketasktestruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/tasktestrun/fake"
+	faketasktestsuiteinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/tasktestsuite/fake"
 	faketasktestsuiteruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/tasktestsuiterun/fake"
 	fakeverificationpolicyinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/verificationpolicy/fake"
 	fakecustomruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/customrun/fake"
@@ -89,6 +90,7 @@ type Data struct {
 	Secrets                 []*corev1.Secret
 	TaskTests               []*v1alpha1.TaskTest
 	TaskTestRuns            []*v1alpha1.TaskTestRun
+	TaskTestSuites          []*v1alpha1.TaskTestSuite
 	TaskTestSuiteRuns       []*v1alpha1.TaskTestSuiteRun
 }
 
@@ -118,6 +120,7 @@ type Informers struct {
 	Secret             coreinformers.SecretInformer
 	TaskTest           informersv1alpha1.TaskTestInformer
 	TaskTestRun        informersv1alpha1.TaskTestRunInformer
+	TaskTestSuite      informersv1alpha1.TaskTestSuiteInformer
 	TaskTestSuiteRun   informersv1alpha1.TaskTestSuiteRunInformer
 }
 
@@ -207,6 +210,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		Secret:             fakesecretinformer.Get(ctx),
 		TaskTest:           faketasktestinformer.Get(ctx),
 		TaskTestRun:        faketasktestruninformer.Get(ctx),
+		TaskTestSuite:      faketasktestsuiteinformer.Get(ctx),
 		TaskTestSuiteRun:   faketasktestsuiteruninformer.Get(ctx),
 	}
 
@@ -316,6 +320,13 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	for _, tr := range d.TaskTestRuns {
 		tr := tr.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if _, err := c.Pipeline.TektonV1alpha1().TaskTestRuns(tr.Namespace).Create(ctx, tr, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	c.Pipeline.PrependReactor("*", "tasktestsuites", AddToInformer(t, i.TaskTestSuite.Informer().GetIndexer()))
+	for _, tr := range d.TaskTestSuites {
+		tr := tr.DeepCopy() // Avoid assumptions that the informer's copy is modified.
+		if _, err := c.Pipeline.TektonV1alpha1().TaskTestSuites(tr.Namespace).Create(ctx, tr, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}

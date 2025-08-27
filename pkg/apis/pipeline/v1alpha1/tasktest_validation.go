@@ -27,8 +27,8 @@ func (ts *TaskTestSpec) Validate(ctx context.Context) *apis.FieldError {
 	if ts.Inputs != nil {
 		errs = errs.Also(ts.Inputs.Validate(ctx).ViaField("inputs"))
 	}
-	if ts.Expected != nil {
-		errs = errs.Also(ts.Expected.Validate(ctx).ViaField("expected"))
+	if ts.Expects != nil {
+		errs = errs.Also(ts.Expects.Validate(ctx).ViaField("expected"))
 	}
 	return errs
 }

@@ -36,9 +36,9 @@ func TestTaskTestSuite_Invalidate(t *testing.T) {
 						}, {
 							Name: "test",
 							TaskTestSpec: &v1alpha1.TaskTestSpec{
-								TaskRef:  &v1alpha1.SimpleTaskRef{Name: "task"},
-								Inputs:   &v1alpha1.TaskTestInputs{},
-								Expected: &v1alpha1.ExpectedOutcomes{},
+								TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
+								Inputs:  &v1alpha1.TaskTestInputs{},
+								Expects: &v1alpha1.ExpectedOutcomes{},
 							},
 						},
 					},
@@ -137,9 +137,9 @@ func TestTaskTestSuite_Validate(t *testing.T) {
 					}, {
 						Name: "test1",
 						TaskTestSpec: &v1alpha1.TaskTestSpec{
-							TaskRef:  &v1alpha1.SimpleTaskRef{Name: "task"},
-							Inputs:   &v1alpha1.TaskTestInputs{},
-							Expected: &v1alpha1.ExpectedOutcomes{},
+							TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
+							Inputs:  &v1alpha1.TaskTestInputs{},
+							Expects: &v1alpha1.ExpectedOutcomes{},
 						},
 					},
 				},

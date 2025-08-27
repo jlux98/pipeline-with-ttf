@@ -195,7 +195,7 @@ func MustParseTaskTest(t *testing.T, yaml string) *v1alpha1.TaskTest {
 	yaml = `apiVersion: tekton.dev/v1alpha1
 kind: TaskTest
 ` + yaml
-	mustParseYAML(t, yaml, &v)
+	mustStrictParseYAML(t, yaml, &v)
 	return &v
 }
 
@@ -206,7 +206,18 @@ func MustParseTaskTestRun(t *testing.T, yaml string) *v1alpha1.TaskTestRun {
 	yaml = `apiVersion: tekton.dev/v1alpha1
 kind: TaskTestRun
 ` + yaml
-	mustParseYAML(t, yaml, &v)
+	mustStrictParseYAML(t, yaml, &v)
+	return &v
+}
+
+// MustParseTaskTestSuite takes YAML and parses it into a *v1alpha1.TaskTestSuiteRun
+func MustParseTaskTestSuite(t *testing.T, yaml string) *v1alpha1.TaskTestSuite {
+	t.Helper()
+	var v v1alpha1.TaskTestSuite
+	yaml = `apiVersion: tekton.dev/v1alpha1
+kind: TaskTestSuite
+` + yaml
+	mustStrictParseYAML(t, yaml, &v)
 	return &v
 }
 
@@ -217,13 +228,20 @@ func MustParseTaskTestSuiteRun(t *testing.T, yaml string) *v1alpha1.TaskTestSuit
 	yaml = `apiVersion: tekton.dev/v1alpha1
 kind: TaskTestSuiteRun
 ` + yaml
-	mustParseYAML(t, yaml, &v)
+	mustStrictParseYAML(t, yaml, &v)
 	return &v
 }
 
 func mustParseYAML(t *testing.T, yaml string, i runtime.Object) {
 	t.Helper()
 	if _, _, err := scheme.Codecs.UniversalDeserializer().Decode([]byte(yaml), nil, i); err != nil {
+		t.Fatalf("mustParseYAML (%s): %v", yaml, err)
+	}
+}
+
+func mustStrictParseYAML(t *testing.T, yaml string, i runtime.Object) {
+	t.Helper()
+	if _, _, err := scheme.CodecsStrict.UniversalDeserializer().Decode([]byte(yaml), nil, i); err != nil {
 		t.Fatalf("mustParseYAML (%s): %v", yaml, err)
 	}
 }

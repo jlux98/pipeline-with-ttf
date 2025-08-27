@@ -7,7 +7,7 @@ spec:
   taskTestSpec:
     taskRef:
       name: hello-task
-    expected:
+    expects:
       results:
         - name: current-date
           value: "2025-08-24"

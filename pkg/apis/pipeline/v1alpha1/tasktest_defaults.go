@@ -18,23 +18,23 @@ func (tt *TaskTest) SetDefaults(ctx context.Context) {
 // FIXME(jlux98) implement this
 // SetDefaults set any defaults for the task test spec
 func (tts *TaskTestSpec) SetDefaults(ctx context.Context) {
-	if tts.Expected != nil {
-		if tts.Expected.Results != nil {
-			for i := range tts.Expected.Results {
-				logging.FromContext(ctx).Infof(`Result "%s", expected value "%s", type "%s"`, tts.Expected.Results[i].Name, tts.Expected.Results[i].Value.StringVal, tts.Expected.Results[i].Type)
-				if tts.Expected.Results[i].Value.Type == "" {
-					tts.Expected.Results[i].Value.Type = v1.ParamTypeString
+	if tts.Expects != nil {
+		if tts.Expects.Results != nil {
+			for i := range tts.Expects.Results {
+				logging.FromContext(ctx).Infof(`Result "%s", expected value "%s", type "%s"`, tts.Expects.Results[i].Name, tts.Expects.Results[i].Value.StringVal, tts.Expects.Results[i].Type)
+				if tts.Expects.Results[i].Value.Type == "" {
+					tts.Expects.Results[i].Value.Type = v1.ParamTypeString
 				}
-				if tts.Expected.Results[i].Type == "" {
-					tts.Expected.Results[i].Type = v1.ResultsTypeString
+				if tts.Expects.Results[i].Type == "" {
+					tts.Expects.Results[i].Type = v1.ResultsTypeString
 				}
 			}
 		}
-		if tts.Expected.FileSystemContents != nil {
-			for i := range tts.Expected.FileSystemContents {
-				for j := range tts.Expected.FileSystemContents[i].Objects {
-					if tts.Expected.FileSystemContents[i].Objects[j].Type == "" {
-						tts.Expected.FileSystemContents[i].Objects[j].Type = AnyObjectType
+		if tts.Expects.FileSystemContents != nil {
+			for i := range tts.Expects.FileSystemContents {
+				for j := range tts.Expects.FileSystemContents[i].Objects {
+					if tts.Expects.FileSystemContents[i].Objects[j].Type == "" {
+						tts.Expects.FileSystemContents[i].Objects[j].Type = AnyObjectType
 					}
 				}
 			}

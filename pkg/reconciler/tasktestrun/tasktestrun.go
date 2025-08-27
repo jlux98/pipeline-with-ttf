@@ -353,13 +353,13 @@ func checkActualOutcomesAgainstExpectations(ttrs *v1alpha1.TaskTestRunStatus, tr
 	expectationsMet := true
 	diffs := ""
 	var resultErr error = nil
-	if ttrs.TaskTestSpec.Expected != nil && ttrs.GetCondition(apis.ConditionSucceeded).IsUnknown() {
+	if ttrs.TaskTestSpec.Expects != nil && ttrs.GetCondition(apis.ConditionSucceeded).IsUnknown() {
 		ttrs.Outcomes = &v1alpha1.ObservedOutcomes{}
 
 		// check success status
-		if ttrs.TaskTestSpec.Expected.SuccessStatus != nil {
+		if ttrs.TaskTestSpec.Expects.SuccessStatus != nil {
 			ttrs.Outcomes.SuccessStatus = &v1alpha1.ObservedSuccessStatus{
-				Want: *ttrs.TaskTestSpec.Expected.SuccessStatus,
+				Want: *ttrs.TaskTestSpec.Expects.SuccessStatus,
 				Got:  trs.GetCondition(apis.ConditionSucceeded).IsTrue(),
 			}
 			ttrs.Outcomes.SuccessStatus.WantDiffersFromGot = ttrs.Outcomes.SuccessStatus.Want != ttrs.Outcomes.SuccessStatus.Got
@@ -371,9 +371,9 @@ func checkActualOutcomesAgainstExpectations(ttrs *v1alpha1.TaskTestRunStatus, tr
 		}
 
 		// check success reason
-		if ttrs.TaskTestSpec.Expected.SuccessReason != nil {
+		if ttrs.TaskTestSpec.Expects.SuccessReason != nil {
 			ttrs.Outcomes.SuccessReason = &v1alpha1.ObservedSuccessReason{
-				Want: *ttrs.TaskTestSpec.Expected.SuccessReason,
+				Want: *ttrs.TaskTestSpec.Expects.SuccessReason,
 				Got:  v1.TaskRunReason(trs.Conditions[0].Reason),
 			}
 			ttrs.Outcomes.SuccessReason.WantDiffersFromGot = ttrs.Outcomes.SuccessReason.Want != ttrs.Outcomes.SuccessReason.Got
@@ -385,14 +385,14 @@ func checkActualOutcomesAgainstExpectations(ttrs *v1alpha1.TaskTestRunStatus, tr
 		}
 
 		// check results
-		if ttrs.TaskTestSpec.Expected.Results != nil && ttrs.Outcomes.Results == nil {
+		if ttrs.TaskTestSpec.Expects.Results != nil && ttrs.Outcomes.Results == nil {
 			if err := checkExpectationsForResults(ttrs, trs, &expectationsMet, &diffs); err != nil {
 				resultErr = fmt.Errorf(`error while checking the expectations for results: %w`, err)
 			}
 		}
 
 		// check environment variables
-		if ttrs.TaskTestSpec.Expected.Env != nil {
+		if ttrs.TaskTestSpec.Expects.Env != nil {
 			if err := checkExpectationsForEnv(ttrs, trs, &expectationsMet, &diffs); err != nil {
 				err = fmt.Errorf(`error while checking the expectations for env: %w`, err)
 				if resultErr == nil {
@@ -404,7 +404,7 @@ func checkActualOutcomesAgainstExpectations(ttrs *v1alpha1.TaskTestRunStatus, tr
 		}
 
 		// check file system contents
-		if ttrs.TaskTestSpec.Expected.FileSystemContents != nil {
+		if ttrs.TaskTestSpec.Expects.FileSystemContents != nil {
 			if err := checkExpectationsForFileSystemObjects(ttrs, trs, &expectationsMet, &diffs); err != nil {
 				err = fmt.Errorf(`error while checking the expectations for file system objects: %w`, err)
 				if resultErr == nil {
@@ -444,11 +444,11 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 
 	logger.Infof(`Task successfully dereferenced: %v`, *task)
 
-	if ttr.Status.TaskTestSpec.Expected != nil {
-		expected := ttr.Status.TaskTestSpec.Expected
+	if ttr.Status.TaskTestSpec.Expects != nil {
+		expected := ttr.Status.TaskTestSpec.Expects
 		if expected.Results != nil {
 			declaredResults := task.Spec.Results
-			for i, expectedResult := range ttr.Status.TaskTestSpec.Expected.Results {
+			for i, expectedResult := range ttr.Status.TaskTestSpec.Expects.Results {
 				if !slices.ContainsFunc(declaredResults, func(result v1.TaskResult) bool {
 					return result.Name == expectedResult.Name
 				}) {
@@ -456,9 +456,9 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 				}
 			}
 		}
-		if ttr.Status.TaskTestSpec.Expected.StepEnvs != nil {
+		if ttr.Status.TaskTestSpec.Expects.StepEnvs != nil {
 			declaredSteps := task.Spec.Steps
-			for i, stepEnv := range ttr.Status.TaskTestSpec.Expected.StepEnvs {
+			for i, stepEnv := range ttr.Status.TaskTestSpec.Expects.StepEnvs {
 				if !slices.ContainsFunc(declaredSteps, func(step v1.Step) bool {
 					return step.Name == stepEnv.StepName
 				}) {
@@ -466,9 +466,9 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 				}
 			}
 		}
-		if ttr.Status.TaskTestSpec.Expected.FileSystemContents != nil {
+		if ttr.Status.TaskTestSpec.Expects.FileSystemContents != nil {
 			declaredSteps := task.Spec.Steps
-			for i, stepFileSystem := range ttr.Status.TaskTestSpec.Expected.FileSystemContents {
+			for i, stepFileSystem := range ttr.Status.TaskTestSpec.Expects.FileSystemContents {
 				if !slices.ContainsFunc(declaredSteps, func(step v1.Step) bool {
 					return step.Name == stepFileSystem.StepName
 				}) {
@@ -520,10 +520,10 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 	}
 	taskRun.Status.InitializeConditions()
 
-	if ttr.Status.TaskTestSpec.Expected != nil {
+	if ttr.Status.TaskTestSpec.Expects != nil {
 		logger.Infof(`filling annotations for task test run %s`, ttr.Name)
 		taskRun.Annotations = map[string]string{}
-		expectedValuesJSON, err := json.Marshal(ttr.Status.TaskTestSpec.Expected)
+		expectedValuesJSON, err := json.Marshal(ttr.Status.TaskTestSpec.Expects)
 		if err != nil {
 			return nil, err
 		}
@@ -551,7 +551,7 @@ func checkExpectationsForResults(ttrs *v1alpha1.TaskTestRunStatus, trs *v1.TaskR
 	taskResults := trs.Results
 	ttrs.Outcomes.Results = &[]v1alpha1.ObservedResults{}
 
-	for i, expectedResult := range ttrs.TaskTestSpec.Expected.Results {
+	for i, expectedResult := range ttrs.TaskTestSpec.Expects.Results {
 		var gotValue *v1.ResultValue
 		j := slices.IndexFunc(taskResults, func(actualResult v1.TaskRunResult) bool {
 			return actualResult.Name == expectedResult.Name
@@ -612,7 +612,7 @@ func checkExpectationsForEnv(ttrs *v1alpha1.TaskTestRunStatus, trs *v1.TaskRunSt
 	}
 	for step := range stepEnvironmentsMap {
 		vars := []v1alpha1.ObservedEnvVar{}
-		for _, expectedEnvVar := range ttrs.TaskTestSpec.Expected.Env {
+		for _, expectedEnvVar := range ttrs.TaskTestSpec.Expects.Env {
 			observation := v1alpha1.ObservedEnvVar{
 				Name: expectedEnvVar.Name,
 				Want: expectedEnvVar.Value,
@@ -667,7 +667,7 @@ func checkExpectationsForFileSystemObjects(ttrs *v1alpha1.TaskTestRunStatus, trs
 			StepName: stepName,
 			Objects:  []v1alpha1.ObservedFileSystemObject{},
 		}
-		for i, expectedFileSystemContent := range ttrs.TaskTestSpec.Expected.FileSystemContents {
+		for i, expectedFileSystemContent := range ttrs.TaskTestSpec.Expects.FileSystemContents {
 			if i == stepIndex {
 				for _, object := range expectedFileSystemContent.Objects {
 					observation := v1alpha1.ObservedFileSystemObject{
