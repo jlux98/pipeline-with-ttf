@@ -186,7 +186,7 @@ spec:
 //         date +%Y-%m-%d | tee /tekton/results/current-date`
 
 // Valid TaskTestRun manifests
-const ttrManifestStartNewRunsWithInlineTts = `
+const ttrManifestTemplateNewRun = `
 metadata:
   name: %s-%s
   namespace: foo
@@ -212,7 +212,8 @@ status:
     status: Unknown
     reason: Started
 `
-const ttrManifestCompletedSuccessfulRunsWithInlineTts = `
+
+const ttrManifestTemplateCompletedSuccessful = `
 metadata:
   name: %s-%s
   namespace: foo
@@ -270,6 +271,73 @@ status:
     successReason:
       want: Succeeded
       got: Succeeded
+  startTime: "2025-08-15T15:17:55Z"
+  completionTime: "2025-08-15T15:17:59Z"
+`
+
+const ttrManifestTemplateCompletedFailed = `
+metadata:
+  name: %s-%s
+  namespace: foo
+  labels:
+    tekton.dev/taskTestSuiteRun: %s
+    tekton.dev/suiteTest: %s
+  ownerReferences:
+  - apiVersion: tekton.dev/v1alpha1
+    kind: TaskTestSuiteRun
+    name: %s
+    controller: true
+    blockOwnerDeletion: true
+spec:
+  taskTestSpec:
+    taskRef:
+      name: task
+    expects:
+      successStatus: True
+      successReason: Succeeded
+status:
+  conditions:
+  - type: Succeeded
+    status: "False"
+    reason: TaskTestRunUnexpectedOutcomes
+    message: |
+      not all expectations were met:
+      observed success status did not match expectation
+      observed success reason did not match expectation
+  taskTestSpec:
+    taskRef:
+      name: task
+    expects:
+      successStatus: false
+      successReason: BOOM
+  taskRunName: ttsr-check-completed-runs-inline-tts-task-0-run
+  taskRunStatus:
+    completionTime: "2025-08-15T15:17:59Z"
+    conditions:
+    - message: All Steps have completed executing
+      reason: Succeeded
+      status: "True"
+      type: Succeeded
+    podName: ttsr-check-completed-runs-inline-tts-task-0-run-abcde-pod
+    startTime: "2025-08-15T15:17:55Z"
+    taskSpec:
+      steps:
+      - command:
+        - /mycmd
+        env:
+        - name: foo
+          value: bar
+        image: foo
+        name: simple-step
+  outcomes:
+    successStatus:
+      want: false
+      got: true
+      wantDiffersFromGot: true
+    successReason:
+      want: BOOM
+      got: Succeeded
+      wantDiffersFromGot: true
   startTime: "2025-08-15T15:17:55Z"
   completionTime: "2025-08-15T15:17:59Z"
 `

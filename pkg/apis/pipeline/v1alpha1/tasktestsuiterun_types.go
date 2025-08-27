@@ -295,6 +295,6 @@ func (trs *TaskTestSuiteRunStatus) MarkSuccessful() {
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionTrue,
 		Reason:  TaskTestRunReasonSuccessful.String(),
-		Message: "All TaskTestRuns completed executing and were successful",
+		Message: "all TaskTestRuns completed executing and were successful",
 	})
 }

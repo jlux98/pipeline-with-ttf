@@ -2,6 +2,7 @@ package tasktestsuiterun
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -219,16 +220,15 @@ func (c *Reconciler) reconcile(ctx context.Context, ttsr *v1alpha1.TaskTestSuite
 			ttsr.Status.CompletionTime = &metav1.Time{Time: c.Clock.Now()}
 		}
 
-		allTaskTestRunsSucceeded, unsuccessful := aggregateSuccessStatusOfTaskTestRuns(&ttsr.Status)
+		allTaskTestRunsSucceeded, unsuccessful, resultErr := aggregateSuccessStatusOfTaskTestRuns(&ttsr.Status)
 
-		var resultErr error = nil
 		// set status and emit event
 		beforeCondition := ttsr.Status.GetCondition(apis.ConditionSucceeded)
 		if allTaskTestRunsSucceeded {
 			ttsr.Status.MarkSuccessful()
 		} else {
-			resultErr = fmt.Errorf("not all TaskTestRuns succeeded: %s", unsuccessful)
-			ttsr.Status.MarkResourceFailed(v1alpha1.TaskTestRunUnexpectatedOutcomes, resultErr)
+			err := fmt.Errorf("all TaskTestRuns completed executing and not all were successful: %s", unsuccessful)
+			ttsr.Status.MarkResourceFailed(v1alpha1.TaskTestRunUnexpectatedOutcomes, err)
 		}
 		events.Emit(ctx, beforeCondition, ttsr.Status.GetCondition(apis.ConditionSucceeded), ttsr)
 		return resultErr
@@ -365,13 +365,24 @@ func (c *Reconciler) reconcileSuiteTest(ctx context.Context, ttsr *v1alpha1.Task
 // 	return err
 // }
 
-func aggregateSuccessStatusOfTaskTestRuns(ttrs *v1alpha1.TaskTestSuiteRunStatus) (bool, string) {
+func aggregateSuccessStatusOfTaskTestRuns(ttrs *v1alpha1.TaskTestSuiteRunStatus) (bool, string, error) {
 	allTaskTestRunsSucceeded := true
 	unsuccessful := ""
 
 	// TODO(jlux98) write logic for checking this
+	for taskTestRunName := range ttrs.TaskTestRunStatuses {
+		condition := ttrs.TaskTestRunStatuses[taskTestRunName].GetCondition(apis.ConditionSucceeded)
+		if condition.IsFalse() {
+			conditionJSON, err := json.Marshal(condition)
+			if err != nil {
+				return false, "", err
+			}
+			allTaskTestRunsSucceeded = false
+			unsuccessful += fmt.Sprintf("%s: %s\n", taskTestRunName, conditionJSON)
+		}
+	}
 
-	return allTaskTestRunsSucceeded, unsuccessful
+	return allTaskTestRunsSucceeded, unsuccessful, nil
 }
 
 func (c *Reconciler) dereferenceTaskTestSuiteRef(ctx context.Context, ttsr *v1alpha1.TaskTestSuiteRun) (*v1alpha1.TaskTestSuite, error) {
