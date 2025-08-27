@@ -111,14 +111,6 @@ const (
 	Continue OnTestErrorType = "Continue"
 )
 
-func (st SuiteTest) GetTaskTestRunName() string {
-	return st.Name + "-test-run"
-}
-
-func (st SuiteTest) GetTaskRunName() string {
-	return st.GetTaskTestRunName() + "-task-run"
-}
-
-func (st SuiteTest) GetPodName() string {
-	return st.GetTaskRunName() + "-pod"
+func (st SuiteTest) GetTaskTestRunName(suiteRunName string) string {
+	return suiteRunName + "-" + st.Name
 }

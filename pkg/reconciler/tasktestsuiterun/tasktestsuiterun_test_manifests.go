@@ -212,6 +212,67 @@ status:
     status: Unknown
     reason: Started
 `
+const ttrManifestCompletedSuccessfulRunsWithInlineTts = `
+metadata:
+  name: %s-%s
+  namespace: foo
+  labels:
+    tekton.dev/taskTestSuiteRun: %s
+    tekton.dev/suiteTest: %s
+  ownerReferences:
+  - apiVersion: tekton.dev/v1alpha1
+    kind: TaskTestSuiteRun
+    name: %s
+    controller: true
+    blockOwnerDeletion: true
+spec:
+  taskTestSpec:
+    taskRef:
+      name: task
+    expects:
+      successStatus: True
+      successReason: Succeeded
+status:
+  conditions:
+  - type: Succeeded
+    status: "True"
+    reason: Succeeded
+    message: TaskRun completed executing and outcomes were as expected
+  taskTestSpec:
+    taskRef:
+      name: task
+    expects:
+      successStatus: true
+      successReason: Succeeded
+  taskRunName: ttsr-check-completed-runs-inline-tts-task-0-run
+  taskRunStatus:
+    completionTime: "2025-08-15T15:17:59Z"
+    conditions:
+    - message: All Steps have completed executing
+      reason: Succeeded
+      status: "True"
+      type: Succeeded
+    podName: ttsr-check-completed-runs-inline-tts-task-0-run-abcde-pod
+    startTime: "2025-08-15T15:17:55Z"
+    taskSpec:
+      steps:
+      - command:
+        - /mycmd
+        env:
+        - name: foo
+          value: bar
+        image: foo
+        name: simple-step
+  outcomes:
+    successStatus:
+      want: true
+      got: true
+    successReason:
+      want: Succeeded
+      got: Succeeded
+  startTime: "2025-08-15T15:17:55Z"
+  completionTime: "2025-08-15T15:17:59Z"
+`
 
 // const ttrManifestStartNewRunsWithInlineTtsTask1 = `
 // metadata:
@@ -240,68 +301,6 @@ status:
 //     reason: Started
 // `
 
-// const ttrManifestCompletedSuccessfulRunsWithInlineTtsTask0 = `
-// metadata:
-//   name: ttsr-check-completed-runs-inline-tts-task-0
-//   namespace: foo
-//   labels:
-//     tekton.dev/taskTestSuiteRun: ttsr-check-completed-runs-inline-tts
-//     tekton.dev/suiteTest: task-0
-//   ownerReferences:
-//   - apiVersion: tekton.dev/v1alpha1
-//     kind: TaskTestSuiteRun
-//     name: ttsr-start-new-runs-inline-tts
-//     controller: true
-//     blockOwnerDeletion: true
-// spec:
-//   taskTestSpec:
-//     taskRef:
-//       name: task
-//     expects:
-//       successStatus: true
-//       successReason: Succeeded
-// status:
-//   conditions:
-//   - type: Succeeded
-//     status: True
-//     reason: Succeeded
-//     message: TaskRun completed executing and outcomes were as expected
-//   taskTestSpec:
-//     taskRef:
-//       name: task
-//     expects:
-//       successStatus: true
-//       successReason: Succeeded
-//   taskRunName: ttsr-check-completed-runs-inline-tts-task-0-run
-//   taskRunStatus:
-//     completionTime: "2025-08-15T15:17:59Z"
-//     conditions:
-//     - message: All Steps have completed executing
-//       reason: Succeeded
-//       status: "True"
-//       type: Succeeded
-//     podName: ttsr-check-completed-runs-inline-tts-task-0-run-abcde-pod
-//     startTime: "2025-08-15T15:17:55Z"
-//     taskSpec:
-//       steps:
-//       - command:
-//         - /mycmd
-//         env:
-//         - name: foo
-//           value: bar
-//         image: foo
-//         name: simple-step
-//   outcomes:
-//     successStatus:
-//       want: true
-//       got: true
-//     successReason:
-//       want: Succeeded
-//       got: Succeeded
-//   startTime: "2025-08-15T15:17:55Z"
-//   completionTime: "2025-08-15T15:17:59Z"
-// `
-
 // const ttrManifestCompletedSuccessfulRunsWithInlineTtsTask1 = `
 // metadata:
 //   name: ttsr-check-completed-runs-inline-tts-task-1
@@ -325,7 +324,7 @@ status:
 // status:
 //   conditions:
 //   - type: Succeeded
-//     status: True
+//     status: "True"
 //     reason: Succeeded
 //     message: TaskRun completed executing and outcomes were as expected
 //   taskTestSpec:
@@ -448,9 +447,9 @@ status:
 //       name: absent-task`
 
 // Valid TaskTestSuiteRun manifests
-const ttsrManifestStartNewRunsWithInlineTts = `
+const ttsrManifestInlineTts = `
 metadata:
-  name: ttsr-start-new-runs-inline-tts
+  name: %s
   namespace: foo
 spec:
   taskTestSuiteSpec:
@@ -467,29 +466,11 @@ spec:
           successReason: Succeeded
 `
 
-const ttsrManifestStartNewRunsWithReferencedTts = `
+const ttsrManifestReferencedTts = `
 metadata:
-  name: ttsr-start-new-runs-referenced-tts
+  name: %s
   namespace: foo
 spec:
   taskTestSuiteRef:
-    name: suite`
-
-// const ttsrManifestCompletedSuccessfulRunsWithInlineTts = `
-// metadata:
-//   name: ttsr-check-completed-runs-inline-tts
-//   namespace: foo
-// spec:
-//   taskTestSuiteSpec:
-//     taskTests:
-//     - name: task-0
-//       taskTestRef:
-//         name: task-test
-//     - name: task-1
-//       taskTestSpec:
-//         taskRef:
-//           name: task
-//         expects:
-//           successStatus: true
-//           successReason: Succeeded
-// `
+    name: suite
+`

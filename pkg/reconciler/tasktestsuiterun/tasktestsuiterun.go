@@ -242,16 +242,16 @@ func (c *Reconciler) reconcileSuiteTest(ctx context.Context, ttsr *v1alpha1.Task
 
 	// Get the TaskTest's TaskTestRun if it should have one. Otherwise, create the TaskRun.
 	var taskTestRun *v1alpha1.TaskTestRun
-	if ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName()] != nil {
-		logger.Infof("boom: Now retrieving TaskTestRun %s for TTSR %s", taskTest.GetTaskTestRunName(), ttsr.Name)
-		taskTestRun, err = c.TaskTestRunLister.TaskTestRuns(ttsr.Namespace).Get(taskTest.GetTaskTestRunName())
+	if ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)] != nil {
+		logger.Infof("boom: Now retrieving TaskTestRun %s for TTSR %s", taskTest.GetTaskTestRunName(ttsr.Name), ttsr.Name)
+		taskTestRun, err = c.TaskTestRunLister.TaskTestRuns(ttsr.Namespace).Get(taskTest.GetTaskTestRunName(ttsr.Name))
 		if k8serrors.IsNotFound(err) {
 			// Keep going, this will result in the TaskRun being created below.
 		} else if err != nil {
 			// This is considered a transient error, so we return error, do not update
 			// the task test run condition, and return an error which will cause this key to
 			// be requeued for reconcile.
-			logger.Errorf("Error getting TaskTestRun %q: %v", taskTest.GetTaskTestRunName(), err)
+			logger.Errorf("Error getting TaskTestRun %q: %v", taskTest.GetTaskTestRunName(ttsr.Name), err)
 			events.Emit(ctx, nil, ttsr.Status.GetCondition(apis.ConditionSucceeded), ttsr)
 			return err
 		}
@@ -272,16 +272,19 @@ func (c *Reconciler) reconcileSuiteTest(ctx context.Context, ttsr *v1alpha1.Task
 			if metav1.IsControlledBy(tr, ttsr) && tr.GetSuiteTestName() == taskTest.Name {
 				logger.Infof("boom: Now found TaskRun %s in list controlled by TTR %s", tr.Name, ttsr.Name)
 				taskTestRun = tr
-				ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName()] = &taskTestRun.Status
+				if ttsr.Status.TaskTestRunStatuses == nil {
+					ttsr.Status.TaskTestRunStatuses = map[string]*v1alpha1.TaskTestRunStatus{}
+				}
+				ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)] = &taskTestRun.Status
 			}
 		}
 	}
 
 	if taskTestRun == nil {
-		logger.Infof("boom: Now creating TaskTestRun for TTSR %s", ttsr.Name)
+		logger.Infof("boom: Now creating TaskTestRun %q for TTSR %q", ttsr.Name+"-"+taskTest.Name, ttsr.Name)
 		taskTestRun, err = c.createTaskTestRun(ctx, ttsr, &taskTest, ttsr.Namespace)
 		if err != nil {
-			logger.Errorf("Failed to create task test run %q for taskTestSuiteRun %q: %v", taskTest.GetTaskTestRunName(), ttsr.Name, err)
+			logger.Errorf("Failed to create task test run %q for taskTestSuiteRun %q: %v", taskTest.GetTaskTestRunName(ttsr.Name), ttsr.Name, err)
 			return err
 		}
 
@@ -294,9 +297,9 @@ func (c *Reconciler) reconcileSuiteTest(ctx context.Context, ttsr *v1alpha1.Task
 		}
 	}
 
-	if ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName()] == nil || !cmp.Equal(ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName()], taskTestRun.Status) {
+	if ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)] == nil || !cmp.Equal(ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)], taskTestRun.Status) {
 		logger.Infof("boom: Now setting task run name for TTR %s", ttsr.Name)
-		ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName()] = &taskTestRun.Status
+		ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)] = &taskTestRun.Status
 	}
 
 	if taskTestRun.Status.CompletionTime == nil {
