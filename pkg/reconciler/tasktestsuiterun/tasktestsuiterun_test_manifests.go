@@ -70,6 +70,25 @@ spec:
         successReason: Succeeded
 `
 
+const ttsManifestSimpleSuiteOnErrorContinue = `
+metadata:
+  name: suite-onerror-continue
+  namespace: foo
+spec:
+  taskTests:
+  - name: task-0
+    taskTestRef:
+      name: task-test
+  - name: task-1
+    taskTestSpec:
+      taskRef:
+        name: task
+      expects:
+        successStatus: true
+        successReason: Succeeded
+    onError: Continue
+`
+
 // TaskRun manifests
 // const trManifestJustStarted = `
 // metadata:

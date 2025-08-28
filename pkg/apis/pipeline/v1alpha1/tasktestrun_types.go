@@ -426,7 +426,9 @@ func (ttr *TaskTestRun) GetNamespacedName() types.NamespacedName {
 func (ttr *TaskTestRun) GetTimeout(ctx context.Context) time.Duration {
 	// Use the platform default is no timeout is set
 	if ttr.Spec.Timeout == nil {
-		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
+		defaultTimeout := time.Duration(
+			config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes,
+		)
 		return defaultTimeout * time.Minute //nolint:durationcheck
 	}
 	return ttr.Spec.Timeout.Duration

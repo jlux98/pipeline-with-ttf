@@ -43,22 +43,41 @@ var testClock = clock.NewFakePassiveClock(now)
 
 // IgnoreFields options
 var (
-	ignoreResourceVersion                = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion")
-	ignoreLastTransitionTime             = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")
-	ignoreTaskTestRunStatus              = cmpopts.IgnoreFields(v1alpha1.TaskTestSuiteRunStatusFields{}, "TaskTestRunStatuses")
-	ignoreStartTimeTaskTestRun           = cmpopts.IgnoreFields(v1alpha1.TaskTestRunStatusFields{}, "StartTime")
-	ignoreStartTimeTaskTestSuiteRun      = cmpopts.IgnoreFields(v1alpha1.TaskTestSuiteRunStatusFields{}, "StartTime")
-	ignoreCompletionTimeTaskTestSuiteRun = cmpopts.IgnoreFields(v1alpha1.TaskTestSuiteRunStatusFields{}, "CompletionTime")
+	ignoreResourceVersion = cmpopts.IgnoreFields(
+		metav1.ObjectMeta{},
+		"ResourceVersion",
+	)
+	ignoreLastTransitionTime = cmpopts.IgnoreFields(
+		apis.Condition{},
+		"LastTransitionTime.Inner.Time",
+	)
+	ignoreTaskTestRunStatus = cmpopts.IgnoreFields(
+		v1alpha1.TaskTestSuiteRunStatusFields{},
+		"TaskTestRunStatuses",
+	)
+	ignoreStartTimeTaskTestRun = cmpopts.IgnoreFields(
+		v1alpha1.TaskTestRunStatusFields{},
+		"StartTime",
+	)
+	ignoreStartTimeTaskTestSuiteRun = cmpopts.IgnoreFields(
+		v1alpha1.TaskTestSuiteRunStatusFields{},
+		"StartTime",
+	)
+	ignoreCompletionTimeTaskTestSuiteRun = cmpopts.IgnoreFields(
+		v1alpha1.TaskTestSuiteRunStatusFields{},
+		"CompletionTime",
+	)
 )
 
 func TestReconciler_ValidateReconcileKind(t *testing.T) {
 	const (
-		tcStartNewInlineTtrsInlineTts      = "start_new_ttrs_inline_tts"
-		tcStartNewTtrsReferencedTts        = "start_new_ttrs_referenced_tts"
-		tcCheckSuccessfulTtrsInlineTts     = "check_successful_ttrs_inline_tts"
-		tcCheckSuccessfulTtrsReferencedTts = "check_successful_ttrs_referenced_tts"
-		tcCheckFailedTtrsInlineTts         = "check_failed_ttrs_inline_tts"
-		tcCheckFailedTtrsReferencedTts     = "check_failed_ttrs_referenced_tts"
+		tcStartNewInlineTtrsInlineTts                 = "start_new_ttrs_inline_tts"
+		tcStartNewTtrsReferencedTts                   = "start_new_ttrs_referenced_tts"
+		tcCheckSuccessfulTtrsInlineTts                = "check_successful_ttrs_inline_tts"
+		tcCheckSuccessfulTtrsReferencedTts            = "check_successful_ttrs_referenced_tts"
+		tcCheckFailedTtrsInlineTts                    = "check_failed_ttrs_inline_tts"
+		tcCheckFailedTtrsReferencedTts                = "check_failed_ttrs_referenced_tts"
+		tcCheckFailedTtrsOnErrorContinueReferencedTts = "check_failed_ttrs_onerror_continue_referenced_tts"
 	)
 
 	messageExpectationsNotMet := `{"type":"Succeeded","status":"False","lastTransitionTime":null,"reason":"TaskTestRunUnexpectedOutcomes","message":"not all expectations were met:\n` +
@@ -74,26 +93,95 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 	}
 
 	taskTestSuiteMap := map[string]*v1alpha1.TaskTestSuite{
-		"simple_task_test_suite": parse.MustParseTaskTestSuite(t, ttsManifestSimpleSuite),
+		"simple_task_test_suite": parse.MustParseTaskTestSuite(
+			t, ttsManifestSimpleSuite,
+		),
+		"simple_task_test_suite_onerror_continue": parse.MustParseTaskTestSuite(
+			t, ttsManifestSimpleSuiteOnErrorContinue,
+		),
 	}
 	taskTestSuiteRunMap := map[string]*v1alpha1.TaskTestSuiteRun{
-		tcStartNewInlineTtrsInlineTts:      parse.MustParseTaskTestSuiteRun(t, fmt.Sprintf(ttsrManifestInlineTts, "ttsr-start-new-runs-inline-tts")),
-		tcStartNewTtrsReferencedTts:        parse.MustParseTaskTestSuiteRun(t, fmt.Sprintf(ttsrManifestReferencedTts, "ttsr-start-new-runs-referenced-tts")),
-		tcCheckSuccessfulTtrsInlineTts:     parse.MustParseTaskTestSuiteRun(t, fmt.Sprintf(ttsrManifestInlineTts, "ttsr-check-successful-runs-inline-tts")),
-		tcCheckSuccessfulTtrsReferencedTts: parse.MustParseTaskTestSuiteRun(t, fmt.Sprintf(ttsrManifestReferencedTts, "ttsr-check-successful-runs-referenced-tts")),
-		tcCheckFailedTtrsInlineTts:         parse.MustParseTaskTestSuiteRun(t, fmt.Sprintf(ttsrManifestInlineTts, "ttsr-check-failed-runs-inline-tts")),
-		tcCheckFailedTtrsReferencedTts:     parse.MustParseTaskTestSuiteRun(t, fmt.Sprintf(ttsrManifestReferencedTts, "ttsr-check-failed-runs-referenced-tts")),
+		tcStartNewInlineTtrsInlineTts: parse.MustParseTaskTestSuiteRun(
+			t, fmt.Sprintf(ttsrManifestInlineTts, "ttsr-start-new-runs-inline-tts"),
+		),
+		tcStartNewTtrsReferencedTts: parse.MustParseTaskTestSuiteRun(
+			t, fmt.Sprintf(ttsrManifestReferencedTts, "ttsr-start-new-runs-referenced-tts"),
+		),
+		tcCheckSuccessfulTtrsInlineTts: parse.MustParseTaskTestSuiteRun(
+			t, fmt.Sprintf(ttsrManifestInlineTts, "ttsr-check-successful-runs-inline-tts"),
+		),
+		tcCheckSuccessfulTtrsReferencedTts: parse.MustParseTaskTestSuiteRun(
+			t, fmt.Sprintf(ttsrManifestReferencedTts, "ttsr-check-successful-runs-referenced-tts"),
+		),
+		tcCheckFailedTtrsInlineTts: parse.MustParseTaskTestSuiteRun(
+			t, fmt.Sprintf(ttsrManifestInlineTts, "ttsr-check-failed-runs-inline-tts"),
+		),
+		tcCheckFailedTtrsReferencedTts: parse.MustParseTaskTestSuiteRun(
+			t, fmt.Sprintf(ttsrManifestReferencedTts, "ttsr-check-failed-runs-referenced-tts"),
+		),
+		tcCheckFailedTtrsOnErrorContinueReferencedTts: parse.MustParseTaskTestSuiteRun(
+			t, fmt.Sprintf(
+				strings.ReplaceAll(
+					ttsrManifestReferencedTts,
+					"    name: suite",
+					"    name: suite-onerror-continue",
+				),
+				"ttsr-check-failed-runs-onerror-continue-referenced-tts",
+			),
+		),
 	}
 
 	taskTestRunMap := map[string]*v1alpha1.TaskTestRun{
-		tcCheckSuccessfulTtrsInlineTts + "-0":     generateTaskTestRun(t, ttrManifestTemplateCompletedSuccessful, taskTestSuiteRunMap[tcCheckSuccessfulTtrsInlineTts].Name, "task-0"),
-		tcCheckSuccessfulTtrsInlineTts + "-1":     generateTaskTestRun(t, ttrManifestTemplateCompletedSuccessful, taskTestSuiteRunMap[tcCheckSuccessfulTtrsInlineTts].Name, "task-1"),
-		tcCheckSuccessfulTtrsReferencedTts + "-0": generateTaskTestRun(t, ttrManifestTemplateCompletedSuccessful, taskTestSuiteRunMap[tcCheckSuccessfulTtrsReferencedTts].Name, "task-0"),
-		tcCheckSuccessfulTtrsReferencedTts + "-1": generateTaskTestRun(t, ttrManifestTemplateCompletedSuccessful, taskTestSuiteRunMap[tcCheckSuccessfulTtrsReferencedTts].Name, "task-1"),
-		tcCheckFailedTtrsInlineTts + "-0":         generateTaskTestRun(t, ttrManifestTemplateCompletedSuccessful, taskTestSuiteRunMap[tcCheckFailedTtrsInlineTts].Name, "task-0"),
-		tcCheckFailedTtrsInlineTts + "-1":         generateTaskTestRun(t, ttrManifestTemplateCompletedFailed, taskTestSuiteRunMap[tcCheckFailedTtrsInlineTts].Name, "task-1"),
-		tcCheckFailedTtrsReferencedTts + "-0":     generateTaskTestRun(t, ttrManifestTemplateCompletedSuccessful, taskTestSuiteRunMap[tcCheckFailedTtrsReferencedTts].Name, "task-0"),
-		tcCheckFailedTtrsReferencedTts + "-1":     generateTaskTestRun(t, ttrManifestTemplateCompletedFailed, taskTestSuiteRunMap[tcCheckFailedTtrsReferencedTts].Name, "task-1"),
+		tcCheckSuccessfulTtrsInlineTts + "-0": generateTaskTestRun(
+			t, ttrManifestTemplateCompletedSuccessful,
+			taskTestSuiteRunMap[tcCheckSuccessfulTtrsInlineTts].Name,
+			"task-0",
+		),
+		tcCheckSuccessfulTtrsInlineTts + "-1": generateTaskTestRun(
+			t, ttrManifestTemplateCompletedSuccessful,
+			taskTestSuiteRunMap[tcCheckSuccessfulTtrsInlineTts].Name,
+			"task-1",
+		),
+		tcCheckSuccessfulTtrsReferencedTts + "-0": generateTaskTestRun(
+			t, ttrManifestTemplateCompletedSuccessful,
+			taskTestSuiteRunMap[tcCheckSuccessfulTtrsReferencedTts].Name,
+			"task-0",
+		),
+		tcCheckSuccessfulTtrsReferencedTts + "-1": generateTaskTestRun(
+			t, ttrManifestTemplateCompletedSuccessful,
+			taskTestSuiteRunMap[tcCheckSuccessfulTtrsReferencedTts].Name,
+			"task-1",
+		),
+		tcCheckFailedTtrsInlineTts + "-0": generateTaskTestRun(
+			t, ttrManifestTemplateCompletedSuccessful,
+			taskTestSuiteRunMap[tcCheckFailedTtrsInlineTts].Name,
+			"task-0",
+		),
+		tcCheckFailedTtrsInlineTts + "-1": generateTaskTestRun(
+			t, ttrManifestTemplateCompletedFailed,
+			taskTestSuiteRunMap[tcCheckFailedTtrsInlineTts].Name,
+			"task-1",
+		),
+		tcCheckFailedTtrsReferencedTts + "-0": generateTaskTestRun(
+			t, ttrManifestTemplateCompletedSuccessful,
+			taskTestSuiteRunMap[tcCheckFailedTtrsReferencedTts].Name,
+			"task-0",
+		),
+		tcCheckFailedTtrsReferencedTts + "-1": generateTaskTestRun(
+			t, ttrManifestTemplateCompletedFailed,
+			taskTestSuiteRunMap[tcCheckFailedTtrsReferencedTts].Name,
+			"task-1",
+		),
+		tcCheckFailedTtrsOnErrorContinueReferencedTts + "-0": generateTaskTestRun(
+			t, ttrManifestTemplateCompletedSuccessful,
+			taskTestSuiteRunMap[tcCheckFailedTtrsOnErrorContinueReferencedTts].Name,
+			"task-0",
+		),
+		tcCheckFailedTtrsOnErrorContinueReferencedTts + "-1": generateTaskTestRun(
+			t, ttrManifestTemplateCompletedFailed,
+			taskTestSuiteRunMap[tcCheckFailedTtrsOnErrorContinueReferencedTts].Name,
+			"task-1",
+		),
 	}
 
 	// load custom resources into data for the fake cluster
@@ -115,21 +203,24 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 	}
 	tests := map[string]tc{
 		tcStartNewInlineTtrsInlineTts: {
-			wantTtsrStatus: patchTaskTestSuiteRun(taskTestSuiteRunMap[tcStartNewInlineTtrsInlineTts], func(ttsr *v1alpha1.TaskTestSuiteRun) {
-				ttsr.Status.Conditions = duckv1.Conditions{{
-					Type:   "Succeeded",
-					Status: "Unknown",
-					Reason: "Started",
-				}}
-				ttsr.Status.TaskTestSuiteSpec = ttsr.Spec.TaskTestSuiteSpec
-				ttsr.Status.TaskTestSuiteSpec.TaskTests[0].TaskTestSpec = &v1alpha1.TaskTestSpec{
-					TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-					Expects: &v1alpha1.ExpectedOutcomes{
-						SuccessStatus: ptr.To(true),
-						SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
-					},
-				}
-			}),
+			wantTtsrStatus: patchTaskTestSuiteRun(
+				taskTestSuiteRunMap[tcStartNewInlineTtrsInlineTts],
+				func(ttsr *v1alpha1.TaskTestSuiteRun) {
+					ttsr.Status.Conditions = duckv1.Conditions{{
+						Type:   "Succeeded",
+						Status: "Unknown",
+						Reason: "Started",
+					}}
+					ttsr.Status.TaskTestSuiteSpec = ttsr.Spec.TaskTestSuiteSpec.DeepCopy()
+					ttsr.Status.TaskTestSuiteSpec.TaskTests[0].TaskTestSpec = &v1alpha1.TaskTestSpec{
+						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
+						Expects: &v1alpha1.ExpectedOutcomes{
+							SuccessStatus: ptr.To(true),
+							SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
+						},
+					}
+				},
+			),
 			wantTtrs: []v1alpha1.TaskTestRun{
 				*generateTaskTestRun(t, ttrManifestTemplateNewRun, taskTestSuiteRunMap[tcStartNewInlineTtrsInlineTts].Name, "task-0"),
 				*generateTaskTestRun(t, ttrManifestTemplateNewRun, taskTestSuiteRunMap[tcStartNewInlineTtrsInlineTts].Name, "task-1"),
@@ -137,22 +228,25 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 			wantStartTime: true,
 		},
 		tcStartNewTtrsReferencedTts: {
-			wantTtsrStatus: patchTaskTestSuiteRun(taskTestSuiteRunMap[tcStartNewTtrsReferencedTts], func(ttsr *v1alpha1.TaskTestSuiteRun) {
-				ttsr.Status.Conditions = duckv1.Conditions{{
-					Type:   "Succeeded",
-					Status: "Unknown",
-					Reason: "Started",
-				}}
-				ttsr.Status.TaskTestSuiteName = ptr.To("suite")
-				ttsr.Status.TaskTestSuiteSpec = &(taskTestSuiteMap["simple_task_test_suite"].Spec)
-				ttsr.Status.TaskTestSuiteSpec.TaskTests[0].TaskTestSpec = &v1alpha1.TaskTestSpec{
-					TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-					Expects: &v1alpha1.ExpectedOutcomes{
-						SuccessStatus: ptr.To(true),
-						SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
-					},
-				}
-			}),
+			wantTtsrStatus: patchTaskTestSuiteRun(
+				taskTestSuiteRunMap[tcStartNewTtrsReferencedTts],
+				func(ttsr *v1alpha1.TaskTestSuiteRun) {
+					ttsr.Status.Conditions = duckv1.Conditions{{
+						Type:   "Succeeded",
+						Status: "Unknown",
+						Reason: "Started",
+					}}
+					ttsr.Status.TaskTestSuiteName = ptr.To("suite")
+					ttsr.Status.TaskTestSuiteSpec = taskTestSuiteMap["simple_task_test_suite"].Spec.DeepCopy()
+					ttsr.Status.TaskTestSuiteSpec.TaskTests[0].TaskTestSpec = &v1alpha1.TaskTestSpec{
+						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
+						Expects: &v1alpha1.ExpectedOutcomes{
+							SuccessStatus: ptr.To(true),
+							SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
+						},
+					}
+				},
+			),
 			wantTtrs: []v1alpha1.TaskTestRun{
 				*generateTaskTestRun(t, ttrManifestTemplateNewRun, taskTestSuiteRunMap[tcStartNewTtrsReferencedTts].Name, "task-0"),
 				*generateTaskTestRun(t, ttrManifestTemplateNewRun, taskTestSuiteRunMap[tcStartNewTtrsReferencedTts].Name, "task-1"),
@@ -160,22 +254,25 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 			wantStartTime: true,
 		},
 		tcCheckSuccessfulTtrsInlineTts: {
-			wantTtsrStatus: patchTaskTestSuiteRun(taskTestSuiteRunMap[tcCheckSuccessfulTtrsInlineTts], func(ttsr *v1alpha1.TaskTestSuiteRun) {
-				ttsr.Status.Conditions = duckv1.Conditions{{
-					Type:    "Succeeded",
-					Status:  "True",
-					Reason:  "Succeeded",
-					Message: "all TaskTestRuns completed executing and were successful",
-				}}
-				ttsr.Status.TaskTestSuiteSpec = ttsr.Spec.TaskTestSuiteSpec
-				ttsr.Status.TaskTestSuiteSpec.TaskTests[0].TaskTestSpec = &v1alpha1.TaskTestSpec{
-					TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-					Expects: &v1alpha1.ExpectedOutcomes{
-						SuccessStatus: ptr.To(true),
-						SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
-					},
-				}
-			}),
+			wantTtsrStatus: patchTaskTestSuiteRun(
+				taskTestSuiteRunMap[tcCheckSuccessfulTtrsInlineTts],
+				func(ttsr *v1alpha1.TaskTestSuiteRun) {
+					ttsr.Status.Conditions = duckv1.Conditions{{
+						Type:    "Succeeded",
+						Status:  "True",
+						Reason:  "Succeeded",
+						Message: "all TaskTestRuns completed executing and were successful",
+					}}
+					ttsr.Status.TaskTestSuiteSpec = ttsr.Spec.TaskTestSuiteSpec.DeepCopy()
+					ttsr.Status.TaskTestSuiteSpec.TaskTests[0].TaskTestSpec = &v1alpha1.TaskTestSpec{
+						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
+						Expects: &v1alpha1.ExpectedOutcomes{
+							SuccessStatus: ptr.To(true),
+							SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
+						},
+					}
+				},
+			),
 			wantTtrs: []v1alpha1.TaskTestRun{
 				*taskTestRunMap[tcCheckSuccessfulTtrsInlineTts+"-0"],
 				*taskTestRunMap[tcCheckSuccessfulTtrsInlineTts+"-1"],
@@ -184,23 +281,26 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 			wantCompletionTime: true,
 		},
 		tcCheckSuccessfulTtrsReferencedTts: {
-			wantTtsrStatus: patchTaskTestSuiteRun(taskTestSuiteRunMap[tcCheckSuccessfulTtrsReferencedTts], func(ttsr *v1alpha1.TaskTestSuiteRun) {
-				ttsr.Status.Conditions = duckv1.Conditions{{
-					Type:    "Succeeded",
-					Status:  "True",
-					Reason:  "Succeeded",
-					Message: "all TaskTestRuns completed executing and were successful",
-				}}
-				ttsr.Status.TaskTestSuiteName = ptr.To("suite")
-				ttsr.Status.TaskTestSuiteSpec = &(taskTestSuiteMap["simple_task_test_suite"].Spec)
-				ttsr.Status.TaskTestSuiteSpec.TaskTests[0].TaskTestSpec = &v1alpha1.TaskTestSpec{
-					TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-					Expects: &v1alpha1.ExpectedOutcomes{
-						SuccessStatus: ptr.To(true),
-						SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
-					},
-				}
-			}),
+			wantTtsrStatus: patchTaskTestSuiteRun(
+				taskTestSuiteRunMap[tcCheckSuccessfulTtrsReferencedTts],
+				func(ttsr *v1alpha1.TaskTestSuiteRun) {
+					ttsr.Status.Conditions = duckv1.Conditions{{
+						Type:    "Succeeded",
+						Status:  "True",
+						Reason:  "Succeeded",
+						Message: "all TaskTestRuns completed executing and were successful",
+					}}
+					ttsr.Status.TaskTestSuiteName = ptr.To("suite")
+					ttsr.Status.TaskTestSuiteSpec = taskTestSuiteMap["simple_task_test_suite"].Spec.DeepCopy()
+					ttsr.Status.TaskTestSuiteSpec.TaskTests[0].TaskTestSpec = &v1alpha1.TaskTestSpec{
+						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
+						Expects: &v1alpha1.ExpectedOutcomes{
+							SuccessStatus: ptr.To(true),
+							SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
+						},
+					}
+				},
+			),
 			wantTtrs: []v1alpha1.TaskTestRun{
 				*taskTestRunMap[tcCheckSuccessfulTtrsReferencedTts+"-0"],
 				*taskTestRunMap[tcCheckSuccessfulTtrsReferencedTts+"-1"],
@@ -209,24 +309,29 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 			wantCompletionTime: true,
 		},
 		tcCheckFailedTtrsInlineTts: {
-			wantTtsrStatus: patchTaskTestSuiteRun(taskTestSuiteRunMap[tcCheckFailedTtrsInlineTts], func(ttsr *v1alpha1.TaskTestSuiteRun) {
-				ttsr.Status.TaskTestSuiteSpec = ttsr.Spec.TaskTestSuiteSpec
-				ttsr.Status.TaskTestSuiteSpec.TaskTests[0].TaskTestSpec = &v1alpha1.TaskTestSpec{
-					TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-					Expects: &v1alpha1.ExpectedOutcomes{
-						SuccessStatus: ptr.To(true),
-						SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
-					},
-				}
-				ttsr.Status.Conditions = duckv1.Conditions{{
-					Type:   "Succeeded",
-					Status: "False",
-					Reason: "TaskTestRunUnexpectedOutcomes",
-					Message: "all TaskTestRuns completed executing and not all were successful: " +
-						ttsr.Status.TaskTestSuiteSpec.TaskTests[1].GetTaskTestRunName(ttsr.Name) + ": " +
-						messageExpectationsNotMet,
-				}}
-			}),
+			wantTtsrStatus: patchTaskTestSuiteRun(
+				taskTestSuiteRunMap[tcCheckFailedTtrsInlineTts],
+				func(ttsr *v1alpha1.TaskTestSuiteRun) {
+					ttsr.Status.TaskTestSuiteSpec = ttsr.Spec.TaskTestSuiteSpec.DeepCopy()
+					ttsr.Status.TaskTestSuiteSpec.TaskTests[0].TaskTestSpec = &v1alpha1.TaskTestSpec{
+						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
+						Expects: &v1alpha1.ExpectedOutcomes{
+							SuccessStatus: ptr.To(true),
+							SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
+						},
+					}
+					ttsr.Status.Conditions = duckv1.Conditions{{
+						Type:   "Succeeded",
+						Status: "False",
+						Reason: "TaskTestRunUnexpectedOutcomes",
+						Message: "all TaskTestRuns completed executing and not all were successful: " +
+							ttsr.Status.TaskTestSuiteSpec.TaskTests[1].GetTaskTestRunName(
+								ttsr.Name,
+							) + ": " +
+							messageExpectationsNotMet,
+					}}
+				},
+			),
 			wantTtrs: []v1alpha1.TaskTestRun{
 				*taskTestRunMap[tcCheckFailedTtrsInlineTts+"-0"],
 				*taskTestRunMap[tcCheckFailedTtrsInlineTts+"-1"],
@@ -235,28 +340,62 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 			wantCompletionTime: true,
 		},
 		tcCheckFailedTtrsReferencedTts: {
-			wantTtsrStatus: patchTaskTestSuiteRun(taskTestSuiteRunMap[tcCheckFailedTtrsReferencedTts], func(ttsr *v1alpha1.TaskTestSuiteRun) {
-				ttsr.Status.TaskTestSuiteName = ptr.To("suite")
-				ttsr.Status.TaskTestSuiteSpec = &(taskTestSuiteMap["simple_task_test_suite"].Spec)
-				ttsr.Status.TaskTestSuiteSpec.TaskTests[0].TaskTestSpec = &v1alpha1.TaskTestSpec{
-					TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-					Expects: &v1alpha1.ExpectedOutcomes{
-						SuccessStatus: ptr.To(true),
-						SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
-					},
-				}
-				ttsr.Status.Conditions = duckv1.Conditions{{
-					Type:   "Succeeded",
-					Status: "False",
-					Reason: "TaskTestRunUnexpectedOutcomes",
-					Message: "all TaskTestRuns completed executing and not all were successful: " +
-						ttsr.Status.TaskTestSuiteSpec.TaskTests[1].GetTaskTestRunName(ttsr.Name) + ": " +
-						messageExpectationsNotMet,
-				}}
-			}),
+			wantTtsrStatus: patchTaskTestSuiteRun(
+				taskTestSuiteRunMap[tcCheckFailedTtrsReferencedTts],
+				func(ttsr *v1alpha1.TaskTestSuiteRun) {
+					ttsr.Status.TaskTestSuiteName = ptr.To("suite")
+					ttsr.Status.TaskTestSuiteSpec = taskTestSuiteMap["simple_task_test_suite"].Spec.DeepCopy()
+					ttsr.Status.TaskTestSuiteSpec.TaskTests[0].TaskTestSpec = &v1alpha1.TaskTestSpec{
+						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
+						Expects: &v1alpha1.ExpectedOutcomes{
+							SuccessStatus: ptr.To(true),
+							SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
+						},
+					}
+					ttsr.Status.Conditions = duckv1.Conditions{{
+						Type:   "Succeeded",
+						Status: "False",
+						Reason: "TaskTestRunUnexpectedOutcomes",
+						Message: "all TaskTestRuns completed executing and not all were successful: " +
+							ttsr.Status.TaskTestSuiteSpec.TaskTests[1].GetTaskTestRunName(
+								ttsr.Name,
+							) + ": " +
+							messageExpectationsNotMet,
+					}}
+				},
+			),
 			wantTtrs: []v1alpha1.TaskTestRun{
 				*taskTestRunMap[tcCheckFailedTtrsReferencedTts+"-0"],
 				*taskTestRunMap[tcCheckFailedTtrsReferencedTts+"-1"],
+			},
+			wantStartTime:      true,
+			wantCompletionTime: true,
+		},
+		tcCheckFailedTtrsOnErrorContinueReferencedTts: {
+			wantTtsrStatus: patchTaskTestSuiteRun(
+				taskTestSuiteRunMap[tcCheckFailedTtrsOnErrorContinueReferencedTts],
+				func(ttsr *v1alpha1.TaskTestSuiteRun) {
+					ttsr.Status.TaskTestSuiteName = ptr.To("suite-onerror-continue")
+					ttsr.Status.TaskTestSuiteSpec = taskTestSuiteMap["simple_task_test_suite"].Spec.DeepCopy()
+					ttsr.Status.TaskTestSuiteSpec.TaskTests[0].TaskTestSpec = &v1alpha1.TaskTestSpec{
+						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
+						Expects: &v1alpha1.ExpectedOutcomes{
+							SuccessStatus: ptr.To(true),
+							SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
+						},
+					}
+					ttsr.Status.TaskTestSuiteSpec.TaskTests[1].OnError = "Continue"
+					ttsr.Status.Conditions = duckv1.Conditions{{
+						Type:    "Succeeded",
+						Status:  "True",
+						Reason:  "Succeeded",
+						Message: "all TaskTestRuns completed executing and were successful",
+					}}
+				},
+			),
+			wantTtrs: []v1alpha1.TaskTestRun{
+				*taskTestRunMap[tcCheckFailedTtrsOnErrorContinueReferencedTts+"-0"],
+				*taskTestRunMap[tcCheckFailedTtrsOnErrorContinueReferencedTts+"-1"],
 			},
 			wantStartTime:      true,
 			wantCompletionTime: true,
@@ -273,13 +412,19 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 
 			defer cancel()
 
-			gotErr := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, tt.ttsr.GetNamespacedName().String())
+			gotErr := testAssets.Controller.Reconciler.Reconcile(
+				testAssets.Ctx,
+				tt.ttsr.GetNamespacedName().String(),
+			)
 
-			if gotErrIsRequeue, _ := controller.IsRequeueKey(gotErr); gotErr != nil && !gotErrIsRequeue {
+			if gotErrIsRequeue, _ := controller.IsRequeueKey(gotErr); gotErr != nil &&
+				!gotErrIsRequeue {
 				t.Errorf("unexpected error: %v", gotErr)
 			}
 
-			ttsr, err := clients.Pipeline.TektonV1alpha1().TaskTestSuiteRuns(tt.ttsr.Namespace).Get(testAssets.Ctx, tt.ttsr.Name, metav1.GetOptions{})
+			ttsr, err := clients.Pipeline.TektonV1alpha1().
+				TaskTestSuiteRuns(tt.ttsr.Namespace).
+				Get(testAssets.Ctx, tt.ttsr.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("getting updated tasktestrun: %v", err)
 			}
@@ -322,7 +467,11 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 				}
 				errorMessage := "TaskTestRuns: Didn't get expected number of TaskTestRuns - expected %d but got %d"
 				if len(allTtrs.Items) != len(trl.Items) {
-					errorMessage += fmt.Sprintf(": there probably is an issue with the labels and the filtering, as there are %d TaskTestRuns in the namespace\n%v", len(allTtrs.Items), allTtrs.Items)
+					errorMessage += fmt.Sprintf(
+						": there probably is an issue with the labels and the filtering, as there are %d TaskTestRuns in the namespace\n%v",
+						len(allTtrs.Items),
+						allTtrs.Items,
+					)
 				} else {
 					taskTestRunList, _ := json.MarshalIndent(allTtrs.Items, "", "  ")
 					errorMessage += fmt.Sprintf(" which is the exact number of TaskTestRuns in the namespace\n%s", taskTestRunList)
@@ -392,7 +541,10 @@ func TestReconciler_InvalidateReconcileKind(t *testing.T) {
 				tt.wantTtrStatus = &tt.ttr.Status
 			}
 
-			gotErr := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, tt.ttr.GetNamespacedName().String())
+			gotErr := testAssets.Controller.Reconciler.Reconcile(
+				testAssets.Ctx,
+				tt.ttr.GetNamespacedName().String(),
+			)
 
 			if gotErr == nil {
 				if tt.wantErr != nil {
@@ -408,7 +560,9 @@ func TestReconciler_InvalidateReconcileKind(t *testing.T) {
 				}
 			}
 
-			ttr, err := clients.Pipeline.TektonV1alpha1().TaskTestSuiteRuns(tt.ttr.Namespace).Get(testAssets.Ctx, tt.ttr.Name, metav1.GetOptions{})
+			ttr, err := clients.Pipeline.TektonV1alpha1().
+				TaskTestSuiteRuns(tt.ttr.Namespace).
+				Get(testAssets.Ctx, tt.ttr.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("getting updated tasktestrun: %v", err)
 			}
@@ -437,13 +591,20 @@ func TestReconciler_InvalidateReconcileKind(t *testing.T) {
 func getTaskTestSuiteRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 	t.Helper()
 	names.TestingSeed()
-	return initializeTaskTestSuiteRunControllerAssets(t, d, pipeline.Options{Images: pipeline.Images{}})
+	return initializeTaskTestSuiteRunControllerAssets(
+		t, d, pipeline.Options{Images: pipeline.Images{}},
+	)
 }
 
-func initializeTaskTestSuiteRunControllerAssets(t *testing.T, d test.Data, opts pipeline.Options) (test.Assets, func()) {
+func initializeTaskTestSuiteRunControllerAssets(
+	t *testing.T, d test.Data,
+	opts pipeline.Options,
+) (test.Assets, func()) {
 	t.Helper()
 	ctx, _ := ttesting.SetupFakeContext(t)
-	loggingConfig := logtesting.TestLogger(t).Desugar().WithOptions(zap.IncreaseLevel(zap.InfoLevel))
+	loggingConfig := logtesting.TestLogger(t).
+		Desugar().
+		WithOptions(zap.IncreaseLevel(zap.InfoLevel))
 	ctx = logging.WithLogger(ctx, loggingConfig.Sugar())
 	ctx = ttesting.SetupFakeCloudClientContext(ctx, d.ExpectedCloudEventCount)
 	ctx, cancel := context.WithCancel(ctx)
@@ -456,7 +617,10 @@ func initializeTaskTestSuiteRunControllerAssets(t *testing.T, d test.Data, opts 
 	}
 
 	if la, ok := ctl.Reconciler.(pkgreconciler.LeaderAware); ok {
-		la.Promote(pkgreconciler.UniversalBucket(), func(pkgreconciler.Bucket, types.NamespacedName) {})
+		la.Promote(
+			pkgreconciler.UniversalBucket(),
+			func(pkgreconciler.Bucket, types.NamespacedName) {},
+		)
 	}
 
 	return test.Assets{
@@ -471,7 +635,10 @@ func initializeTaskTestSuiteRunControllerAssets(t *testing.T, d test.Data, opts 
 
 type statusPatchFunc = func(*v1alpha1.TaskTestSuiteRun)
 
-func patchTaskTestSuiteRun(ttrs *v1alpha1.TaskTestSuiteRun, pf statusPatchFunc) *v1alpha1.TaskTestSuiteRunStatus {
+func patchTaskTestSuiteRun(
+	ttrs *v1alpha1.TaskTestSuiteRun,
+	pf statusPatchFunc,
+) *v1alpha1.TaskTestSuiteRunStatus {
 	ttrsCopy := ttrs.DeepCopy()
 	pf(ttrsCopy)
 	return &ttrsCopy.Status
@@ -481,7 +648,12 @@ func taskTestRunSortFunc(a, b v1alpha1.TaskTestRun) int {
 	return strings.Compare(a.GetNamespacedName().String(), b.GetNamespacedName().String())
 }
 
-func generateTaskTestRun(t *testing.T, yaml, suiteRunName, suiteTaskName string) *v1alpha1.TaskTestRun {
+func generateTaskTestRun(
+	t *testing.T, yaml, suiteRunName, suiteTaskName string,
+) *v1alpha1.TaskTestRun {
 	t.Helper()
-	return parse.MustParseTaskTestRun(t, fmt.Sprintf(yaml, suiteRunName, suiteTaskName, suiteRunName, suiteTaskName, suiteRunName))
+	return parse.MustParseTaskTestRun(
+		t, fmt.Sprintf(yaml, suiteRunName, suiteTaskName, suiteRunName, suiteTaskName,
+			suiteRunName),
+	)
 }
