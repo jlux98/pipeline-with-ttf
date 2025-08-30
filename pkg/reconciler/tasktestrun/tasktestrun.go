@@ -269,7 +269,7 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 			ttr.Status.CompletionTime = &metav1.Time{Time: c.Clock.Now()}
 		}
 
-		resultErr, expectationsMet, diffs := checkActualOutcomesAgainstExpectations(&ttr.Status, &taskRun.Status)
+		resultErr, expectationsMet, diffs := checkActualOutcomesAgainstExpectations(ctx, &ttr.Status, &taskRun.Status)
 
 		// set status and emit event
 		beforeCondition := ttr.Status.GetCondition(apis.ConditionSucceeded)
@@ -349,7 +349,7 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 // 	return err
 // }
 
-func checkActualOutcomesAgainstExpectations(ttrs *v1alpha1.TaskTestRunStatus, trs *v1.TaskRunStatus) (error, bool, string) {
+func checkActualOutcomesAgainstExpectations(ctx context.Context, ttrs *v1alpha1.TaskTestRunStatus, trs *v1.TaskRunStatus) (error, bool, string) {
 	expectationsMet := true
 	diffs := ""
 	var resultErr error = nil
@@ -405,7 +405,7 @@ func checkActualOutcomesAgainstExpectations(ttrs *v1alpha1.TaskTestRunStatus, tr
 
 		// check file system contents
 		if ttrs.TaskTestSpec.Expects.FileSystemContents != nil {
-			if err := checkExpectationsForFileSystemObjects(ttrs, trs, &expectationsMet, &diffs); err != nil {
+			if err := checkExpectationsForFileSystemObjects(ctx, ttrs, trs, &expectationsMet, &diffs); err != nil {
 				err = fmt.Errorf(`error while checking the expectations for file system objects: %w`, err)
 				if resultErr == nil {
 					resultErr = err
@@ -606,17 +606,25 @@ func checkExpectationsForEnv(ttrs *v1alpha1.TaskTestRunStatus, trs *v1.TaskRunSt
 	if err != nil {
 		return fmt.Errorf("problem while unmarshalling stepEnvironments: %w", err)
 	}
-	stepEnvironmentsMap := stepEnvironments.ToMap()
 	if ttrs.Outcomes.StepEnvs == nil {
 		ttrs.Outcomes.StepEnvs = &[]v1alpha1.ObservedStepEnv{}
 	}
-	for step := range stepEnvironmentsMap {
+	for _, step := range stepEnvironments {
 		vars := []v1alpha1.ObservedEnvVar{}
-		for _, expectedEnvVar := range ttrs.TaskTestSpec.Expects.Env {
+		varsToCheck := ttrs.TaskTestSpec.Expects.Env
+		if ttrs.TaskTestSpec.Expects.StepEnvs != nil {
+		}
+		for _, stepEnv := range ttrs.TaskTestSpec.Expects.StepEnvs {
+			if stepEnv.StepName == step.Step {
+				varsToCheck = append(varsToCheck, stepEnv.Env...)
+			}
+		}
+
+		for _, expectedEnvVar := range varsToCheck {
 			observation := v1alpha1.ObservedEnvVar{
 				Name: expectedEnvVar.Name,
 				Want: expectedEnvVar.Value,
-				Got:  stepEnvironmentsMap[step][expectedEnvVar.Name],
+				Got:  step.Environment[expectedEnvVar.Name],
 			}
 			observation.Diff = cmp.Diff(observation.Want, observation.Got)
 			if observation.Diff != "" {
@@ -624,19 +632,27 @@ func checkExpectationsForEnv(ttrs *v1alpha1.TaskTestRunStatus, trs *v1.TaskRunSt
 				if diffs == nil {
 					diffs = ptr.To("")
 				}
-				*diffs += fmt.Sprintf(`envVar %s in step %s: `, expectedEnvVar.Name, step) + observation.Diff
+				*diffs += fmt.Sprintf(`envVar %s in step %s: `, expectedEnvVar.Name, step.Step) + observation.Diff
 			}
 			vars = append(vars, observation)
 		}
 		ttrs.Outcomes.StepEnvs = ptr.To(append(*ttrs.Outcomes.StepEnvs, v1alpha1.ObservedStepEnv{
-			StepName: step,
+			StepName: step.Step,
 			Env:      vars,
 		}))
+		// sorting to make this predicatable for testing
+		slices.SortFunc(vars, func(a, b v1alpha1.ObservedEnvVar) int {
+			return strings.Compare(a.Name, b.Name)
+		})
+		// sorting to make this predicatable for testing
+		slices.SortFunc(*ttrs.Outcomes.StepEnvs, func(a, b v1alpha1.ObservedStepEnv) int {
+			return strings.Compare(a.StepName, b.StepName)
+		})
 	}
 	return nil
 }
 
-func checkExpectationsForFileSystemObjects(ttrs *v1alpha1.TaskTestRunStatus, trs *v1.TaskRunStatus, expectationsMet *bool, diffs *string) error {
+func checkExpectationsForFileSystemObjects(ctx context.Context, ttrs *v1alpha1.TaskTestRunStatus, trs *v1.TaskRunStatus, expectationsMet *bool, diffs *string) error {
 	idx := slices.IndexFunc(trs.Results, func(result v1.TaskRunResult) bool {
 		return result.Name == v1alpha1.ResultNameFileSystemContents
 	})
@@ -662,13 +678,14 @@ func checkExpectationsForFileSystemObjects(ttrs *v1alpha1.TaskTestRunStatus, trs
 		if trs != nil {
 			stepName = trs.TaskSpec.Steps[stepIndex].Name
 		}
-
+		logger := logging.FromContext(ctx)
+		logger.Infof("checking contents for step %q with the id %d", stepName, stepIndex)
 		stepFileSystemContent := v1alpha1.ObservedStepFileSystemContent{
 			StepName: stepName,
 			Objects:  []v1alpha1.ObservedFileSystemObject{},
 		}
-		for i, expectedFileSystemContent := range ttrs.TaskTestSpec.Expects.FileSystemContents {
-			if i == stepIndex {
+		for _, expectedFileSystemContent := range ttrs.TaskTestSpec.Expects.FileSystemContents {
+			if expectedFileSystemContent.StepName == stepName {
 				for _, object := range expectedFileSystemContent.Objects {
 					observation := v1alpha1.ObservedFileSystemObject{
 						Path:        object.Path,
@@ -698,10 +715,18 @@ func checkExpectationsForFileSystemObjects(ttrs *v1alpha1.TaskTestRunStatus, trs
 					}
 
 					stepFileSystemContent.Objects = append(stepFileSystemContent.Objects, observation)
+					// sorting to make this predicatable for testing
+					slices.SortFunc(stepFileSystemContent.Objects, func(a, b v1alpha1.ObservedFileSystemObject) int {
+						return strings.Compare(a.Path, b.Path)
+					})
 				}
+				*ttrs.Outcomes.FileSystemObjects = append(*ttrs.Outcomes.FileSystemObjects, stepFileSystemContent)
+				// sorting to make this predicatable for testing
+				slices.SortFunc(*ttrs.Outcomes.FileSystemObjects, func(a, b v1alpha1.ObservedStepFileSystemContent) int {
+					return strings.Compare(a.StepName, b.StepName)
+				})
 			}
 		}
-		*ttrs.Outcomes.FileSystemObjects = append(*ttrs.Outcomes.FileSystemObjects, stepFileSystemContent)
 	}
 	return nil
 }

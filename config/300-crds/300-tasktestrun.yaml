@@ -145,7 +145,7 @@ spec:
                   properties:
                     expects:
                       description: |-
-                        Expected contains the data, which the TaskTestRun controller will
+                        Expects contains the data, which the TaskTestRun controller will
                         use to check, whether a TaskTestRun was successful or not.
                         If this field is left empty, then the TaskTestRun is deemed successful,
                         if the TaskRun completes without a failure occurring.
@@ -1593,12 +1593,6 @@ spec:
                         - got
                         - want
                       properties:
-                        diff:
-                          description: |2-
-                             Diff describes, how Want and Got differ, using the typical
-                            notation for go tests (prefacing lines from want with a - and lines from
-                            got with a +)
-                          type: string
                         got:
                           description: |-
                             Got reports, what Reason was given for the success status of the task
@@ -1609,6 +1603,9 @@ spec:
                             Want describes, what Reason the test expected to find for the success
                             status of the task under test
                           type: string
+                        wantDiffersFromGot:
+                          description: WantDiffersFromGot describes, whether Want and Got have the same value.
+                          type: boolean
                     successStatus:
                       type: object
                       required:
@@ -1621,8 +1618,8 @@ spec:
                         want:
                           description: Want describes, whether the test exects the task under test to succeed
                           type: boolean
-                        wantMatchesGot:
-                          description: WantMatchesGot describes, whether Want and Got have the same value.
+                        wantDiffersFromGot:
+                          description: WantDiffersFromGot describes, whether Want and Got have the same value.
                           type: boolean
                 retriesStatus:
                   description: |-
@@ -4965,7 +4962,7 @@ spec:
                   properties:
                     expects:
                       description: |-
-                        Expected contains the data, which the TaskTestRun controller will
+                        Expects contains the data, which the TaskTestRun controller will
                         use to check, whether a TaskTestRun was successful or not.
                         If this field is left empty, then the TaskTestRun is deemed successful,
                         if the TaskRun completes without a failure occurring.

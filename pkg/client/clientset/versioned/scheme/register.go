@@ -31,7 +31,6 @@ import (
 
 var Scheme = runtime.NewScheme()
 var Codecs = serializer.NewCodecFactory(Scheme)
-var CodecsStrict = serializer.NewCodecFactory(Scheme, serializer.EnableStrict)
 var ParameterCodec = runtime.NewParameterCodec(Scheme)
 var localSchemeBuilder = runtime.SchemeBuilder{
 	tektonv1alpha1.AddToScheme,

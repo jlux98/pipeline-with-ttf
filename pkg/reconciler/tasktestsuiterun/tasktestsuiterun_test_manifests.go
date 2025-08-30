@@ -534,7 +534,7 @@ status:
 //       name: absent-task`
 
 // Valid TaskTestSuiteRun manifests
-const ttsrManifestInlineTts = `
+const ttsrManifestTemplateInlineTts = `
 metadata:
   name: %s
   namespace: foo
@@ -553,7 +553,7 @@ spec:
           successReason: Succeeded
 `
 
-const ttsrManifestReferencedTts = `
+const ttsrManifestTemplateReferencedTts = `
 metadata:
   name: %s
   namespace: foo

@@ -583,10 +583,6 @@
         "got"
       ],
       "properties": {
-        "diff": {
-          "description": "Diff describes, how Want and Got differ, using the typical\nnotation for go tests (prefacing lines from want with a - and lines from got with a +)",
-          "type": "string"
-        },
         "got": {
           "description": "Got reports, what Reason was given for the success status of the task under test",
           "type": "string",
@@ -596,6 +592,10 @@
           "description": "Want describes, what Reason the test expected to find for the success status of the task under test",
           "type": "string",
           "default": ""
+        },
+        "wantDiffersFromGot": {
+          "description": "WantDiffersFromGot describes, whether Want and Got have the same value.",
+          "type": "boolean"
         }
       }
     },
@@ -616,8 +616,8 @@
           "type": "boolean",
           "default": false
         },
-        "wantMatchesGot": {
-          "description": "WantMatchesGot describes, whether Want and Got have the same value.",
+        "wantDiffersFromGot": {
+          "description": "WantDiffersFromGot describes, whether Want and Got have the same value.",
           "type": "boolean"
         }
       }
@@ -1007,11 +1007,11 @@
           "format": "int32"
         },
         "taskTestRef": {
-          "description": "TaskTestRef is a reference to an existing Task",
+          "description": "TaskTestRef is a reference to an existing Task. Either this or TaskTestSpec must be set, if neither or both are set then validation of this SuiteTest fails.",
           "$ref": "#/definitions/v1alpha1.TaskTestRef"
         },
         "taskTestSpec": {
-          "description": "TaskTestSpec is a specification of a task test",
+          "description": "TaskTestSpec is a specification of a task test Either this or TaskTestRef must be set, if neither or both are set then validation of this SuiteTest fails.",
           "$ref": "#/definitions/v1alpha1.TaskTestSpec"
         },
         "timeout": {
@@ -1368,8 +1368,8 @@
       "description": "TaskTestSpec defines the desired state of TaskTest.",
       "type": "object",
       "properties": {
-        "expected": {
-          "description": "Expected contains the data, which the TaskTestRun controller will use to check, whether a TaskTestRun was successful or not. If this field is left empty, then the TaskTestRun is deemed successful, if the TaskRun completes without a failure occurring.",
+        "expects": {
+          "description": "Expects contains the data, which the TaskTestRun controller will use to check, whether a TaskTestRun was successful or not. If this field is left empty, then the TaskTestRun is deemed successful, if the TaskRun completes without a failure occurring.",
           "$ref": "#/definitions/v1alpha1.ExpectedOutcomes"
         },
         "inputs": {
@@ -1542,7 +1542,7 @@
           "$ref": "#/definitions/v1alpha1.TaskTestSuiteRef"
         },
         "taskTestSuiteSpec": {
-          "description": "TaskTestSuiteSpec is a definition of a task test suite. TaskTestSuiteRef is a reference to a task test suite definition. Either this or TaskTestSuiteSpec must be set, if neither or both are set then validation of this TaskTestSuiteRun fails.",
+          "description": "TaskTestSuiteSpec is a definition of a task test suite. Either this or TaskTestSuiteSpec must be set, if neither or both are set then validation of this TaskTestSuiteRun fails.",
           "$ref": "#/definitions/v1alpha1.TaskTestSuiteSpec"
         },
         "timeout": {

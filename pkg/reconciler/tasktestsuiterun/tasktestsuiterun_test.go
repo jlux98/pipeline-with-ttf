@@ -102,27 +102,32 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 	}
 	taskTestSuiteRunMap := map[string]*v1alpha1.TaskTestSuiteRun{
 		tcStartNewInlineTtrsInlineTts: parse.MustParseTaskTestSuiteRun(
-			t, fmt.Sprintf(ttsrManifestInlineTts, "ttsr-start-new-runs-inline-tts"),
+			t, fmt.Sprintf(ttsrManifestTemplateInlineTts, "ttsr-start-new-runs-inline-tts"),
 		),
 		tcStartNewTtrsReferencedTts: parse.MustParseTaskTestSuiteRun(
-			t, fmt.Sprintf(ttsrManifestReferencedTts, "ttsr-start-new-runs-referenced-tts"),
+			t, fmt.Sprintf(ttsrManifestTemplateReferencedTts, "ttsr-start-new-runs-referenced-tts"),
 		),
 		tcCheckSuccessfulTtrsInlineTts: parse.MustParseTaskTestSuiteRun(
-			t, fmt.Sprintf(ttsrManifestInlineTts, "ttsr-check-successful-runs-inline-tts"),
+			t, fmt.Sprintf(ttsrManifestTemplateInlineTts, "ttsr-check-successful-runs-inline-tts"),
 		),
 		tcCheckSuccessfulTtrsReferencedTts: parse.MustParseTaskTestSuiteRun(
-			t, fmt.Sprintf(ttsrManifestReferencedTts, "ttsr-check-successful-runs-referenced-tts"),
+			t,
+			fmt.Sprintf(
+				ttsrManifestTemplateReferencedTts,
+				"ttsr-check-successful-runs-referenced-tts",
+			),
 		),
 		tcCheckFailedTtrsInlineTts: parse.MustParseTaskTestSuiteRun(
-			t, fmt.Sprintf(ttsrManifestInlineTts, "ttsr-check-failed-runs-inline-tts"),
+			t, fmt.Sprintf(ttsrManifestTemplateInlineTts, "ttsr-check-failed-runs-inline-tts"),
 		),
 		tcCheckFailedTtrsReferencedTts: parse.MustParseTaskTestSuiteRun(
-			t, fmt.Sprintf(ttsrManifestReferencedTts, "ttsr-check-failed-runs-referenced-tts"),
+			t,
+			fmt.Sprintf(ttsrManifestTemplateReferencedTts, "ttsr-check-failed-runs-referenced-tts"),
 		),
 		tcCheckFailedTtrsOnErrorContinueReferencedTts: parse.MustParseTaskTestSuiteRun(
 			t, fmt.Sprintf(
 				strings.ReplaceAll(
-					ttsrManifestReferencedTts,
+					ttsrManifestTemplateReferencedTts,
 					"    name: suite",
 					"    name: suite-onerror-continue",
 				),
@@ -481,12 +486,17 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 
 			slices.SortFunc(trl.Items, taskTestRunSortFunc)
 			slices.SortFunc(tt.wantTtrs, taskTestRunSortFunc)
+			startTimes := make([]*metav1.Time, len(trl.Items))
 			for i, ttr := range trl.Items {
 				if tt.wantStartTime && ttr.Status.StartTime == nil {
 					t.Errorf("TaskTestRun %d: Didn't expect start time to be nil", i)
 				}
-				if !tt.wantStartTime && ttr.Status.StartTime != nil {
-					t.Errorf("TaskTestRun %d: Expected start time to be nil", i)
+				if ttr.Status.StartTime != nil {
+					if !tt.wantStartTime {
+						t.Errorf("TaskTestRun %d: Expected start time to be nil", i)
+					} else {
+						startTimes[i] = ttr.Status.StartTime
+					}
 				}
 				if tt.wantCompletionTime && ttr.Status.CompletionTime == nil {
 					t.Errorf("TaskTestRun %d: Didn't expect completion time to be nil", i)
@@ -645,6 +655,9 @@ func patchTaskTestSuiteRun(
 }
 
 func taskTestRunSortFunc(a, b v1alpha1.TaskTestRun) int {
+	if a.Status.StartTime != nil && b.Status.StartTime != nil {
+		return a.Status.StartTime.Time.Compare(b.Status.StartTime.Time)
+	}
 	return strings.Compare(a.GetNamespacedName().String(), b.GetNamespacedName().String())
 }
 

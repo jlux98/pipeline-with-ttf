@@ -85,7 +85,10 @@ spec:
                           the event of test failure.
                         type: integer
                       taskTestRef:
-                        description: TaskTestRef is a reference to an existing Task
+                        description: |-
+                          TaskTestRef is a reference to an existing Task.
+                          Either this or TaskTestSpec must be set, if neither or both are
+                          set then validation of this SuiteTest fails.
                         type: object
                         required:
                           - name
@@ -94,12 +97,15 @@ spec:
                             description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
                             type: string
                       taskTestSpec:
-                        description: TaskTestSpec is a specification of a task test
+                        description: |-
+                          TaskTestSpec is a specification of a task test
+                          Either this or TaskTestRef must be set, if neither or both are
+                          set then validation of this SuiteTest fails.
                         type: object
                         properties:
                           expects:
                             description: |-
-                              Expected contains the data, which the TaskTestRun controller will
+                              Expects contains the data, which the TaskTestRun controller will
                               use to check, whether a TaskTestRun was successful or not.
                               If this field is left empty, then the TaskTestRun is deemed successful,
                               if the TaskRun completes without a failure occurring.

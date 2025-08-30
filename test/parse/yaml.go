@@ -22,6 +22,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 )
 
 // MustParseV1alpha1StepAction takes YAML and parses it into a *v1alpha1.StepAction
@@ -241,7 +242,7 @@ func mustParseYAML(t *testing.T, yaml string, i runtime.Object) {
 
 func mustStrictParseYAML(t *testing.T, yaml string, i runtime.Object) {
 	t.Helper()
-	if _, _, err := scheme.CodecsStrict.UniversalDeserializer().Decode([]byte(yaml), nil, i); err != nil {
+	if _, _, err := serializer.NewCodecFactory(runtime.NewScheme(), serializer.EnableStrict).UniversalDeserializer().Decode([]byte(yaml), nil, i); err != nil {
 		t.Fatalf("mustParseYAML (%s): %v", yaml, err)
 	}
 }

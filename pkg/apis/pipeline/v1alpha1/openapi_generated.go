@@ -1138,10 +1138,10 @@ func schema_pkg_apis_pipeline_v1alpha1_ObservedSuccessReason(ref common.Referenc
 							Format:      "",
 						},
 					},
-					"diff": {
+					"wantDiffersFromGot": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Diff describes, how Want and Got differ, using the typical\nnotation for go tests (prefacing lines from want with a - and lines from got with a +)",
-							Type:        []string{"string"},
+							Description: "WantDiffersFromGot describes, whether Want and Got have the same value.",
+							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},
@@ -1174,9 +1174,9 @@ func schema_pkg_apis_pipeline_v1alpha1_ObservedSuccessStatus(ref common.Referenc
 							Format:      "",
 						},
 					},
-					"wantMatchesGot": {
+					"wantDiffersFromGot": {
 						SchemaProps: spec.SchemaProps{
-							Description: "WantMatchesGot describes, whether Want and Got have the same value.",
+							Description: "WantDiffersFromGot describes, whether Want and Got have the same value.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -1854,13 +1854,13 @@ func schema_pkg_apis_pipeline_v1alpha1_SuiteTest(ref common.ReferenceCallback) c
 					},
 					"taskTestRef": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TaskTestRef is a reference to an existing Task",
+							Description: "TaskTestRef is a reference to an existing Task. Either this or TaskTestSpec must be set, if neither or both are set then validation of this SuiteTest fails.",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestRef"),
 						},
 					},
 					"taskTestSpec": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TaskTestSpec is a specification of a task test",
+							Description: "TaskTestSpec is a specification of a task test Either this or TaskTestRef must be set, if neither or both are set then validation of this SuiteTest fails.",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSpec"),
 						},
 					},
@@ -2545,9 +2545,9 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestSpec(ref common.ReferenceCallback
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestInputs"),
 						},
 					},
-					"expected": {
+					"expects": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Expected contains the data, which the TaskTestRun controller will use to check, whether a TaskTestRun was successful or not. If this field is left empty, then the TaskTestRun is deemed successful, if the TaskRun completes without a failure occurring.",
+							Description: "Expects contains the data, which the TaskTestRun controller will use to check, whether a TaskTestRun was successful or not. If this field is left empty, then the TaskTestRun is deemed successful, if the TaskRun completes without a failure occurring.",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ExpectedOutcomes"),
 						},
 					},
@@ -2782,7 +2782,7 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunSpec(ref common.Reference
 					},
 					"taskTestSuiteSpec": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TaskTestSuiteSpec is a definition of a task test suite. TaskTestSuiteRef is a reference to a task test suite definition. Either this or TaskTestSuiteSpec must be set, if neither or both are set then validation of this TaskTestSuiteRun fails.",
+							Description: "TaskTestSuiteSpec is a definition of a task test suite. Either this or TaskTestSuiteSpec must be set, if neither or both are set then validation of this TaskTestSuiteRun fails.",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuiteSpec"),
 						},
 					},
