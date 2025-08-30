@@ -462,6 +462,9 @@
     "v1alpha1.ObservedOutcomes": {
       "type": "object",
       "properties": {
+        "diffs": {
+          "type": "string"
+        },
         "fileSystemObjects": {
           "type": "array",
           "items": {

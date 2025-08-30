@@ -509,29 +509,27 @@ func (e Entrypointer) WritePostFile(postFile string, err error) {
 
 func (e Entrypointer) WriteFileSystemObservations() error {
 	filePath := filepath.Join(pipeline.DefaultResultPath, v1alpha1.ResultNameFileSystemContents)
+	existingObjects := []v1alpha1.ExpectedStepFileSystemContent{}
 
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			data = []byte{}
-		} else {
-			return (err)
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("could not open observations file: %w", err)
 		}
-	}
-
-	var existingObjects []v1alpha1.ExpectedStepFileSystemContent
-	if err := json.Unmarshal(data, &existingObjects); err != nil {
-		return (err)
+	} else {
+		if err := json.Unmarshal(data, &existingObjects); err != nil {
+			return fmt.Errorf("could not unmarshal pre-existing observations: %w", err)
+		}
 	}
 
 	existingObjects = append(existingObjects, e.getFileSystemObservations())
 	updatedData, err := json.Marshal(existingObjects)
 	if err != nil {
-		return (err)
+		return fmt.Errorf("could not marshal updated observations: %w", err)
 	}
 
 	if err := os.WriteFile(filePath, updatedData, 0600); err != nil {
-		return (err)
+		return fmt.Errorf("could not write updated observations to file: %w", err)
 	}
 
 	return nil

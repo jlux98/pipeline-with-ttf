@@ -979,6 +979,12 @@ func schema_pkg_apis_pipeline_v1alpha1_ObservedOutcomes(ref common.ReferenceCall
 							Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessReason"),
 						},
 					},
+					"diffs": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
 				},
 			},
 		},

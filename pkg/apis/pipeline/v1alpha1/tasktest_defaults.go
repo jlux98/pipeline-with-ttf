@@ -18,6 +18,15 @@ func (tt *TaskTest) SetDefaults(ctx context.Context) {
 // FIXME(jlux98) implement this
 // SetDefaults set any defaults for the task test spec
 func (tts *TaskTestSpec) SetDefaults(ctx context.Context) {
+	if tts.Inputs != nil {
+		if tts.Inputs.Params != nil {
+			for i := range tts.Inputs.Params {
+				if tts.Inputs.Params[i].Value.Type == "" {
+					tts.Inputs.Params[i].Value.Type = v1.ParamTypeString
+				}
+			}
+		}
+	}
 	if tts.Expects != nil {
 		if tts.Expects.Results != nil {
 			for i := range tts.Expects.Results {

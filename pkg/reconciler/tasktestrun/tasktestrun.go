@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -140,14 +139,14 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1alpha1.TaskTestRun, 
 	return nil
 }
 
-func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1alpha1.TaskTestRun, beforeCondition *apis.Condition, previousError error) reconciler.Event {
-	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
-	if afterCondition.IsFalse() && !tr.IsCancelled() && tr.IsRetriable() {
-		retryTaskRun(tr, afterCondition.Message)
-		afterCondition = tr.Status.GetCondition(apis.ConditionSucceeded)
+func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, ttr *v1alpha1.TaskTestRun, beforeCondition *apis.Condition, previousError error) reconciler.Event {
+	afterCondition := ttr.Status.GetCondition(apis.ConditionSucceeded)
+	if afterCondition.IsFalse() && !ttr.IsCancelled() && ttr.IsRetriable() {
+		retryTaskTestRun(ttr, afterCondition.Message)
+		afterCondition = ttr.Status.GetCondition(apis.ConditionSucceeded)
 	}
 	// Send k8s events and cloud events (when configured)
-	events.Emit(ctx, beforeCondition, afterCondition, tr)
+	events.Emit(ctx, beforeCondition, afterCondition, ttr)
 
 	errs := []error{previousError}
 
@@ -158,9 +157,17 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 	return joinedErr
 }
 
-func retryTaskRun(tr *v1alpha1.TaskTestRun, s string) {
+func retryTaskTestRun(ttr *v1alpha1.TaskTestRun, message string) {
 	// TODO(jlux98) implement this
-	panic("unimplemented")
+	newStatus := ttr.Status.DeepCopy()
+	newStatus.RetriesStatus = nil
+	ttr.Status.RetriesStatus = append(ttr.Status.RetriesStatus, *newStatus)
+	ttr.Status.StartTime = nil
+	ttr.Status.CompletionTime = nil
+	ttr.Status.TaskRunName = ptr.To("")
+	ttr.Status.Outcomes = nil
+	taskTestRunCondSet := apis.NewBatchConditionSet()
+	taskTestRunCondSet.Manage(&ttr.Status).MarkUnknown(apis.ConditionSucceeded, v1.TaskRunReasonToBeRetried.String(), message)
 }
 
 func (c *Reconciler) prepare(ctx context.Context, ttr *v1alpha1.TaskTestRun) error {
@@ -280,8 +287,9 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 			if expectationsMet {
 				ttr.Status.MarkSuccessful()
 			} else {
-				resultErr = errors.New("not all expectations were met:\n" + diffs)
-				ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunUnexpectatedOutcomes, resultErr)
+				err := errors.New("not all expectations were met")
+				ttr.Status.Outcomes.Diffs = diffs
+				ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunUnexpectatedOutcomes, err)
 			}
 		}
 		events.Emit(ctx, beforeCondition, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
@@ -511,7 +519,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 	taskRun = &v1.TaskRun{
 		TypeMeta: metav1.TypeMeta{Kind: "TaskRun", APIVersion: "tekton.dev/v1"},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            ttr.Name + "-run",
+			Name:            ttr.GetTaskRunName(),
 			Namespace:       taskRunNamespace,
 			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(ttr, schema.GroupVersionKind{Group: "tekton.dev", Version: "v1alpha1", Kind: "TaskTestRun"})},
 			Labels:          map[string]string{pipeline.TaskTestRunLabelKey: ttr.Name},
@@ -668,65 +676,46 @@ func checkExpectationsForFileSystemObjects(ctx context.Context, ttrs *v1alpha1.T
 		return fmt.Errorf("problem while unmarshalling file system observations: %w", err)
 	}
 	fileSystemObservationsMap := fileSystemObservations.ToMap()
+	fileSystemObservationsMap.SetStepNames(trs)
 	if ttrs.Outcomes.FileSystemObjects == nil {
 		ttrs.Outcomes.FileSystemObjects = &[]v1alpha1.ObservedStepFileSystemContent{}
 	}
-	for step := range fileSystemObservationsMap {
-		pattern := regexp.MustCompile(`/tekton/run/(\d)/status`)
-		stepIndex, _ := strconv.Atoi(pattern.ReplaceAllString(step, `$1`))
-		var stepName string
-		if trs != nil {
-			stepName = trs.TaskSpec.Steps[stepIndex].Name
-		}
-		logger := logging.FromContext(ctx)
-		logger.Infof("checking contents for step %q with the id %d", stepName, stepIndex)
+	for _, step := range ttrs.TaskTestSpec.Expects.FileSystemContents {
 		stepFileSystemContent := v1alpha1.ObservedStepFileSystemContent{
-			StepName: stepName,
+			StepName: step.StepName,
 			Objects:  []v1alpha1.ObservedFileSystemObject{},
 		}
-		for _, expectedFileSystemContent := range ttrs.TaskTestSpec.Expects.FileSystemContents {
-			if expectedFileSystemContent.StepName == stepName {
-				for _, object := range expectedFileSystemContent.Objects {
-					observation := v1alpha1.ObservedFileSystemObject{
-						Path:        object.Path,
-						WantType:    object.Type,
-						GotType:     fileSystemObservationsMap[step][object.Path].Type,
-						WantContent: object.Content,
-						GotContent:  fileSystemObservationsMap[step][object.Path].Content,
-					}
-
-					observation.DiffType = cmp.Diff(observation.WantType, observation.GotType)
-					if observation.DiffType != "" {
-						*expectationsMet = false
-						*diffs += fmt.Sprintf(`file system object %q type in step %s: `, observation.Path, stepName) + observation.DiffType
-					}
-
-					// we can assume, that the empty string here means,
-					// that no content was specified, since if the user
-					// wanted to check, if a file was empty, they would
-					// use the EmptyFile type instead.
-					if observation.WantContent != "" {
-						observation.DiffContent = cmp.Diff(observation.WantContent, observation.GotContent)
-						if observation.DiffContent != "" {
-							*expectationsMet = false
-
-							*diffs += fmt.Sprintf(`file system object %q content in step %s: `, observation.Path, stepName) + observation.DiffContent
-						}
-					}
-
-					stepFileSystemContent.Objects = append(stepFileSystemContent.Objects, observation)
-					// sorting to make this predicatable for testing
-					slices.SortFunc(stepFileSystemContent.Objects, func(a, b v1alpha1.ObservedFileSystemObject) int {
-						return strings.Compare(a.Path, b.Path)
-					})
-				}
-				*ttrs.Outcomes.FileSystemObjects = append(*ttrs.Outcomes.FileSystemObjects, stepFileSystemContent)
-				// sorting to make this predicatable for testing
-				slices.SortFunc(*ttrs.Outcomes.FileSystemObjects, func(a, b v1alpha1.ObservedStepFileSystemContent) int {
-					return strings.Compare(a.StepName, b.StepName)
-				})
+		for _, object := range step.Objects {
+			observation := v1alpha1.ObservedFileSystemObject{
+				Path:        object.Path,
+				WantType:    object.Type,
+				GotType:     fileSystemObservationsMap[step.StepName][object.Path].Type,
+				WantContent: object.Content,
+				GotContent:  fileSystemObservationsMap[step.StepName][object.Path].Content,
 			}
+
+			observation.DiffType = cmp.Diff(observation.WantType, observation.GotType)
+			if observation.DiffType != "" {
+				*expectationsMet = false
+				*diffs += fmt.Sprintf(`file system object %q type in step %s: `, observation.Path, step.StepName) + observation.DiffType
+			}
+
+			// we can assume, that the empty string here means,
+			// that no content was specified, since if the user
+			// wanted to check, if a file was empty, they would
+			// use the EmptyFile type instead.
+			if observation.WantContent != "" {
+				observation.DiffContent = cmp.Diff(observation.WantContent, observation.GotContent)
+				if observation.DiffContent != "" {
+					*expectationsMet = false
+
+					*diffs += fmt.Sprintf(`file system object %q content in step %s: `, observation.Path, step.StepName) + observation.DiffContent
+				}
+			}
+
+			stepFileSystemContent.Objects = append(stepFileSystemContent.Objects, observation)
 		}
+		*ttrs.Outcomes.FileSystemObjects = append(*ttrs.Outcomes.FileSystemObjects, stepFileSystemContent)
 	}
 	return nil
 }

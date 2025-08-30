@@ -22,6 +22,7 @@ import (
 	"github.com/tektoncd/pipeline/test/parse"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -296,7 +297,7 @@ spec:
 // TaskTestRun Templates
 const trSpecTemplate = `
 metadata:
-  name: %s-run # TaskTestsRun name
+  name: %s # TaskTestsRun name
   namespace: foo
   annotations:
     #                    {"results":[{"name":"current-date","type":"string","value":"2025-08-15"},{"name":"current-time","type":"string","value":"15:17:59"}],"env":[{"name":"HOME","value":"/root"}],"successStatus":true,"successReason":"Succeeded","fileSystemContents":[{"stepName":"date-step","objects":[{"path":"/tekton/results/current-date","type":"TextFile","content":"bar"}]},{"stepName":"time-step","objects":[{"path":"/tekton/results/current-time","type":"TextFile","content":"bar"}]}]}
@@ -484,7 +485,7 @@ spec:
           value: ANOTHER_BAR
     expects:
       successStatus: false
-      successReason: TaskRunCancelled
+      successReason: Failed
       results:
       - name: current-date
         type: string
@@ -529,6 +530,18 @@ status:
     reason: Started
     status: Unknown
 `
+const ttrStatusToBeRetried = `
+status:
+  conditions:
+  - type: Succeeded
+    reason: ToBeRetried
+    status: Unknown
+  retriesStatus:
+  - conditions:
+    - type: Succeeded
+      reason: TaskTestRunUnexpectedOutcomes
+      status: "False"
+`
 
 const ttrStatusCompletedSuccessful = `
 status:
@@ -547,30 +560,38 @@ status:
   - type: Succeeded
     status: "False"
     reason: TaskTestRunUnexpectedOutcomes
+    message: not all expectations were met
+  taskRunName : %s
 `
 
 func TestReconciler_ValidateReconcileKind(t *testing.T) {
 	const (
-		tcStartNewRunInlineTest                  = "start-new-run-inline-test"
-		tcCheckRunningInlineTest                 = "check-running-inline-test"
-		tcCheckCompletedSuccessfulInlineTest     = "check-completed-successful-inline-test"
-		tcCheckCompletedSuccessfulReferencedTest = "check-completed-successful-referenced-test"
-		tcCheckCompletedFailedInlineTest         = "check-completed-failed-inline-test"
+		tcStartNewRunInlineTest                     = "start-new-run-inline-test"
+		tcCheckRunningInlineTest                    = "check-running-inline-test"
+		tcCheckCompletedSuccessfulInlineTest        = "check-completed-successful-inline-test"
+		tcCheckCompletedSuccessfulReferencedTest    = "check-completed-successful-referenced-test"
+		tcCheckCompletedFailedInlineTestNoRetries   = "check-completed-failed-inline-test-no-retries"
+		tcCheckCompletedFailedInlineTestWithRetries = "check-completed-failed-inline-test-with-retries"
+		tcStartRetryInlineTest                      = "start-retry-inline-test"
 	)
 
 	// fill maps
 	taskRunMap := map[string]*v1.TaskRun{
-		tcCheckRunningInlineTest:                 generateTaskRun(t, trSpecTemplate+trStatusRunning, tcCheckRunningInlineTest),
-		tcCheckCompletedSuccessfulInlineTest:     generateTaskRun(t, trSpecTemplate+trStatusFinished, tcCheckCompletedSuccessfulInlineTest),
-		tcCheckCompletedSuccessfulReferencedTest: generateTaskRun(t, trSpecTemplate+trStatusFinished, tcCheckCompletedSuccessfulReferencedTest),
-		tcCheckCompletedFailedInlineTest:         generateTaskRun(t, trSpecTemplate+trStatusFinished, tcCheckCompletedFailedInlineTest),
+		tcCheckRunningInlineTest:                    generateTaskRun(t, trSpecTemplate+trStatusRunning, tcCheckRunningInlineTest),
+		tcCheckCompletedSuccessfulInlineTest:        generateTaskRun(t, trSpecTemplate+trStatusFinished, tcCheckCompletedSuccessfulInlineTest),
+		tcCheckCompletedSuccessfulReferencedTest:    generateTaskRun(t, trSpecTemplate+trStatusFinished, tcCheckCompletedSuccessfulReferencedTest),
+		tcCheckCompletedFailedInlineTestNoRetries:   generateTaskRun(t, trSpecTemplate+trStatusFinished, tcCheckCompletedFailedInlineTestNoRetries),
+		tcCheckCompletedFailedInlineTestWithRetries: generateTaskRun(t, trSpecTemplate+trStatusFinished, tcCheckCompletedFailedInlineTestWithRetries, 0),
 	}
+
 	taskTestRunMap := map[string]*v1alpha1.TaskTestRun{
-		tcStartNewRunInlineTest:                  parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateInlineTest, tcStartNewRunInlineTest)),
-		tcCheckRunningInlineTest:                 parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateInlineTest, tcCheckRunningInlineTest)),
-		tcCheckCompletedSuccessfulInlineTest:     parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateInlineTest, tcCheckCompletedSuccessfulInlineTest)),
-		tcCheckCompletedSuccessfulReferencedTest: parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateReferencedTest, tcCheckCompletedSuccessfulReferencedTest)),
-		tcCheckCompletedFailedInlineTest:         parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateInlineTestInaccurateExpectations, tcCheckCompletedFailedInlineTest)),
+		tcStartNewRunInlineTest:                     parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateInlineTest, tcStartNewRunInlineTest)),
+		tcCheckRunningInlineTest:                    parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateInlineTest, tcCheckRunningInlineTest)),
+		tcCheckCompletedSuccessfulInlineTest:        parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateInlineTest, tcCheckCompletedSuccessfulInlineTest)),
+		tcCheckCompletedSuccessfulReferencedTest:    parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateReferencedTest, tcCheckCompletedSuccessfulReferencedTest)),
+		tcCheckCompletedFailedInlineTestNoRetries:   parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateInlineTestInaccurateExpectations, tcCheckCompletedFailedInlineTestNoRetries)),
+		tcCheckCompletedFailedInlineTestWithRetries: parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateInlineTestInaccurateExpectations+"\n  retries: 1"+fmt.Sprintf(ttrStatusCompletedFailed, tcCheckCompletedFailedInlineTestWithRetries+"-run-0"), tcCheckCompletedFailedInlineTestWithRetries)),
+		tcStartRetryInlineTest:                      parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateInlineTest+"\n  retries: 1"+ttrStatusToBeRetried, tcStartRetryInlineTest)),
 	}
 
 	// load custom resources into data for the fake cluster
@@ -831,28 +852,22 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 			wantStartTime:      true,
 			wantCompletionTime: true,
 		},
-		tcCheckCompletedFailedInlineTest: {
-			ttr: taskTestRunMap[tcCheckCompletedFailedInlineTest],
+		tcCheckCompletedFailedInlineTestNoRetries: {
+			ttr: taskTestRunMap[tcCheckCompletedFailedInlineTestNoRetries],
 			wantTtrStatus: patchTaskTestRun(
-				parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateInlineTestInaccurateExpectations+ttrStatusCompletedFailed, tcCheckCompletedFailedInlineTest)),
+				parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateInlineTestInaccurateExpectations+fmt.Sprintf(ttrStatusCompletedFailed, tcCheckCompletedFailedInlineTestNoRetries+"-run"), tcCheckCompletedFailedInlineTestNoRetries)),
 				func(ttr *v1alpha1.TaskTestRun) {
-					ttr.Status.Conditions[0].Message = "not all expectations were met:\n" +
-						"observed success status did not match expectation\n" +
-						"observed success reason did not match expectation\n" +
-						"Result current-date: " + diffCurrentDate +
-						"Result current-time: " + diffCurrentTime +
-						"envVar HOME in step date-step: " + diffEnv +
-						"envVar HOME in step time-step: " + diffEnv +
-						"file system object \"/tekton/results/current-date\" type in step date-step: " + diffType +
-						"file system object \"/tekton/results/current-time\" content in step time-step: " + diffContent
+					ttr.Status.Outcomes = &v1alpha1.ObservedOutcomes{}
 					ttr.Status.TaskTestRunStatusFields = v1alpha1.TaskTestRunStatusFields{
-						TaskRunName: ptr.To(tcCheckCompletedFailedInlineTest + "-run"),
+						TaskRunName: ptr.To(tcCheckCompletedFailedInlineTestNoRetries + "-run"),
 						Outcomes: &v1alpha1.ObservedOutcomes{
-							Results: &[]v1alpha1.ObservedResults{{Name: "current-date",
+							Results: &[]v1alpha1.ObservedResults{{
+								Name: "current-date",
 								Want: &v1.ResultValue{Type: "string", StringVal: "2015-08-15"},
 								Got:  &v1.ResultValue{Type: "string", StringVal: "2025-08-15"},
 								Diff: diffCurrentDate,
-							}, {Name: "current-time",
+							}, {
+								Name: "current-time",
 								Want: &v1.ResultValue{Type: "string", StringVal: "05:17:59"},
 								Got:  &v1.ResultValue{Type: "string", StringVal: "15:17:59"},
 								Diff: diffCurrentTime,
@@ -904,18 +919,63 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 								WantDiffersFromGot: true,
 							},
 							SuccessReason: &v1alpha1.ObservedSuccessReason{
-								Want:               "TaskRunCancelled",
+								Want:               "Failed",
 								Got:                "Succeeded",
 								WantDiffersFromGot: true,
 							},
+							Diffs: "observed success status did not match expectation\n" +
+								"observed success reason did not match expectation\n" +
+								"Result current-date: " + diffCurrentDate +
+								"Result current-time: " + diffCurrentTime +
+								"envVar HOME in step date-step: " + diffEnv +
+								"envVar HOME in step time-step: " + diffEnv +
+								"file system object \"/tekton/results/current-date\" type in step date-step: " + diffType +
+								"file system object \"/tekton/results/current-time\" content in step time-step: " + diffContent,
 						},
 					}
 					ttr.Status.TaskTestSpec = ttr.Spec.TaskTestSpec
 				},
 			),
-			wantTr:             taskRunMap[tcCheckCompletedFailedInlineTest],
+			wantTr:             taskRunMap[tcCheckCompletedFailedInlineTestNoRetries],
 			wantStartTime:      true,
 			wantCompletionTime: true,
+		},
+		tcCheckCompletedFailedInlineTestWithRetries: {
+			ttr: taskTestRunMap[tcCheckCompletedFailedInlineTestWithRetries],
+			wantTtrStatus: patchTaskTestRun(
+				parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateInlineTestInaccurateExpectations+fmt.Sprintf(ttrStatusCompletedFailed, tcCheckCompletedFailedInlineTestWithRetries+"-run-0"), tcCheckCompletedFailedInlineTestWithRetries)),
+				func(ttr *v1alpha1.TaskTestRun) {
+					ttr.Status.TaskTestRunStatusFields = v1alpha1.TaskTestRunStatusFields{
+						TaskRunName: ptr.To(tcCheckCompletedFailedInlineTestWithRetries + "-run-0"),
+					}
+					ttr.Status.TaskTestSpec = ttr.Spec.TaskTestSpec
+					statusCopy := *ttr.Status.DeepCopy()
+					statusCopy.RetriesStatus = nil
+					ttr.Status.RetriesStatus = append(ttr.Status.RetriesStatus, statusCopy)
+					ttr.Status.Outcomes = nil
+					ttr.Status.TaskRunName = ptr.To("")
+					ttr.Status.Conditions = duckv1.Conditions{{
+						Type:    "Succeeded",
+						Status:  "Unknown",
+						Reason:  "ToBeRetried",
+						Message: "not all expectations were met",
+					}}
+				},
+			),
+		},
+		tcStartRetryInlineTest: {
+			ttr: taskTestRunMap[tcStartRetryInlineTest],
+			wantTtrStatus: patchTaskTestRun(taskTestRunMap[tcStartRetryInlineTest].DeepCopy(), func(ttr *v1alpha1.TaskTestRun) {
+				ttr.Status.Conditions = duckv1.Conditions{{
+					Type:   "Succeeded",
+					Status: "Unknown",
+					Reason: "Started",
+				}}
+				ttr.Status.TaskRunName = ptr.To(tcStartRetryInlineTest + "-run-1")
+				ttr.Status.TaskTestSpec = ttr.Spec.TaskTestSpec
+			}),
+			wantTr:        generateTaskRun(t, trSpecTemplate+trStatusRunning, tcStartRetryInlineTest, 1),
+			wantStartTime: true,
 		},
 	}
 	for name, tt := range tests {
@@ -964,32 +1024,45 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 			tr, err := clients.Pipeline.TektonV1().
 				TaskRuns(tt.ttr.Namespace).
 				Get(testAssets.Ctx, *ttr.Status.TaskRunName, metav1.GetOptions{})
-			if err != nil {
-				t.Fatalf("getting updated taskrun: %v", err)
-			}
-			if tt.wantStartTime && tr.Status.StartTime == nil {
-				t.Error("TaskRun: Didn't expect start time to be nil")
-			}
-			if !tt.wantStartTime && tr.Status.StartTime != nil {
-				t.Error("TaskRun: Expected start time to be nil")
-			}
-			if tt.wantCompletionTime && tr.Status.CompletionTime == nil {
-				t.Error("TaskRun: Didn't expect completion time to be nil")
-			}
-			if !tt.wantCompletionTime && tr.Status.CompletionTime != nil {
-				t.Error("TaskRun: Expected completion time to be nil")
-			}
-			if d := cmp.Diff(tt.wantTr, tr,
-				ignoreResourceVersion,
-				ignoreStartTimeTaskRun,
-				ignoreLastTransitionTime); d != "" {
-				t.Errorf("Didn't get expected TaskRun: %v", diff.PrintWantGot(d))
-			}
-			if d := cmp.Diff(&tr.Status, ttr.Status.TaskRunStatus); d != "" {
-				t.Errorf(
-					"TaskRun Status not mirrored properly to TaskTestRun: %v",
-					diff.PrintWantGot(d),
-				)
+			if tt.wantTr != nil {
+				if err != nil {
+					t.Fatalf("getting updated taskrun: %v", err)
+				}
+
+				if tt.wantStartTime && tr.Status.StartTime == nil {
+					t.Error("TaskRun: Didn't expect start time to be nil")
+				}
+				if !tt.wantStartTime && tr.Status.StartTime != nil {
+					t.Error("TaskRun: Expected start time to be nil")
+				}
+				if tt.wantCompletionTime && tr.Status.CompletionTime == nil {
+					t.Error("TaskRun: Didn't expect completion time to be nil")
+				}
+				if !tt.wantCompletionTime && tr.Status.CompletionTime != nil {
+					t.Error("TaskRun: Expected completion time to be nil")
+				}
+				if d := cmp.Diff(tt.wantTr, tr,
+					ignoreResourceVersion,
+					ignoreStartTimeTaskRun,
+					ignoreLastTransitionTime); d != "" {
+					t.Errorf("Didn't get expected TaskRun: %v", diff.PrintWantGot(d))
+				}
+				if d := cmp.Diff(&tr.Status, ttr.Status.TaskRunStatus); d != "" {
+					t.Errorf(
+						"TaskRun Status not mirrored properly to TaskTestRun: %v",
+						diff.PrintWantGot(d),
+					)
+				}
+			} else {
+				if err != nil {
+					if !k8serrors.IsNotFound(err) {
+						t.Fatalf("getting updated taskrun: %v", err)
+					}
+				} else {
+					if tr != nil {
+						t.Fatalf("expected no taskrun but got:\n\n%v", tr)
+					}
+				}
 			}
 		})
 	}
@@ -1562,9 +1635,11 @@ func patchTaskTestRun(ttrs *v1alpha1.TaskTestRun, pf statusPatchFunc) *v1alpha1.
 	return &ttrsCopy.Status
 }
 
-func generateTaskRun(t *testing.T, yaml, taskTestRunName string) *v1.TaskRun {
+func generateTaskRun(t *testing.T, yaml, taskTestRunName string, retries ...int) *v1.TaskRun {
 	t.Helper()
-	return parse.MustParseV1TaskRun(
-		t, fmt.Sprintf(yaml, taskTestRunName, taskTestRunName, taskTestRunName),
-	)
+	if len(retries) == 1 {
+		return parse.MustParseV1TaskRun(
+			t, fmt.Sprintf(yaml, fmt.Sprintf(taskTestRunName+"-run-%d", retries[0]), taskTestRunName, taskTestRunName))
+	}
+	return parse.MustParseV1TaskRun(t, fmt.Sprintf(yaml, taskTestRunName+"-run", taskTestRunName, taskTestRunName))
 }

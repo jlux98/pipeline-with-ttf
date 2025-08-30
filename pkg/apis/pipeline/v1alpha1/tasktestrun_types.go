@@ -2,7 +2,11 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
+	"maps"
+	"regexp"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -44,6 +48,17 @@ type TaskTestRun struct {
 	//
 	// +optional
 	Status TaskTestRunStatus `json:"status,omitempty"`
+}
+
+func (ttr *TaskTestRun) GetTaskRunName() string {
+	result := ttr.Name + "-run"
+	if ttr.Spec.Retries != 0 {
+		if ttr.Status.RetriesStatus == nil {
+			ttr.Status.RetriesStatus = RetriesStatus{}
+		}
+		result += fmt.Sprintf("-%d", len(ttr.Status.RetriesStatus))
+	}
+	return result
 }
 
 func (ttr *TaskTestRun) HasTimedOut(ctx context.Context, c clock.PassiveClock) bool {
@@ -248,6 +263,8 @@ type ObservedOutcomes struct {
 	SuccessStatus *ObservedSuccessStatus `json:"successStatus,omitempty"`
 
 	SuccessReason *ObservedSuccessReason `json:"successReason,omitempty"`
+
+	Diffs string `json:"diffs,omitempty"`
 }
 
 type ObservedStepFileSystemContent struct {
@@ -504,9 +521,10 @@ func (sel StepEnvironmentList) ToMap() map[string]map[string]string {
 }
 
 type StepFileSystemList []ExpectedStepFileSystemContent
+type StepFileSystemMap map[string]map[string]FileSystemObject
 
-func (fsl StepFileSystemList) ToMap() map[string]map[string]FileSystemObject {
-	result := map[string]map[string]FileSystemObject{}
+func (fsl StepFileSystemList) ToMap() StepFileSystemMap {
+	result := StepFileSystemMap{}
 	for i := range fsl {
 		name := fsl[i].StepName
 		result[name] = map[string]FileSystemObject{}
@@ -516,6 +534,20 @@ func (fsl StepFileSystemList) ToMap() map[string]map[string]FileSystemObject {
 		}
 	}
 	return result
+}
+
+func (sfsm *StepFileSystemMap) SetStepNames(trs *v1.TaskRunStatus) {
+	newSFSM := maps.Clone(*sfsm)
+	if trs != nil {
+		for stepPath := range newSFSM {
+			pattern := regexp.MustCompile(`/tekton/run/(\d)/status`)
+			stepIndex, _ := strconv.Atoi(pattern.ReplaceAllString(stepPath, `$1`))
+			stepName := trs.TaskSpec.Steps[stepIndex].Name
+			(*sfsm)[stepName] = (*sfsm)[stepPath]
+		}
+	} else {
+		panic("got nil pointer trs")
+	}
 }
 
 func (ttr *TaskTestRun) GetSuiteTestName() string {
