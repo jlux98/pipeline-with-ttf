@@ -347,6 +347,8 @@ spec:
           mkdir -p $(workspaces.hello-workspace.path)/test/dir
     - computeResources: {}
       env:
+      - name: FOO
+        value: bar
       - name: ANOTHER_FOO
         value: ANOTHER_BAR
       image: alpine
@@ -355,6 +357,9 @@ spec:
         echo "Hello world!"
         date +%%Y-%%m-%%d | tee $(results.current-date.path)
     - computeResources: {}
+      env:
+      - name: FOO
+        value: bar
       image: alpine
       name: time-step
       script: |

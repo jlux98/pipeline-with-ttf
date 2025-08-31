@@ -162,7 +162,6 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, ttr *v
 }
 
 func retryTaskTestRun(ttr *v1alpha1.TaskTestRun, message string) {
-	// TODO(jlux98) implement this
 	newStatus := ttr.Status.DeepCopy()
 	newStatus.RetriesStatus = nil
 	ttr.Status.RetriesStatus = append(ttr.Status.RetriesStatus, *newStatus)
@@ -519,7 +518,13 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 		}
 		taskRunSpec.Params = ttr.Status.TaskTestSpec.Inputs.Params
 
-		// TODO(jlux98): propagate input.env to taskRun
+		if ttr.Status.TaskTestSpec.Inputs.Env != nil {
+			for _, envVar := range ttr.Status.TaskTestSpec.Inputs.Env {
+				for idx := range task.Spec.Steps {
+					task.Spec.Steps[idx].Env = append(task.Spec.Steps[idx].Env, envVar)
+				}
+			}
+		}
 
 		if ttr.Status.TaskTestSpec.Inputs.StepEnvs != nil {
 			for i, stepEnv := range ttr.Status.TaskTestSpec.Inputs.StepEnvs {
