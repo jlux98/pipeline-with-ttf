@@ -501,12 +501,8 @@ func (c *Reconciler) dereferenceTaskTestRef(
 	return taskTest, nil
 }
 
-func (c *Reconciler) createTaskTestRun(
-	ctx context.Context,
-	ttsr *v1alpha1.TaskTestSuiteRun,
-	suiteTest *v1alpha1.SuiteTest,
-	namespace string,
-) (*v1alpha1.TaskTestRun, error) {
+func (c *Reconciler) createTaskTestRun(ctx context.Context, ttsr *v1alpha1.TaskTestSuiteRun,
+	suiteTest *v1alpha1.SuiteTest, namespace string) (*v1alpha1.TaskTestRun, error) {
 	logger := logging.FromContext(ctx)
 	var taskTestRun *v1alpha1.TaskTestRun
 
@@ -526,6 +522,7 @@ func (c *Reconciler) createTaskTestRun(
 	}
 
 	taskTestRun.Spec.TaskTestSpec = suiteTest.TaskTestSpec
+	taskTestRun.Spec.Retries = suiteTest.Retries
 
 	taskTestRun.Status.InitializeConditions()
 
@@ -535,6 +532,7 @@ func (c *Reconciler) createTaskTestRun(
 	if err != nil {
 		return nil, err
 	}
+	ttsr.Status.InitializeConditions()
 
 	logger.Infof(`TaskRun successfully created: %v`, *taskTestRun)
 

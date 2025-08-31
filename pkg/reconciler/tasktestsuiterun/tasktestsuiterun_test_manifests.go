@@ -551,6 +551,7 @@ spec:
         expects:
           successStatus: true
           successReason: Succeeded
+      retries: 1
 `
 
 const ttsrManifestTemplateReferencedTts = `

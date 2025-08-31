@@ -2947,7 +2947,7 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunStatus(ref common.Referen
 						},
 					},
 				},
-				Required: []string{"taskTestSuiteName", "taskTestSuiteSpec", "taskTestRunStatuses"},
+				Required: []string{"taskTestSuiteSpec", "taskTestRunStatuses"},
 			},
 		},
 		Dependencies: []string{
@@ -3001,7 +3001,7 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunStatusFields(ref common.R
 						},
 					},
 				},
-				Required: []string{"taskTestSuiteName", "taskTestSuiteSpec", "taskTestRunStatuses"},
+				Required: []string{"taskTestSuiteSpec", "taskTestRunStatuses"},
 			},
 		},
 		Dependencies: []string{

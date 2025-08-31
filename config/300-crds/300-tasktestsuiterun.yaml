@@ -2108,7 +2108,6 @@ spec:
               type: object
               required:
                 - taskTestRunStatuses
-                - taskTestSuiteName
                 - taskTestSuiteSpec
               properties:
                 annotations:
@@ -7199,6 +7198,22 @@ spec:
       # starts to increment
       subresources:
         status: {}
+      additionalPrinterColumns:
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+        - name: Succeeded
+          type: string
+          jsonPath: ".status.conditions[?(@.type==\"Succeeded\")].status"
+        - name: Reason
+          type: string
+          jsonPath: ".status.conditions[?(@.type==\"Succeeded\")].reason"
+        - name: StartTime
+          type: date
+          jsonPath: .status.startTime
+        - name: CompletionTime
+          type: date
+          jsonPath: .status.completionTime
   names:
     kind: TaskTestSuiteRun
     plural: tasktestsuiteruns

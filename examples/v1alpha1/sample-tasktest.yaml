@@ -1,45 +1,37 @@
-apiVersion: tekton.dev/v1 # or tekton.dev/v1beta1
-kind: TaskRun
+apiVersion: tekton.dev/v1alpha1
+kind: TaskTest
 metadata:
-  name: mytaskrun
-  namespace: default
+  name: sample-tasktest
 spec:
   taskRef:
-    name: tekton-pipelines/sample-task
-    # apiVersion: tekton.dev/v1alpha1
-    # kind: TaskTest
-    # metadata:
-    #   name: sample-tasktest
-    # spec:
-    #   taskRef:
-    #     name: "sample-task"
-    #     namespace: "tekton-pipelines"
-    #   inputs:
-    #     params:
-    #     - name: <param1>
-    #       value: <value1>
-    #     env:
-    #     - name: <ENV_VAR1>
-    #       value: <value1>
-    #     workspaceContents:
-    #     - name: "shared-data"
-    #       objects:
-    #       - path: "/build/misc/latest_version.txt"
-    #         type: "TextFile"
-    #         content: >-
-    #           Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed eiusmod
-    #           tempor incidunt ut labore et dolore magna aliqua. Ut enim ad minim
-    #           veniam, quis nostrud exercitation ullamco laboris nisi ut aliquid ...
-    #       - path: "/build/misc/bin"
-    #         type: "EmptyDir"
-    #   expects:
-    #     results:
-    #     - name: <Result1>
-    #       value: <expectedValue1>
-    #     successStatus: true
-    #     successReason: "Successful"
-    #     workspaceContents:
-    #     - name: "shared-data"
-    #       objects:
-    #       - path: "/build/misc/bin/executable_file"
-    #         type: "BinaryFile"
+    name: "sample-task"
+    namespace: "tekton-pipelines"
+  inputs:
+    params:
+    - name: <param1>
+      value: <value1>
+    env:
+    - name: <ENV_VAR1>
+      value: <value1>
+    workspaceContents:
+    - name: "shared-data"
+      objects:
+      - path: "/build/misc/latest_version.txt"
+        type: "TextFile"
+        content: >-
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed eiusmod
+          tempor incidunt ut labore et dolore magna aliqua. Ut enim ad minim
+          veniam, quis nostrud exercitation ullamco laboris nisi ut aliquid ...
+      - path: "/build/misc/bin"
+        type: "EmptyDir"
+  expects:
+    results:
+    - name: <Result1>
+      value: <expectedValue1>
+    successStatus: true
+    successReason: "Successful"
+    workspaceContents:
+    - name: "shared-data"
+      objects:
+      - path: "/build/misc/bin/executable_file"
+        type: "BinaryFile"

@@ -228,7 +228,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 			),
 			wantTtrs: []v1alpha1.TaskTestRun{
 				*generateTaskTestRun(t, ttrManifestTemplateNewRun, taskTestSuiteRunMap[tcStartNewInlineTtrsInlineTts].Name, "task-0"),
-				*generateTaskTestRun(t, ttrManifestTemplateNewRun, taskTestSuiteRunMap[tcStartNewInlineTtrsInlineTts].Name, "task-1"),
+				*generateTaskTestRun(t, strings.Replace(ttrManifestTemplateNewRun, "status:", "  retries: 1\nstatus:", 1), taskTestSuiteRunMap[tcStartNewInlineTtrsInlineTts].Name, "task-1"),
 			},
 			wantStartTime: true,
 		},

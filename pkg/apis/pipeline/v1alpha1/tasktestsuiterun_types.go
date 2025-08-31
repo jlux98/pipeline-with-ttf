@@ -113,7 +113,7 @@ type TaskTestSuiteRunSpec struct {
 	// +optional
 	// +listType=map
 	// +listMapKey=name
-	RunSpecs []SuiteTaskTestRun `json:"runSpecs"`
+	RunSpecs []SuiteTaskTestRun `json:"runSpecs,omitempty"`
 
 	// Used for cancelling a TaskTestSuiteRun
 	//
@@ -189,7 +189,7 @@ type TaskTestSuiteRunStatusFields struct {
 	// TaskTestSuiteName is the name of the referenced TaskTestSuite, if one is
 	// referenced. If the TaskTestSuite is declared inline, then this field will
 	// be nil.
-	TaskTestSuiteName *string `json:"taskTestSuiteName"`
+	TaskTestSuiteName *string `json:"taskTestSuiteName,omitempty"`
 
 	// TaskTestSuiteSpec is the spec of the TaskTestSuite being run. This spec
 	// can either be declared inline in the TaskTestSuiteRun manifest or it can

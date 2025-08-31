@@ -47,19 +47,20 @@ type TaskTestSuiteSpec struct {
 type SuiteTest struct {
 	// Name is the identifier for a test in the context of this suite.
 	Name string `json:"name"`
+
 	// TaskTestRef is a reference to an existing Task.
 	// Either this or TaskTestSpec must be set, if neither or both are
 	// set then validation of this SuiteTest fails.
 	//
 	// +optional
-	TaskTestRef *TaskTestRef `json:"taskTestRef"`
+	TaskTestRef *TaskTestRef `json:"taskTestRef,omitempty"`
 
 	// TaskTestSpec is a specification of a task test
 	// Either this or TaskTestRef must be set, if neither or both are
 	// set then validation of this SuiteTest fails.
 	//
 	// +optional
-	TaskTestSpec *TaskTestSpec `json:"taskTestSpec"`
+	TaskTestSpec *TaskTestSpec `json:"taskTestSpec,omitempty"`
 
 	// OnError specifies, how the suite will behave, if this test fails.
 	// "StopSchedulingAndFail" means, that no new test will be scheduled but

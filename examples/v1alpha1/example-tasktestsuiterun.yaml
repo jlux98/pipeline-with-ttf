@@ -1,131 +1,51 @@
 apiVersion: tekton.dev/v1alpha1
 kind: TaskTestSuiteRun
 metadata:
-  name: example-tasktestsuiterun
+  generateName: sample-ttsr-
 spec:
   executionMode: Parallel
   taskTestSuiteSpec:
     taskTests:
-      - allTriesMustSucceed: true
-        name: sample-name
-        onError: sample-onError
-        retries: 1
-        taskTestRef:
-          name: sample-name
+      - name: task-0
         taskTestSpec:
-          expects:
-            env:
-              - name: sample-name
-                value: sample-value
-                valueFrom:
-                  configMapKeyRef: {}
-                  fieldRef: {}
-                  resourceFieldRef: {}
-                  secretKeyRef: {}
-            fileSystemContents:
-              - objects:
-                  - {}
-                stepName: sample-stepName
-            results:
-              - description: sample-description
-                name: sample-name
-                properties: {}
-                type: sample-type
-            stepEnvs:
-              - env:
-                  - {}
-                stepName: sample-stepName
-            successReason: sample-successReason
-            successStatus: true
-          inputs:
-            env:
-              - name: sample-name
-                value: sample-value
-                valueFrom:
-                  configMapKeyRef: {}
-                  fieldRef: {}
-                  resourceFieldRef: {}
-                  secretKeyRef: {}
-            params:
-              - name: sample-name
-            stepEnvs:
-              - env:
-                  - {}
-                stepName: sample-stepName
-            workspaceContents:
-              - name: sample-name
-                objects:
-                  - {}
           taskRef:
-            name: sample-name
-        timeout: sample-timeout
-  timeout: sample-timeout
-status:
-  annotations: {}
-  completionTime: '2025-08-25T14:39:59.806Z'
-  conditions:
-    - lastTransitionTime: sample-lastTransitionTime
-      message: sample-message
-      reason: sample-reason
-      severity: sample-severity
-      status: sample-status
-      type: sample-type
-  observedGeneration: 1
-  startTime: '2025-08-25T14:39:59.806Z'
-  taskTestRunStatuses: {}
-  taskTestSuiteName: sample-taskTestSuiteName
-  taskTestSuiteSpec:
-    taskTests:
-      - allTriesMustSucceed: true
-        name: sample-name
-        onError: sample-onError
-        retries: 1
-        taskTestRef:
-          name: sample-name
+            name: hello-task
+          expects:
+            results:
+              - name: current-date
+                value: "2025-08-30"
+            env:
+            - name: HOME
+              value: /root
+            fileSystemContents:
+            - stepName: date-step
+              objects:
+              - path: /tekton/results/current-date
+                type: "TextFile"
+                content: "2025-08-30"
+            - stepName: time-step
+              objects:
+              - path: /tekton/results/current-date
+                type: "TextFile"
+      - name: task-1
         taskTestSpec:
-          expects:
-            env:
-              - name: sample-name
-                value: sample-value
-                valueFrom:
-                  configMapKeyRef: {}
-                  fieldRef: {}
-                  resourceFieldRef: {}
-                  secretKeyRef: {}
-            fileSystemContents:
-              - objects:
-                  - {}
-                stepName: sample-stepName
-            results:
-              - description: sample-description
-                name: sample-name
-                properties: {}
-                type: sample-type
-            stepEnvs:
-              - env:
-                  - {}
-                stepName: sample-stepName
-            successReason: sample-successReason
-            successStatus: true
-          inputs:
-            env:
-              - name: sample-name
-                value: sample-value
-                valueFrom:
-                  configMapKeyRef: {}
-                  fieldRef: {}
-                  resourceFieldRef: {}
-                  secretKeyRef: {}
-            params:
-              - name: sample-name
-            stepEnvs:
-              - env:
-                  - {}
-                stepName: sample-stepName
-            workspaceContents:
-              - name: sample-name
-                objects:
-                  - {}
           taskRef:
-            name: sample-name
-        timeout: sample-timeout
+            name: hello-task
+          expects:
+            results:
+              - name: current-date
+                value: "2025-08-30"
+            env:
+            - name: HOME
+              value: /root
+            fileSystemContents:
+            - stepName: date-step
+              objects:
+              - path: /tekton/results/current-date
+                type: "TextFile"
+                content: "2025-08-29"
+            - stepName: time-step
+              objects:
+              - path: /tekton/results/current-date
+                type: "TextFile"
+        retries: 1

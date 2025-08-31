@@ -1557,7 +1557,6 @@
     "v1alpha1.TaskTestSuiteRunStatus": {
       "type": "object",
       "required": [
-        "taskTestSuiteName",
         "taskTestSuiteSpec",
         "taskTestRunStatuses"
       ],
@@ -1613,7 +1612,6 @@
     "v1alpha1.TaskTestSuiteRunStatusFields": {
       "type": "object",
       "required": [
-        "taskTestSuiteName",
         "taskTestSuiteSpec",
         "taskTestRunStatuses"
       ],
