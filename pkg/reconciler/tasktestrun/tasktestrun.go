@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -23,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
+	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -35,6 +37,8 @@ import (
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/reconciler"
 )
+
+const WorkspacePreparationImage = "busybox:1.37.0"
 
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
@@ -135,7 +139,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, ttr *v1alpha1.TaskTestRu
 
 func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1alpha1.TaskTestRun, cancelled v1alpha1.TaskTestRunReason, message string) error {
 	// TODO(jlux98) implement this
-	logging.FromContext(ctx).Error("boom: Totally failing the TaskTestRun right now")
+	logging.FromContext(ctx).Error("boom: Totally failing TaskTestRun %q right now with the reason %q and the message %q", tr.Name, cancelled, message)
 	return nil
 }
 
@@ -164,7 +168,7 @@ func retryTaskTestRun(ttr *v1alpha1.TaskTestRun, message string) {
 	ttr.Status.RetriesStatus = append(ttr.Status.RetriesStatus, *newStatus)
 	ttr.Status.StartTime = nil
 	ttr.Status.CompletionTime = nil
-	ttr.Status.TaskRunName = ptr.To("")
+	ttr.Status.TaskRunName = nil
 	ttr.Status.Outcomes = nil
 	taskTestRunCondSet := apis.NewBatchConditionSet()
 	taskTestRunCondSet.Manage(&ttr.Status).MarkUnknown(apis.ConditionSucceeded, v1.TaskRunReasonToBeRetried.String(), message)
@@ -255,6 +259,16 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 		}
 	}
 
+	if cond := taskRun.Status.GetCondition(apis.ConditionSucceeded); cond.IsFalse() {
+		if cond.Reason == volumeclaim.ReasonCouldntCreateWorkspacePVC {
+			err := errors.New(cond.Message)
+			logger.Errorf("Failed to create PVC for TaskTestRun %s: %v", ttr.Name, err)
+			ttr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
+				fmt.Errorf("failed to create PVC for TaskTestRun %s workspaces correctly: %w",
+					fmt.Sprintf("%s/%s", ttr.Namespace, ttr.Name), err))
+		}
+	}
+
 	if ttr.Status.TaskRunName == nil || *ttr.Status.TaskRunName != taskRun.Name {
 		logger.Infof("boom: Now setting task run name for TTR %s", ttr.Name)
 		ttr.Status.TaskRunName = &taskRun.Name
@@ -282,7 +296,7 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 		beforeCondition := ttr.Status.GetCondition(apis.ConditionSucceeded)
 		if resultErr != nil {
 			resultErr = fmt.Errorf("error occurred while checking expectations: %w", resultErr)
-			ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunReasonFailedValidation, resultErr)
+			ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunReasonFailedValidation, errors.New("error occurred while checking expectations"))
 		} else {
 			if expectationsMet {
 				ttr.Status.MarkSuccessful()
@@ -486,7 +500,10 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 		}
 	}
 
-	taskRunSpec := v1.TaskRunSpec{TaskSpec: &task.Spec}
+	taskRunSpec := v1.TaskRunSpec{
+		TaskSpec:   &task.Spec,
+		Workspaces: ttr.Spec.Workspaces,
+	}
 	if ttr.Status.TaskTestSpec.Inputs != nil {
 		if ttr.Status.TaskTestSpec.Inputs.Params != nil {
 			for i, param := range ttr.Status.TaskTestSpec.Inputs.Params {
@@ -502,6 +519,8 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 		}
 		taskRunSpec.Params = ttr.Status.TaskTestSpec.Inputs.Params
 
+		// TODO(jlux98): propagate input.env to taskRun
+
 		if ttr.Status.TaskTestSpec.Inputs.StepEnvs != nil {
 			for i, stepEnv := range ttr.Status.TaskTestSpec.Inputs.StepEnvs {
 				logger.Infof("checking stepEnv for step %q", stepEnv.StepName)
@@ -513,6 +532,25 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 					return nil, fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed, apis.ErrInvalidValue(stepEnv.StepName, fmt.Sprintf("status.taskTestSpec.inputs.stepEnvs[%d].stepName", i), fmt.Sprintf(`task %q has no Step named %q`, task.Name, stepEnv.StepName)))
 				}
 			}
+		}
+
+		if ttr.Status.TaskTestSpec.Inputs.WorkspaceContents != nil {
+			for i, workspace := range ttr.Status.TaskTestSpec.Inputs.WorkspaceContents {
+				if !slices.ContainsFunc(task.Spec.Workspaces, func(ws v1.WorkspaceDeclaration) bool {
+					return ws.Name == workspace.Name
+				}) {
+					return nil, fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed,
+						apis.ErrInvalidValue(workspace.Name, fmt.Sprintf(
+							"status.taskTestSpec.inputs.workspaceContents[%d].name", i),
+							fmt.Sprintf(`task %q has no Workspace named %q`, task.Name, workspace.Name)))
+				}
+			}
+
+			workspacePreparationStep, err := generateWorkspacePreparationStep(ttr.Status.TaskTestSpec.Inputs.WorkspaceContents)
+			if err != nil {
+				return nil, fmt.Errorf("error while generating workspace preparation step: %w", err)
+			}
+			task.Spec.Steps = append([]v1.Step{*workspacePreparationStep}, task.Spec.Steps...)
 		}
 	}
 
@@ -554,6 +592,35 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 	return taskRun, nil
 }
 
+func generateWorkspacePreparationStep(initialWorkspaceContents []v1alpha1.InitialWorkspaceContents) (*v1.Step, error) {
+	preparationStep := &v1.Step{
+		Image:   WorkspacePreparationImage,
+		Name:    "prepare-workspace",
+		Command: []string{"sh", "-c"},
+		Args:    []string{""},
+	}
+	for i, ws := range initialWorkspaceContents {
+		for j, object := range ws.Objects {
+			objectPath := filepath.Clean(object.Path)
+
+			if !filepath.IsAbs(objectPath) {
+				objectPath = string(filepath.Separator) + objectPath
+			}
+			switch object.Type {
+			case v1alpha1.InputDirectoryType:
+				preparationStep.Args[0] += fmt.Sprintf(`mkdir -p $(workspaces.%s.path)%s`+"\n", ws.Name, objectPath)
+			case v1alpha1.InputTextFileType:
+				preparationStep.Args[0] += fmt.Sprintf(`mkdir -p $(workspaces.%s.path)%s`+"\n", ws.Name, filepath.Dir(objectPath))
+				preparationStep.Args[0] += fmt.Sprintf(`printf "%%s" "%s" > $(workspaces.%s.path)%s`+"\n", object.Content, ws.Name, objectPath)
+			default:
+				return nil, fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed, apis.ErrInvalidValue(
+					object.Type, fmt.Sprintf("status.taskTestSpec.input.workspaceContents[%d].objects[%d]", i, j), fmt.Sprintf(`unknown type %q, allowed types are "TextFile" and "Directory"`, object.Type)))
+			}
+		}
+	}
+	return preparationStep, nil
+}
+
 func checkExpectationsForResults(ttrs *v1alpha1.TaskTestRunStatus, trs *v1.TaskRunStatus, expectationsMet *bool, diffs *string) error {
 	ttrs.CompletionTime = trs.CompletionTime
 	taskResults := trs.Results
@@ -568,7 +635,10 @@ func checkExpectationsForResults(ttrs *v1alpha1.TaskTestRunStatus, trs *v1.TaskR
 			if slices.ContainsFunc(ttrs.TaskRunStatus.TaskSpec.Results, func(res v1.TaskResult) bool {
 				return res.Name == expectedResult.Name
 			}) {
-				gotValue = &v1.ResultValue{}
+				gotValue = &v1.ResultValue{
+					Type:      v1.ParamTypeString,
+					StringVal: "",
+				}
 			} else {
 				return apis.ErrInvalidValue(expectedResult.Name, fmt.Sprintf("status.taskTestSpec.expected.results[%d].name", i), fmt.Sprintf(`task %q has no Result named %q`, ttrs.TaskRunStatus.TaskSpec.DisplayName, expectedResult.Name))
 			}
@@ -661,18 +731,21 @@ func checkExpectationsForEnv(ttrs *v1alpha1.TaskTestRunStatus, trs *v1.TaskRunSt
 }
 
 func checkExpectationsForFileSystemObjects(ctx context.Context, ttrs *v1alpha1.TaskTestRunStatus, trs *v1.TaskRunStatus, expectationsMet *bool, diffs *string) error {
+	logger := logging.FromContext(ctx)
 	idx := slices.IndexFunc(trs.Results, func(result v1.TaskRunResult) bool {
 		return result.Name == v1alpha1.ResultNameFileSystemContents
 	})
 	if idx < 0 {
 		err := errors.New("could not find result with file system observations")
 		ttrs.MarkResourceFailed(v1alpha1.TaskTestRunReasonFailedValidation, err)
+		logger.Error(err.Error())
 		return err
 	}
 	fileSystemObservationsJSON := trs.Results[idx].Value.StringVal
 	fileSystemObservations := &v1alpha1.StepFileSystemList{}
 	err := json.Unmarshal([]byte(fileSystemObservationsJSON), fileSystemObservations)
 	if err != nil {
+		logger.Errorf("problem while unmarshalling file system observations: %w", err)
 		return fmt.Errorf("problem while unmarshalling file system observations: %w", err)
 	}
 	fileSystemObservationsMap := fileSystemObservations.ToMap()

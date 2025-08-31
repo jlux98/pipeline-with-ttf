@@ -174,7 +174,9 @@ type InitialWorkspaceContents struct {
 // type of the object and in case it is a text file the contents of that text
 // file.
 type InputFileSystemObject struct {
-	// Path is the path to this file system object
+	// Path is the path to this file system object. Relative paths are
+	// interpreted from the root of the workspace, and for absolute paths the
+	// leading '/' denotes the root of the workspace.
 	Path string `json:"path"`
 
 	// Type is the type of this file system object.

@@ -699,7 +699,7 @@ func schema_pkg_apis_pipeline_v1alpha1_InputFileSystemObject(ref common.Referenc
 				Properties: map[string]spec.Schema{
 					"path": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Path is the path to this file system object",
+							Description: "Path is the path to this file system object. Relative paths are interpreted from the root of the workspace, and for absolute paths the leading '/' denotes the root of the workspace.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",

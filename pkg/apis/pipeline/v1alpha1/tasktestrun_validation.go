@@ -18,12 +18,15 @@ func (ttr *TaskTestRun) Validate(ctx context.Context) *apis.FieldError {
 func (trs *TaskTestRunSpec) Validate(ctx context.Context) *apis.FieldError {
 	errs := v1.ValidateWorkspaceBindings(ctx, trs.Workspaces).ViaField("workspaces")
 
-	if trs.TaskTestRef == nil && trs.TaskTestSpec == nil {
+	if trs.TaskTestSpec == nil && trs.TaskTestRef == nil {
 		errs = errs.Also(apis.ErrMissingOneOf("taskTestRef", "taskTestSpec"))
 	}
 
-	if trs.TaskTestRef != nil && trs.TaskTestSpec != nil {
-		errs = errs.Also(apis.ErrMultipleOneOf("taskTestRef", "taskTestSpec"))
+	if trs.TaskTestSpec != nil {
+		if trs.TaskTestRef != nil {
+			errs = errs.Also(apis.ErrMultipleOneOf("taskTestRef", "taskTestSpec"))
+		}
+		errs = errs.Also(trs.TaskTestSpec.Validate(ctx).ViaField("taskTestSpec"))
 	}
 
 	if trs.Retries < 0 {

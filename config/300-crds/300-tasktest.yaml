@@ -710,7 +710,10 @@ spec:
                                     values from a ConfigMap or Secret.
                                   type: string
                                 path:
-                                  description: Path is the path to this file system object
+                                  description: |-
+                                    Path is the path to this file system object. Relative paths are
+                                    interpreted from the root of the workspace, and for absolute paths the
+                                    leading '/' denotes the root of the workspace.
                                   type: string
                                 type:
                                   description: Type is the type of this file system object.

@@ -7,10 +7,19 @@ spec:
   taskTestSpec:
     taskRef:
       name: hello-task
+    inputs:
+      workspaceContents:
+        - name: time-workspace
+          objects:
+            - path: test/time
+              type: TextFile
+              content: "12:34:56"
     expects:
       results:
         - name: current-date
-          value: "2025-08-24"
+          value: "2025-08-31"
+        - name: current-time
+          value: "12:34:56"
       env:
       - name: HOME
         value: /root
@@ -19,9 +28,19 @@ spec:
         objects:
         - path: /tekton/results/current-date
           type: "TextFile"
-          content: "2025-08-24"
+          content: "2025-08-31"
       - stepName: time-step
         objects:
         - path: /tekton/results/current-date
           type: "TextFile"
   retries: 1
+  # workspaces:
+  # - name: time-workspace
+  #   # volumeClaimTemplate:
+  #   #   spec:
+  #   #     accessModes:
+  #   #     - ReadWriteOnce
+  #   #     resources:
+  #   #       requests:
+  #   #         storage: 10Mi
+  #   emptyDir: {}

@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -66,7 +67,9 @@ func (ifo *InputFileSystemObject) Validate() *apis.FieldError {
 		errs = errs.Also(apis.ErrInvalidValue(ifo.Type, "type"))
 	}
 	if ifo.Type != InputTextFileType && ifo.Content != "" {
-		errs = errs.Also(apis.ErrDisallowedFields("content"))
+		err := apis.ErrDisallowedFields("content")
+		err.Details = fmt.Sprintf(`the field "content" may only be set if the field "type" is set to %s`, InputTextFileType)
+		errs = errs.Also(err)
 	}
 	return errs
 }

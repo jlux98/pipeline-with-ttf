@@ -21,7 +21,6 @@ import (
 	"github.com/tektoncd/pipeline/test/names"
 	"github.com/tektoncd/pipeline/test/parse"
 	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -108,6 +107,8 @@ spec:
   params:
   - name: args
     default: ""
+  workspaces:
+  - name: hello-workspace
   steps:
   - computeResources: {}
     image: alpine
@@ -144,6 +145,14 @@ spec:
       env:
       - name: ANOTHER_FOO
         value: ANOTHER_BAR
+    workspaceContents:
+    - name: hello-workspace
+      objects:
+      - path: test/foo
+        type: TextFile
+        content: bar
+      - path: /test/dir
+        type: Directory
   expects:
     successStatus: true
     successReason: Succeeded
@@ -177,7 +186,7 @@ spec:
 
 // // Invalid TaskTestRun manifests
 // const (
-// 	ttrManifestAbsentTaskTest = `
+//     ttrManifestAbsentTaskTest = `
 // metadata:
 //   name: invalid-ttr-absent-task-test
 //   namespace: foo
@@ -185,7 +194,7 @@ spec:
 //   taskTestRef:
 //     name: absent-task-test`
 
-// 	ttrManifestExpectsUndeclaredResult = `
+//     ttrManifestExpectsUndeclaredResult = `
 // metadata:
 //   name: invalid-ttr-expects-undeclared-result
 //   namespace: foo
@@ -207,7 +216,7 @@ spec:
 // status:
 //   startTime: %s`
 
-// 	ttrManifestInputsUndeclaredParam = `
+//     ttrManifestInputsUndeclaredParam = `
 // metadata:
 //   name: invalid-ttr-inputs-undeclared-param
 //   namespace: foo
@@ -223,7 +232,7 @@ spec:
 // status:
 //   startTime: %s`
 
-// 	ttrManifestInputsUndeclaredStepEnvStep = `
+//     ttrManifestInputsUndeclaredStepEnvStep = `
 // metadata:
 //   name: invalid-ttr-inputs-undeclared-step-env-step
 //   namespace: foo
@@ -241,7 +250,7 @@ spec:
 // status:
 //   startTime: %s`
 
-// 	ttrManifestExpectsUndeclaredEnvStep = `
+//     ttrManifestExpectsUndeclaredEnvStep = `
 // metadata:
 //   name: invalid-ttr-expects-undeclared-env-step
 //   namespace: foo
@@ -261,7 +270,7 @@ spec:
 // status:
 //   startTime: %s`
 
-// 	ttrManifestExpectsUndeclaredFileSystemStep = `
+//     ttrManifestExpectsUndeclaredFileSystemStep = `
 // metadata:
 //   name: invalid-ttr-expects-undeclared-fs-step
 //   namespace: foo
@@ -284,7 +293,7 @@ spec:
 // status:
 //   startTime: %s`
 
-// 	ttrManifestAbsentTask = `
+//     ttrManifestAbsentTask = `
 // metadata:
 //   name: invalid-ttr-absent-task
 //   namespace: foo
@@ -324,7 +333,18 @@ spec:
     params:
     - name: args
       default: ""
+    workspaces:
+    - name: hello-workspace
     steps:
+    - computeResources: {}
+      name: prepare-workspace
+      image: busybox:1.37.0
+      command: ["sh", "-c"]
+      args:
+      - |
+          mkdir -p $(workspaces.hello-workspace.path)/test
+          printf "%%s" "bar" > $(workspaces.hello-workspace.path)/test/foo
+          mkdir -p $(workspaces.hello-workspace.path)/test/dir
     - computeResources: {}
       env:
       - name: ANOTHER_FOO
@@ -432,6 +452,14 @@ spec:
         env:
         - name: ANOTHER_FOO
           value: ANOTHER_BAR
+      workspaceContents:
+      - name: hello-workspace
+        objects:
+        - path: test/foo
+          type: TextFile
+          content: bar
+        - path: /test/dir
+          type: Directory
     expects:
       successStatus: true
       successReason: Succeeded
@@ -584,6 +612,10 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 		tcCheckCompletedFailedInlineTestWithRetries: generateTaskRun(t, trSpecTemplate+trStatusFinished, tcCheckCompletedFailedInlineTestWithRetries, 0),
 	}
 
+	taskTestMap := map[string]*v1alpha1.TaskTest{
+		tcCheckCompletedSuccessfulReferencedTest: parse.MustParseTaskTest(t, ttManifest),
+	}
+
 	taskTestRunMap := map[string]*v1alpha1.TaskTestRun{
 		tcStartNewRunInlineTest:                     parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateInlineTest, tcStartNewRunInlineTest)),
 		tcCheckRunningInlineTest:                    parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateInlineTest, tcCheckRunningInlineTest)),
@@ -601,7 +633,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 			parse.MustParseV1Task(t, tManifestHelloTask),
 		},
 		TaskRuns:     slices.Collect(maps.Values(taskRunMap)),
-		TaskTests:    []*v1alpha1.TaskTest{parse.MustParseTaskTest(t, ttManifest)},
+		TaskTests:    slices.Collect(maps.Values(taskTestMap)),
 		TaskTestRuns: slices.Collect(maps.Values(taskTestRunMap)),
 	}
 
@@ -732,65 +764,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 					ttr.Status.TaskTestRunStatusFields = v1alpha1.TaskTestRunStatusFields{
 						TaskRunName:  ptr.To(tcCheckCompletedSuccessfulReferencedTest + "-run"),
 						TaskTestName: ptr.To("task-test"),
-						TaskTestSpec: &v1alpha1.TaskTestSpec{
-							TaskRef: &v1alpha1.SimpleTaskRef{Name: "hello-task"},
-							Inputs: &v1alpha1.TaskTestInputs{
-								Params: v1.Params{{
-									Name:  "args",
-									Value: v1.ParamValue{Type: v1.ParamTypeString, StringVal: "arg"},
-								}},
-								Env: []corev1.EnvVar{{
-									Name:  "FOO",
-									Value: "bar",
-								}},
-								StepEnvs: []v1alpha1.StepEnv{{
-									StepName: "date-step",
-									Env: []corev1.EnvVar{{
-										Name:  "ANOTHER_FOO",
-										Value: "ANOTHER_BAR",
-									}},
-								}},
-							},
-							Expects: &v1alpha1.ExpectedOutcomes{
-								Results: []v1.TaskResult{{
-									Name:  "current-date",
-									Type:  "string",
-									Value: &v1.ResultValue{StringVal: "2025-08-15", Type: "string"},
-								}, {
-									Name:  "current-time",
-									Type:  "string",
-									Value: &v1.ResultValue{StringVal: "15:17:59", Type: "string"},
-								}},
-								Env: []corev1.EnvVar{{
-									Name:  "HOME",
-									Value: "/root",
-								}},
-								StepEnvs: []v1alpha1.StepEnv{{
-									StepName: "time-step",
-									Env: []corev1.EnvVar{{
-										Name:  "FHOME",
-										Value: "/froot",
-									}},
-								}},
-								FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
-									StepName: "date-step",
-									Objects: []v1alpha1.FileSystemObject{{
-										Path:    "/tekton/results/current-date",
-										Type:    "TextFile",
-										Content: "bar",
-									}},
-								}, {
-									StepName: "time-step",
-									Objects: []v1alpha1.FileSystemObject{{
-										Path:    "/tekton/results/current-time",
-										Type:    "TextFile",
-										Content: "bar",
-									}},
-								}},
-								SuccessStatus: ptr.To(true),
-								SuccessReason: ptr.To(v1.TaskRunReasonSuccessful),
-							},
-						},
+						TaskTestSpec: &taskTestMap[tcCheckCompletedSuccessfulReferencedTest].Spec,
 						Outcomes: &v1alpha1.ObservedOutcomes{
 							Results: &[]v1alpha1.ObservedResults{{Name: "current-date",
 								Want: &v1.ResultValue{Type: "string", StringVal: "2025-08-15"},
@@ -953,7 +927,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 					statusCopy.RetriesStatus = nil
 					ttr.Status.RetriesStatus = append(ttr.Status.RetriesStatus, statusCopy)
 					ttr.Status.Outcomes = nil
-					ttr.Status.TaskRunName = ptr.To("")
+					ttr.Status.TaskRunName = nil
 					ttr.Status.Conditions = duckv1.Conditions{{
 						Type:    "Succeeded",
 						Status:  "Unknown",
@@ -1069,8 +1043,8 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 }
 
 // func TestReconciler_InvalidateReconcileKind(t *testing.T) {
-// 	trCompletedNoEnvDump := parse.MustParseV1TaskRun(
-// 		t, strings.ReplaceAll(trManifestCompleted, `  - name: Testing|Environment
+//     trCompletedNoEnvDump := parse.MustParseV1TaskRun(
+//         t, strings.ReplaceAll(trManifestCompleted, `  - name: Testing|Environment
 //     type: string
 //     value: |
 //       {"step": "date-step", "environment": {
@@ -1083,498 +1057,498 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 //     type: string
 //     value: '[{"stepName":"/tekton/run/0/status","objects":[{"path":"/tekton/results/current-date","type":"TextFile","content":"bar"},{"path":"/tekton/results/current-time","type":"TextFile","content":"bar"}]}]'
 // `, ""),
-// 	)
-// 	ttrAbsentTaskTest := parse.MustParseTaskTestRun(t, ttrManifestAbsentTaskTest)
-// 	ttrAbsentTask := parse.MustParseTaskTestRun(t, ttrManifestAbsentTask)
-// 	ttrInputsUndeclaredParam := parse.MustParseTaskTestRun(
-// 		t, fmt.Sprintf(ttrManifestInputsUndeclaredParam, testClock.Now().Format(time.RFC3339)),
-// 	)
-// 	ttrInputsUndeclaredEnvStep := parse.MustParseTaskTestRun(
-// 		t, fmt.Sprintf(ttrManifestInputsUndeclaredStepEnvStep, testClock.Now().Format(time.RFC3339)),
-// 	)
-// 	ttrExpectsUndeclaredResult := parse.MustParseTaskTestRun(
-// 		t, fmt.Sprintf(ttrManifestExpectsUndeclaredResult, testClock.Now().Format(time.RFC3339)),
-// 	)
-// 	ttrExpectsUndeclaredEnvStep := parse.MustParseTaskTestRun(
-// 		t, fmt.Sprintf(ttrManifestExpectsUndeclaredEnvStep, testClock.Now().Format(time.RFC3339)),
-// 	)
-// 	ttrExpectsUndeclaredFileSystemStep := parse.MustParseTaskTestRun(
-// 		t, fmt.Sprintf(
-// 			ttrManifestExpectsUndeclaredFileSystemStep,
-// 			testClock.Now().Format(time.RFC3339),
-// 		),
-// 	)
-// 	ttrCompletedButNoEnvDumpInTR := parse.MustParseTaskTestRun(
-// 		t, ttrManifestCompletedTaskRunWithTestSpec,
-// 	)
-// 	ttrCompletedButNoFileSystemObservationsInTR := ttrCompletedButNoEnvDumpInTR.DeepCopy()
-// 	ttrCompletedButNoFileSystemObservationsInTR.Name += "-no-expected-env"
-// 	ttrCompletedButNoFileSystemObservationsInTR.Spec.TaskTestSpec.Expects.Env = nil
-// 	ttrCompletedButNoFileSystemObservationsInTR.Status.TaskRunName = ptr.To(
-// 		"ttr-completed-task-run-run",
-// 	)
+//     )
+//     ttrAbsentTaskTest := parse.MustParseTaskTestRun(t, ttrManifestAbsentTaskTest)
+//     ttrAbsentTask := parse.MustParseTaskTestRun(t, ttrManifestAbsentTask)
+//     ttrInputsUndeclaredParam := parse.MustParseTaskTestRun(
+//         t, fmt.Sprintf(ttrManifestInputsUndeclaredParam, testClock.Now().Format(time.RFC3339)),
+//     )
+//     ttrInputsUndeclaredEnvStep := parse.MustParseTaskTestRun(
+//         t, fmt.Sprintf(ttrManifestInputsUndeclaredStepEnvStep, testClock.Now().Format(time.RFC3339)),
+//     )
+//     ttrExpectsUndeclaredResult := parse.MustParseTaskTestRun(
+//         t, fmt.Sprintf(ttrManifestExpectsUndeclaredResult, testClock.Now().Format(time.RFC3339)),
+//     )
+//     ttrExpectsUndeclaredEnvStep := parse.MustParseTaskTestRun(
+//         t, fmt.Sprintf(ttrManifestExpectsUndeclaredEnvStep, testClock.Now().Format(time.RFC3339)),
+//     )
+//     ttrExpectsUndeclaredFileSystemStep := parse.MustParseTaskTestRun(
+//         t, fmt.Sprintf(
+//             ttrManifestExpectsUndeclaredFileSystemStep,
+//             testClock.Now().Format(time.RFC3339),
+//         ),
+//     )
+//     ttrCompletedButNoEnvDumpInTR := parse.MustParseTaskTestRun(
+//         t, ttrManifestCompletedTaskRunWithTestSpec,
+//     )
+//     ttrCompletedButNoFileSystemObservationsInTR := ttrCompletedButNoEnvDumpInTR.DeepCopy()
+//     ttrCompletedButNoFileSystemObservationsInTR.Name += "-no-expected-env"
+//     ttrCompletedButNoFileSystemObservationsInTR.Spec.TaskTestSpec.Expects.Env = nil
+//     ttrCompletedButNoFileSystemObservationsInTR.Status.TaskRunName = ptr.To(
+//         "ttr-completed-task-run-run",
+//     )
 
-// 	task := parse.MustParseV1Task(t, tManifest)
+//     task := parse.MustParseV1Task(t, tManifest)
 
-// 	data := test.Data{
-// 		Tasks:     []*v1.Task{task},
-// 		TaskRuns:  []*v1.TaskRun{trCompletedNoEnvDump},
-// 		TaskTests: []*v1alpha1.TaskTest{},
-// 		TaskTestRuns: []*v1alpha1.TaskTestRun{ttrAbsentTaskTest, ttrAbsentTask,
-// 			ttrInputsUndeclaredParam, ttrInputsUndeclaredEnvStep,
-// 			ttrExpectsUndeclaredResult, ttrExpectsUndeclaredFileSystemStep, ttrExpectsUndeclaredEnvStep,
-// 			ttrCompletedButNoEnvDumpInTR, ttrCompletedButNoFileSystemObservationsInTR},
-// 	}
+//     data := test.Data{
+//         Tasks:     []*v1.Task{task},
+//         TaskRuns:  []*v1.TaskRun{trCompletedNoEnvDump},
+//         TaskTests: []*v1alpha1.TaskTest{},
+//         TaskTestRuns: []*v1alpha1.TaskTestRun{ttrAbsentTaskTest, ttrAbsentTask,
+//             ttrInputsUndeclaredParam, ttrInputsUndeclaredEnvStep,
+//             ttrExpectsUndeclaredResult, ttrExpectsUndeclaredFileSystemStep, ttrExpectsUndeclaredEnvStep,
+//             ttrCompletedButNoEnvDumpInTR, ttrCompletedButNoFileSystemObservationsInTR},
+//     }
 
-// 	type tc struct {
-// 		ttr                *v1alpha1.TaskTestRun
-// 		wantErr            error
-// 		wantTtrStatus      *v1alpha1.TaskTestRunStatus
-// 		wantCompletionTime bool
-// 	}
-// 	tests := map[string]tc{
-// 		"ttr_references_absent_task_test": {
-// 			ttr: ttrAbsentTaskTest,
-// 			wantErr: fmt.Errorf(
-// 				"could not prepare reconciliation of task test run invalid-ttr-absent-task-test: %w",
-// 				apierrors.NewNotFound(
-// 					schema.GroupResource{Group: "tekton.dev", Resource: "tasktests"},
-// 					"absent-task-test",
-// 				),
-// 			),
-// 		},
-// 		"ttr_inputs_result_not_declared_in_task": {
-// 			ttr: ttrInputsUndeclaredParam,
-// 			wantTtrStatus: &v1alpha1.TaskTestRunStatus{
-// 				Status: duckv1.Status{
-// 					Conditions: duckv1.Conditions{
-// 						{
-// 							Type:   "Succeeded",
-// 							Status: "False",
-// 							Reason: "TaskTestRunValidationFailed",
-// 							Message: `validation failed for referenced object: invalid value: foo: status.taskTestSpec.inputs.params[0].name
+//     type tc struct {
+//         ttr                *v1alpha1.TaskTestRun
+//         wantErr            error
+//         wantTtrStatus      *v1alpha1.TaskTestRunStatus
+//         wantCompletionTime bool
+//     }
+//     tests := map[string]tc{
+//         "ttr_references_absent_task_test": {
+//             ttr: ttrAbsentTaskTest,
+//             wantErr: fmt.Errorf(
+//                 "could not prepare reconciliation of task test run invalid-ttr-absent-task-test: %w",
+//                 apierrors.NewNotFound(
+//                     schema.GroupResource{Group: "tekton.dev", Resource: "tasktests"},
+//                     "absent-task-test",
+//                 ),
+//             ),
+//         },
+//         "ttr_inputs_result_not_declared_in_task": {
+//             ttr: ttrInputsUndeclaredParam,
+//             wantTtrStatus: &v1alpha1.TaskTestRunStatus{
+//                 Status: duckv1.Status{
+//                     Conditions: duckv1.Conditions{
+//                         {
+//                             Type:   "Succeeded",
+//                             Status: "False",
+//                             Reason: "TaskTestRunValidationFailed",
+//                             Message: `validation failed for referenced object: invalid value: foo: status.taskTestSpec.inputs.params[0].name
 // task "task" has no Param named "foo"`,
-// 						},
-// 					},
-// 				},
-// 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
-// 					TaskTestSpec: &v1alpha1.TaskTestSpec{
-// 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-// 						Inputs: &v1alpha1.TaskTestInputs{Params: []v1.Param{{
-// 							Name:  "foo",
-// 							Value: v1.ParamValue{Type: "string", StringVal: "bar"},
-// 						}}},
-// 					},
-// 				},
-// 			},
-// 			wantErr: errors.New(
-// 				`validation failed for referenced object: invalid value: foo: status.taskTestSpec.inputs.params[0].name
+//                         },
+//                     },
+//                 },
+//                 TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
+//                     TaskTestSpec: &v1alpha1.TaskTestSpec{
+//                         TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
+//                         Inputs: &v1alpha1.TaskTestInputs{Params: []v1.Param{{
+//                             Name:  "foo",
+//                             Value: v1.ParamValue{Type: "string", StringVal: "bar"},
+//                         }}},
+//                     },
+//                 },
+//             },
+//             wantErr: errors.New(
+//                 `validation failed for referenced object: invalid value: foo: status.taskTestSpec.inputs.params[0].name
 // task "task" has no Param named "foo"`,
-// 			),
-// 			wantCompletionTime: true,
-// 		},
-// 		"ttr_inputs_step_for_stepEnv_not_declared_in_task": {
-// 			ttr: ttrInputsUndeclaredEnvStep,
-// 			wantTtrStatus: &v1alpha1.TaskTestRunStatus{
-// 				Status: duckv1.Status{
-// 					Conditions: duckv1.Conditions{
-// 						{
-// 							Type:   "Succeeded",
-// 							Status: "False",
-// 							Reason: "TaskTestRunValidationFailed",
-// 							Message: `validation failed for referenced object: invalid value: goodbye-step: status.taskTestSpec.inputs.stepEnvs[0].stepName
+//             ),
+//             wantCompletionTime: true,
+//         },
+//         "ttr_inputs_step_for_stepEnv_not_declared_in_task": {
+//             ttr: ttrInputsUndeclaredEnvStep,
+//             wantTtrStatus: &v1alpha1.TaskTestRunStatus{
+//                 Status: duckv1.Status{
+//                     Conditions: duckv1.Conditions{
+//                         {
+//                             Type:   "Succeeded",
+//                             Status: "False",
+//                             Reason: "TaskTestRunValidationFailed",
+//                             Message: `validation failed for referenced object: invalid value: goodbye-step: status.taskTestSpec.inputs.stepEnvs[0].stepName
 // task "task" has no Step named "goodbye-step"`,
-// 						},
-// 					},
-// 				},
-// 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
-// 					TaskTestSpec: &v1alpha1.TaskTestSpec{
-// 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-// 						Inputs: &v1alpha1.TaskTestInputs{StepEnvs: []v1alpha1.StepEnv{{
-// 							StepName: "goodbye-step",
-// 							Env: []corev1.EnvVar{{
-// 								Name:  "FOO",
-// 								Value: "BAR",
-// 							}},
-// 						}}},
-// 					},
-// 				},
-// 			},
-// 			wantErr: errors.New(
-// 				`validation failed for referenced object: invalid value: goodbye-step: status.taskTestSpec.inputs.stepEnvs[0].stepName
+//                         },
+//                     },
+//                 },
+//                 TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
+//                     TaskTestSpec: &v1alpha1.TaskTestSpec{
+//                         TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
+//                         Inputs: &v1alpha1.TaskTestInputs{StepEnvs: []v1alpha1.StepEnv{{
+//                             StepName: "goodbye-step",
+//                             Env: []corev1.EnvVar{{
+//                                 Name:  "FOO",
+//                                 Value: "BAR",
+//                             }},
+//                         }}},
+//                     },
+//                 },
+//             },
+//             wantErr: errors.New(
+//                 `validation failed for referenced object: invalid value: goodbye-step: status.taskTestSpec.inputs.stepEnvs[0].stepName
 // task "task" has no Step named "goodbye-step"`,
-// 			),
-// 			wantCompletionTime: true,
-// 		},
-// 		"ttr_expects_result_not_declared_in_task": {
-// 			ttr: ttrExpectsUndeclaredResult,
-// 			wantTtrStatus: &v1alpha1.TaskTestRunStatus{
-// 				Status: duckv1.Status{
-// 					Conditions: duckv1.Conditions{
-// 						{
-// 							Type:   "Succeeded",
-// 							Status: "False",
-// 							Reason: "TaskTestRunValidationFailed",
-// 							Message: `validation failed for referenced object: invalid value: current-date: status.taskTestSpec.expected.results[0].name
+//             ),
+//             wantCompletionTime: true,
+//         },
+//         "ttr_expects_result_not_declared_in_task": {
+//             ttr: ttrExpectsUndeclaredResult,
+//             wantTtrStatus: &v1alpha1.TaskTestRunStatus{
+//                 Status: duckv1.Status{
+//                     Conditions: duckv1.Conditions{
+//                         {
+//                             Type:   "Succeeded",
+//                             Status: "False",
+//                             Reason: "TaskTestRunValidationFailed",
+//                             Message: `validation failed for referenced object: invalid value: current-date: status.taskTestSpec.expected.results[0].name
 // task "task" has no Result named "current-date"`,
-// 						},
-// 					},
-// 				},
-// 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
-// 					TaskTestSpec: &v1alpha1.TaskTestSpec{
-// 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-// 						Expects: &v1alpha1.ExpectedOutcomes{
-// 							Results: []v1.TaskResult{
-// 								{
-// 									Name:  "current-date",
-// 									Type:  "string",
-// 									Value: &v1.ResultValue{StringVal: "2025-08-15", Type: "string"},
-// 								},
-// 								{
-// 									Name:  "current-time",
-// 									Type:  "string",
-// 									Value: &v1.ResultValue{StringVal: "15:17:59", Type: "string"},
-// 								},
-// 							},
-// 							SuccessStatus: ptr.To(true),
-// 							SuccessReason: ptr.To(v1.TaskRunReasonSuccessful),
-// 						},
-// 					},
-// 				},
-// 			},
-// 			wantErr: errors.New(
-// 				`validation failed for referenced object: invalid value: current-date: status.taskTestSpec.expected.results[0].name
+//                         },
+//                     },
+//                 },
+//                 TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
+//                     TaskTestSpec: &v1alpha1.TaskTestSpec{
+//                         TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
+//                         Expects: &v1alpha1.ExpectedOutcomes{
+//                             Results: []v1.TaskResult{
+//                                 {
+//                                     Name:  "current-date",
+//                                     Type:  "string",
+//                                     Value: &v1.ResultValue{StringVal: "2025-08-15", Type: "string"},
+//                                 },
+//                                 {
+//                                     Name:  "current-time",
+//                                     Type:  "string",
+//                                     Value: &v1.ResultValue{StringVal: "15:17:59", Type: "string"},
+//                                 },
+//                             },
+//                             SuccessStatus: ptr.To(true),
+//                             SuccessReason: ptr.To(v1.TaskRunReasonSuccessful),
+//                         },
+//                     },
+//                 },
+//             },
+//             wantErr: errors.New(
+//                 `validation failed for referenced object: invalid value: current-date: status.taskTestSpec.expected.results[0].name
 // task "task" has no Result named "current-date"`,
-// 			),
-// 			wantCompletionTime: true,
-// 		},
-// 		"ttr_expects_step_for_stepEnv_not_declared_in_task": {
-// 			ttr: ttrExpectsUndeclaredEnvStep,
-// 			wantTtrStatus: &v1alpha1.TaskTestRunStatus{
-// 				Status: duckv1.Status{
-// 					Conditions: duckv1.Conditions{
-// 						{
-// 							Type:   "Succeeded",
-// 							Status: "False",
-// 							Reason: "TaskTestRunValidationFailed",
-// 							Message: `validation failed for referenced object: invalid value: goodbye-step: status.taskTestSpec.expected.stepEnvs[0].stepName
+//             ),
+//             wantCompletionTime: true,
+//         },
+//         "ttr_expects_step_for_stepEnv_not_declared_in_task": {
+//             ttr: ttrExpectsUndeclaredEnvStep,
+//             wantTtrStatus: &v1alpha1.TaskTestRunStatus{
+//                 Status: duckv1.Status{
+//                     Conditions: duckv1.Conditions{
+//                         {
+//                             Type:   "Succeeded",
+//                             Status: "False",
+//                             Reason: "TaskTestRunValidationFailed",
+//                             Message: `validation failed for referenced object: invalid value: goodbye-step: status.taskTestSpec.expected.stepEnvs[0].stepName
 // task "task" has no Step named "goodbye-step"`,
-// 						},
-// 					},
-// 				},
-// 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
-// 					TaskTestSpec: &v1alpha1.TaskTestSpec{
-// 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-// 						Expects: &v1alpha1.ExpectedOutcomes{
-// 							StepEnvs: []v1alpha1.StepEnv{{
-// 								StepName: "goodbye-step",
-// 								Env: []corev1.EnvVar{{
-// 									Name:  "HOME",
-// 									Value: "/root",
-// 								}},
-// 							}},
-// 							SuccessStatus: ptr.To(true),
-// 							SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
-// 						},
-// 					},
-// 				},
-// 			},
-// 			wantErr: errors.New(
-// 				`validation failed for referenced object: invalid value: goodbye-step: status.taskTestSpec.expected.stepEnvs[0].stepName
+//                         },
+//                     },
+//                 },
+//                 TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
+//                     TaskTestSpec: &v1alpha1.TaskTestSpec{
+//                         TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
+//                         Expects: &v1alpha1.ExpectedOutcomes{
+//                             StepEnvs: []v1alpha1.StepEnv{{
+//                                 StepName: "goodbye-step",
+//                                 Env: []corev1.EnvVar{{
+//                                     Name:  "HOME",
+//                                     Value: "/root",
+//                                 }},
+//                             }},
+//                             SuccessStatus: ptr.To(true),
+//                             SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
+//                         },
+//                     },
+//                 },
+//             },
+//             wantErr: errors.New(
+//                 `validation failed for referenced object: invalid value: goodbye-step: status.taskTestSpec.expected.stepEnvs[0].stepName
 // task "task" has no Step named "goodbye-step"`,
-// 			),
-// 			wantCompletionTime: true,
-// 		},
-// 		"ttr_expects_file_system_step_not_declared_in_task": {
-// 			ttr: ttrExpectsUndeclaredFileSystemStep,
-// 			wantTtrStatus: &v1alpha1.TaskTestRunStatus{
-// 				Status: duckv1.Status{
-// 					Conditions: duckv1.Conditions{
-// 						{
-// 							Type:   "Succeeded",
-// 							Status: "False",
-// 							Reason: "TaskTestRunValidationFailed",
-// 							Message: `validation failed for referenced object: invalid value: goodbye-step: status.taskTestSpec.expected.fileSystemContents[0].stepName
+//             ),
+//             wantCompletionTime: true,
+//         },
+//         "ttr_expects_file_system_step_not_declared_in_task": {
+//             ttr: ttrExpectsUndeclaredFileSystemStep,
+//             wantTtrStatus: &v1alpha1.TaskTestRunStatus{
+//                 Status: duckv1.Status{
+//                     Conditions: duckv1.Conditions{
+//                         {
+//                             Type:   "Succeeded",
+//                             Status: "False",
+//                             Reason: "TaskTestRunValidationFailed",
+//                             Message: `validation failed for referenced object: invalid value: goodbye-step: status.taskTestSpec.expected.fileSystemContents[0].stepName
 // task "task" has no Step named "goodbye-step"`,
-// 						},
-// 					},
-// 				},
-// 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
-// 					TaskTestSpec: &v1alpha1.TaskTestSpec{
-// 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
-// 						Expects: &v1alpha1.ExpectedOutcomes{
-// 							FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
-// 								StepName: "goodbye-step",
-// 								Objects: []v1alpha1.FileSystemObject{{
-// 									Path: "/tekton/results/current-date",
-// 									Type: "Directory",
-// 								}, {
-// 									Path:    "/tekton/results/current-time",
-// 									Type:    "TextFile",
-// 									Content: "foo",
-// 								}},
-// 							}},
-// 							SuccessStatus: ptr.To(true),
-// 							SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
-// 						},
-// 					},
-// 				},
-// 			},
-// 			wantErr: errors.New(
-// 				`validation failed for referenced object: invalid value: goodbye-step: status.taskTestSpec.expected.fileSystemContents[0].stepName
+//                         },
+//                     },
+//                 },
+//                 TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
+//                     TaskTestSpec: &v1alpha1.TaskTestSpec{
+//                         TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
+//                         Expects: &v1alpha1.ExpectedOutcomes{
+//                             FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
+//                                 StepName: "goodbye-step",
+//                                 Objects: []v1alpha1.FileSystemObject{{
+//                                     Path: "/tekton/results/current-date",
+//                                     Type: "Directory",
+//                                 }, {
+//                                     Path:    "/tekton/results/current-time",
+//                                     Type:    "TextFile",
+//                                     Content: "foo",
+//                                 }},
+//                             }},
+//                             SuccessStatus: ptr.To(true),
+//                             SuccessReason: ptr.To(v1.TaskRunReason("Succeeded")),
+//                         },
+//                     },
+//                 },
+//             },
+//             wantErr: errors.New(
+//                 `validation failed for referenced object: invalid value: goodbye-step: status.taskTestSpec.expected.fileSystemContents[0].stepName
 // task "task" has no Step named "goodbye-step"`,
-// 			),
-// 			wantCompletionTime: true,
-// 		},
-// 		"tt_references_absent_task": {
-// 			ttr: ttrAbsentTask,
-// 			wantErr: fmt.Errorf(
-// 				"could not dereference task under test: %w",
-// 				apierrors.NewNotFound(
-// 					schema.GroupResource{Group: "tekton.dev", Resource: "tasks"},
-// 					"absent-task",
-// 				),
-// 			),
-// 			wantTtrStatus: &v1alpha1.TaskTestRunStatus{
-// 				Status: duckv1.Status{Conditions: duckv1.Conditions{{
-// 					Type:   "Succeeded",
-// 					Status: "Unknown",
-// 					Reason: "Started",
-// 				}}},
-// 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
-// 					TaskTestSpec: &v1alpha1.TaskTestSpec{
-// 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "absent-task"},
-// 					},
-// 				},
-// 			},
-// 		},
-// 		"ttr_expects_env_value_but_no_dump_in_tr": {
-// 			ttr: ttrCompletedButNoEnvDumpInTR,
-// 			wantErr: errors.New(
-// 				`error occurred while checking expectations: error while checking the expectations for env: could not find environment dump for stepEnv
+//             ),
+//             wantCompletionTime: true,
+//         },
+//         "tt_references_absent_task": {
+//             ttr: ttrAbsentTask,
+//             wantErr: fmt.Errorf(
+//                 "could not dereference task under test: %w",
+//                 apierrors.NewNotFound(
+//                     schema.GroupResource{Group: "tekton.dev", Resource: "tasks"},
+//                     "absent-task",
+//                 ),
+//             ),
+//             wantTtrStatus: &v1alpha1.TaskTestRunStatus{
+//                 Status: duckv1.Status{Conditions: duckv1.Conditions{{
+//                     Type:   "Succeeded",
+//                     Status: "Unknown",
+//                     Reason: "Started",
+//                 }}},
+//                 TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
+//                     TaskTestSpec: &v1alpha1.TaskTestSpec{
+//                         TaskRef: &v1alpha1.SimpleTaskRef{Name: "absent-task"},
+//                     },
+//                 },
+//             },
+//         },
+//         "ttr_expects_env_value_but_no_dump_in_tr": {
+//             ttr: ttrCompletedButNoEnvDumpInTR,
+//             wantErr: errors.New(
+//                 `error occurred while checking expectations: error while checking the expectations for env: could not find environment dump for stepEnv
 // error while checking the expectations for file system objects: could not find result with file system observations`,
-// 			),
-// 			wantTtrStatus: &v1alpha1.TaskTestRunStatus{
-// 				Status: duckv1.Status{Conditions: duckv1.Conditions{{
-// 					Type:   "Succeeded",
-// 					Status: "False",
-// 					Reason: "TaskTestRunValidationFailed",
-// 					Message: `error occurred while checking expectations: error while checking the expectations for env: could not find environment dump for stepEnv
+//             ),
+//             wantTtrStatus: &v1alpha1.TaskTestRunStatus{
+//                 Status: duckv1.Status{Conditions: duckv1.Conditions{{
+//                     Type:   "Succeeded",
+//                     Status: "False",
+//                     Reason: "TaskTestRunValidationFailed",
+//                     Message: `error occurred while checking expectations: error while checking the expectations for env: could not find environment dump for stepEnv
 // error while checking the expectations for file system objects: could not find result with file system observations`,
-// 				}}},
-// 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
-// 					TaskRunName: ptr.To("ttr-completed-task-run-run"),
-// 					TaskTestSpec: &v1alpha1.TaskTestSpec{
-// 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "hello-task"},
-// 						Expects: &v1alpha1.ExpectedOutcomes{
-// 							Results: []v1.TaskResult{
-// 								{
-// 									Name: "current-date",
-// 									Type: "string",
-// 									Value: &v1.ResultValue{
-// 										StringVal: "2025-08-15",
-// 										Type:      "string",
-// 									},
-// 								},
-// 								{
-// 									Name: "current-time",
-// 									Type: "string",
-// 									Value: &v1.ResultValue{
-// 										StringVal: "15:17:59",
-// 										Type:      "string",
-// 									},
-// 								},
-// 							},
-// 							Env: []corev1.EnvVar{{
-// 								Name:  "HOME",
-// 								Value: "/root",
-// 							}},
-// 							FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
-// 								StepName: "date-step",
-// 								Objects: []v1alpha1.FileSystemObject{{
-// 									Path:    "/tekton/results/current-date",
-// 									Type:    "TextFile",
-// 									Content: "bar",
-// 								}},
-// 							}},
-// 							SuccessStatus: ptr.To(true),
-// 							SuccessReason: ptr.To(v1.TaskRunReasonSuccessful),
-// 						},
-// 					},
-// 					Outcomes: &v1alpha1.ObservedOutcomes{
-// 						Results: &[]v1alpha1.ObservedResults{
-// 							{
-// 								Name: "current-date",
-// 								Want: &v1.ResultValue{
-// 									Type:      "string",
-// 									StringVal: "2025-08-15",
-// 								},
-// 								Got: &v1.ResultValue{
-// 									Type:      "string",
-// 									StringVal: "2025-08-15",
-// 								},
-// 							},
-// 							{
-// 								Name: "current-time",
-// 								Want: &v1.ResultValue{
-// 									Type:      "string",
-// 									StringVal: "15:17:59",
-// 								},
-// 								Got: &v1.ResultValue{
-// 									Type:      "string",
-// 									StringVal: "15:17:59",
-// 								},
-// 							},
-// 						},
-// 						SuccessStatus: &v1alpha1.ObservedSuccessStatus{
-// 							Want: true,
-// 							Got:  true,
-// 						},
-// 						SuccessReason: &v1alpha1.ObservedSuccessReason{
-// 							Want: v1.TaskRunReasonSuccessful,
-// 							Got:  v1.TaskRunReasonSuccessful,
-// 						},
-// 					},
-// 				},
-// 			},
-// 			wantCompletionTime: true,
-// 		},
-// 		"ttr_expects_fs_observations_but_no_observations_in_tr": {
-// 			ttr: ttrCompletedButNoFileSystemObservationsInTR,
-// 			wantErr: errors.New(
-// 				"error occurred while checking expectations: error while checking the expectations for file system objects: could not find result with file system observations",
-// 			),
-// 			wantTtrStatus: &v1alpha1.TaskTestRunStatus{
-// 				Status: duckv1.Status{Conditions: duckv1.Conditions{{
-// 					Type:    "Succeeded",
-// 					Status:  "False",
-// 					Reason:  "TaskTestRunValidationFailed",
-// 					Message: "error occurred while checking expectations: error while checking the expectations for file system objects: could not find result with file system observations",
-// 				}}},
-// 				TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
-// 					TaskRunName: ptr.To("ttr-completed-task-run-run"),
-// 					TaskTestSpec: &v1alpha1.TaskTestSpec{
-// 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "hello-task"},
-// 						Expects: &v1alpha1.ExpectedOutcomes{
-// 							Results: []v1.TaskResult{
-// 								{
-// 									Name: "current-date",
-// 									Type: "string",
-// 									Value: &v1.ResultValue{
-// 										StringVal: "2025-08-15",
-// 										Type:      "string",
-// 									},
-// 								},
-// 								{
-// 									Name: "current-time",
-// 									Type: "string",
-// 									Value: &v1.ResultValue{
-// 										StringVal: "15:17:59",
-// 										Type:      "string",
-// 									},
-// 								},
-// 							},
-// 							FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
-// 								StepName: "date-step",
-// 								Objects: []v1alpha1.FileSystemObject{{
-// 									Path:    "/tekton/results/current-date",
-// 									Type:    "TextFile",
-// 									Content: "bar",
-// 								}},
-// 							}},
-// 							SuccessStatus: ptr.To(true),
-// 							SuccessReason: ptr.To(v1.TaskRunReasonSuccessful),
-// 						},
-// 					},
-// 					Outcomes: &v1alpha1.ObservedOutcomes{
-// 						Results: &[]v1alpha1.ObservedResults{
-// 							{
-// 								Name: "current-date",
-// 								Want: &v1.ResultValue{
-// 									Type:      "string",
-// 									StringVal: "2025-08-15",
-// 								},
-// 								Got: &v1.ResultValue{
-// 									Type:      "string",
-// 									StringVal: "2025-08-15",
-// 								},
-// 							},
-// 							{
-// 								Name: "current-time",
-// 								Want: &v1.ResultValue{
-// 									Type:      "string",
-// 									StringVal: "15:17:59",
-// 								},
-// 								Got: &v1.ResultValue{
-// 									Type:      "string",
-// 									StringVal: "15:17:59",
-// 								},
-// 							},
-// 						},
-// 						SuccessStatus: &v1alpha1.ObservedSuccessStatus{
-// 							Want: true,
-// 							Got:  true,
-// 						},
-// 						SuccessReason: &v1alpha1.ObservedSuccessReason{
-// 							Want: v1.TaskRunReasonSuccessful,
-// 							Got:  v1.TaskRunReasonSuccessful,
-// 						},
-// 					},
-// 				},
-// 			},
-// 			wantCompletionTime: true,
-// 		},
-// 	}
-// 	for name, tt := range tests {
-// 		t.Run(name, func(t *testing.T) {
-// 			testAssets, cancel := getTaskTestRunController(t, data)
-// 			clients := testAssets.Clients
-// 			defer cancel()
+//                 }}},
+//                 TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
+//                     TaskRunName: ptr.To("ttr-completed-task-run-run"),
+//                     TaskTestSpec: &v1alpha1.TaskTestSpec{
+//                         TaskRef: &v1alpha1.SimpleTaskRef{Name: "hello-task"},
+//                         Expects: &v1alpha1.ExpectedOutcomes{
+//                             Results: []v1.TaskResult{
+//                                 {
+//                                     Name: "current-date",
+//                                     Type: "string",
+//                                     Value: &v1.ResultValue{
+//                                         StringVal: "2025-08-15",
+//                                         Type:      "string",
+//                                     },
+//                                 },
+//                                 {
+//                                     Name: "current-time",
+//                                     Type: "string",
+//                                     Value: &v1.ResultValue{
+//                                         StringVal: "15:17:59",
+//                                         Type:      "string",
+//                                     },
+//                                 },
+//                             },
+//                             Env: []corev1.EnvVar{{
+//                                 Name:  "HOME",
+//                                 Value: "/root",
+//                             }},
+//                             FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
+//                                 StepName: "date-step",
+//                                 Objects: []v1alpha1.FileSystemObject{{
+//                                     Path:    "/tekton/results/current-date",
+//                                     Type:    "TextFile",
+//                                     Content: "bar",
+//                                 }},
+//                             }},
+//                             SuccessStatus: ptr.To(true),
+//                             SuccessReason: ptr.To(v1.TaskRunReasonSuccessful),
+//                         },
+//                     },
+//                     Outcomes: &v1alpha1.ObservedOutcomes{
+//                         Results: &[]v1alpha1.ObservedResults{
+//                             {
+//                                 Name: "current-date",
+//                                 Want: &v1.ResultValue{
+//                                     Type:      "string",
+//                                     StringVal: "2025-08-15",
+//                                 },
+//                                 Got: &v1.ResultValue{
+//                                     Type:      "string",
+//                                     StringVal: "2025-08-15",
+//                                 },
+//                             },
+//                             {
+//                                 Name: "current-time",
+//                                 Want: &v1.ResultValue{
+//                                     Type:      "string",
+//                                     StringVal: "15:17:59",
+//                                 },
+//                                 Got: &v1.ResultValue{
+//                                     Type:      "string",
+//                                     StringVal: "15:17:59",
+//                                 },
+//                             },
+//                         },
+//                         SuccessStatus: &v1alpha1.ObservedSuccessStatus{
+//                             Want: true,
+//                             Got:  true,
+//                         },
+//                         SuccessReason: &v1alpha1.ObservedSuccessReason{
+//                             Want: v1.TaskRunReasonSuccessful,
+//                             Got:  v1.TaskRunReasonSuccessful,
+//                         },
+//                     },
+//                 },
+//             },
+//             wantCompletionTime: true,
+//         },
+//         "ttr_expects_fs_observations_but_no_observations_in_tr": {
+//             ttr: ttrCompletedButNoFileSystemObservationsInTR,
+//             wantErr: errors.New(
+//                 "error occurred while checking expectations: error while checking the expectations for file system objects: could not find result with file system observations",
+//             ),
+//             wantTtrStatus: &v1alpha1.TaskTestRunStatus{
+//                 Status: duckv1.Status{Conditions: duckv1.Conditions{{
+//                     Type:    "Succeeded",
+//                     Status:  "False",
+//                     Reason:  "TaskTestRunValidationFailed",
+//                     Message: "error occurred while checking expectations: error while checking the expectations for file system objects: could not find result with file system observations",
+//                 }}},
+//                 TaskTestRunStatusFields: v1alpha1.TaskTestRunStatusFields{
+//                     TaskRunName: ptr.To("ttr-completed-task-run-run"),
+//                     TaskTestSpec: &v1alpha1.TaskTestSpec{
+//                         TaskRef: &v1alpha1.SimpleTaskRef{Name: "hello-task"},
+//                         Expects: &v1alpha1.ExpectedOutcomes{
+//                             Results: []v1.TaskResult{
+//                                 {
+//                                     Name: "current-date",
+//                                     Type: "string",
+//                                     Value: &v1.ResultValue{
+//                                         StringVal: "2025-08-15",
+//                                         Type:      "string",
+//                                     },
+//                                 },
+//                                 {
+//                                     Name: "current-time",
+//                                     Type: "string",
+//                                     Value: &v1.ResultValue{
+//                                         StringVal: "15:17:59",
+//                                         Type:      "string",
+//                                     },
+//                                 },
+//                             },
+//                             FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
+//                                 StepName: "date-step",
+//                                 Objects: []v1alpha1.FileSystemObject{{
+//                                     Path:    "/tekton/results/current-date",
+//                                     Type:    "TextFile",
+//                                     Content: "bar",
+//                                 }},
+//                             }},
+//                             SuccessStatus: ptr.To(true),
+//                             SuccessReason: ptr.To(v1.TaskRunReasonSuccessful),
+//                         },
+//                     },
+//                     Outcomes: &v1alpha1.ObservedOutcomes{
+//                         Results: &[]v1alpha1.ObservedResults{
+//                             {
+//                                 Name: "current-date",
+//                                 Want: &v1.ResultValue{
+//                                     Type:      "string",
+//                                     StringVal: "2025-08-15",
+//                                 },
+//                                 Got: &v1.ResultValue{
+//                                     Type:      "string",
+//                                     StringVal: "2025-08-15",
+//                                 },
+//                             },
+//                             {
+//                                 Name: "current-time",
+//                                 Want: &v1.ResultValue{
+//                                     Type:      "string",
+//                                     StringVal: "15:17:59",
+//                                 },
+//                                 Got: &v1.ResultValue{
+//                                     Type:      "string",
+//                                     StringVal: "15:17:59",
+//                                 },
+//                             },
+//                         },
+//                         SuccessStatus: &v1alpha1.ObservedSuccessStatus{
+//                             Want: true,
+//                             Got:  true,
+//                         },
+//                         SuccessReason: &v1alpha1.ObservedSuccessReason{
+//                             Want: v1.TaskRunReasonSuccessful,
+//                             Got:  v1.TaskRunReasonSuccessful,
+//                         },
+//                     },
+//                 },
+//             },
+//             wantCompletionTime: true,
+//         },
+//     }
+//     for name, tt := range tests {
+//         t.Run(name, func(t *testing.T) {
+//             testAssets, cancel := getTaskTestRunController(t, data)
+//             clients := testAssets.Clients
+//             defer cancel()
 
-// 			if tt.wantTtrStatus == nil {
-// 				tt.wantTtrStatus = &tt.ttr.Status
-// 			}
+//             if tt.wantTtrStatus == nil {
+//                 tt.wantTtrStatus = &tt.ttr.Status
+//             }
 
-// 			gotErr := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tt.ttr))
+//             gotErr := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tt.ttr))
 
-// 			if gotErr == nil {
-// 				if tt.wantErr != nil {
-// 					t.Errorf("expected error but got none")
-// 				}
-// 			} else {
-// 				if tt.wantErr == nil {
-// 					t.Errorf("unexpected error: %v", gotErr)
-// 				} else {
-// 					if d := cmp.Diff(tt.wantErr.Error(), gotErr.Error()); d != "" {
-// 						t.Errorf("Didn't get expected error: %v", diff.PrintWantGot(d))
-// 					}
-// 				}
-// 			}
+//             if gotErr == nil {
+//                 if tt.wantErr != nil {
+//                     t.Errorf("expected error but got none")
+//                 }
+//             } else {
+//                 if tt.wantErr == nil {
+//                     t.Errorf("unexpected error: %v", gotErr)
+//                 } else {
+//                     if d := cmp.Diff(tt.wantErr.Error(), gotErr.Error()); d != "" {
+//                         t.Errorf("Didn't get expected error: %v", diff.PrintWantGot(d))
+//                     }
+//                 }
+//             }
 
-// 			ttr, err := clients.Pipeline.TektonV1alpha1().
-// 				TaskTestRuns(tt.ttr.Namespace).
-// 				Get(testAssets.Ctx, tt.ttr.Name, metav1.GetOptions{})
-// 			if err != nil {
-// 				t.Fatalf("getting updated tasktestrun: %v", err)
-// 			}
+//             ttr, err := clients.Pipeline.TektonV1alpha1().
+//                 TaskTestRuns(tt.ttr.Namespace).
+//                 Get(testAssets.Ctx, tt.ttr.Name, metav1.GetOptions{})
+//             if err != nil {
+//                 t.Fatalf("getting updated tasktestrun: %v", err)
+//             }
 
-// 			if tt.wantCompletionTime && ttr.Status.CompletionTime == nil {
-// 				t.Error("TaskTestRun: Didn't expect completion time to be nil")
-// 			}
-// 			if !tt.wantCompletionTime && ttr.Status.CompletionTime != nil {
-// 				t.Error("TaskTestRun: Expected completion time to be nil")
-// 			}
+//             if tt.wantCompletionTime && ttr.Status.CompletionTime == nil {
+//                 t.Error("TaskTestRun: Didn't expect completion time to be nil")
+//             }
+//             if !tt.wantCompletionTime && ttr.Status.CompletionTime != nil {
+//                 t.Error("TaskTestRun: Expected completion time to be nil")
+//             }
 
-// 			if d := cmp.Diff(*tt.wantTtrStatus, ttr.Status,
-// 				ignoreTaskRunStatus,
-// 				ignoreResourceVersion,
-// 				ignoreLastTransitionTime,
-// 				ignoreStartTimeTaskTestRun,
-// 				ignoreCompletionTimeTaskTestRun); d != "" {
-// 				t.Errorf("Did not get expected TaskTestRun status: %v", diff.PrintWantGot(d))
-// 			}
-// 		})
-// 	}
+//             if d := cmp.Diff(*tt.wantTtrStatus, ttr.Status,
+//                 ignoreTaskRunStatus,
+//                 ignoreResourceVersion,
+//                 ignoreLastTransitionTime,
+//                 ignoreStartTimeTaskTestRun,
+//                 ignoreCompletionTimeTaskTestRun); d != "" {
+//                 t.Errorf("Did not get expected TaskTestRun status: %v", diff.PrintWantGot(d))
+//             }
+//         })
+//     }
 // }
 
 // getTaskTestRunController returns an instance of the TaskTestRun controller/reconciler that has been seeded with

@@ -185,7 +185,12 @@ func TestTaskTest_Invalid(t *testing.T) {
 						},
 					},
 				},
-				want: apis.ErrDisallowedFields("spec.inputs.workspaceContents[0].objects[0].content"),
+				want: &apis.FieldError{
+					Message: "must not set the field(s)",
+					Paths:   []string{"spec.inputs.workspaceContents[0].objects[0].content"},
+					Level:   0,
+					Details: `the field "content" may only be set if the field "type" is set to TextFile`,
+				},
 			},
 		}, {
 			name: "input workspace object type field has invalid value",

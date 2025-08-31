@@ -4,6 +4,8 @@ metadata:
   name: hello-task
   namespace: default
 spec:
+  workspaces:
+  - name: time-workspace
   results:
   - description: |
       The current time in the format hh:mm:ss
@@ -27,7 +29,8 @@ spec:
     script: |
       set -x
 
-      echo -n $(date +%H:%M:%S) > $(results.current-time.path)
+      cat $(workspaces.time-workspace.path)/test/time > $(results.current-time.path)
+  # echo -n $(date +%H:%M:%S) > $(results.current-time.path)
   # - computeResources: {}
   #   image: alpine
   #   name: jlux-print-step
