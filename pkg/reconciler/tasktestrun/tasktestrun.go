@@ -143,7 +143,13 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1alpha1.TaskTestRun, 
 
 func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, ttr *v1alpha1.TaskTestRun, beforeCondition *apis.Condition, previousError error) reconciler.Event {
 	afterCondition := ttr.Status.GetCondition(apis.ConditionSucceeded)
-	if afterCondition.IsFalse() && !ttr.IsCancelled() && ttr.IsRetriable() {
+	logging.FromContext(ctx).Infof(`commencing retry check:
+	condition: %s,
+	isRetriable: %s,
+	allTriesMustSucced: %s
+	hasNotFailedYet: %s`, afterCondition, ttr.IsRetriable(), *ttr.Spec.AllTriesMustSucceed, ttr.HasNotFailedYet())
+	if !ttr.IsCancelled() && ttr.IsRetriable() && ((afterCondition.IsFalse() && !*ttr.Spec.AllTriesMustSucceed) ||
+		(afterCondition.IsTrue() && *ttr.Spec.AllTriesMustSucceed && ttr.HasNotFailedYet())) {
 		retryTaskTestRun(ttr, afterCondition.Message)
 		afterCondition = ttr.Status.GetCondition(apis.ConditionSucceeded)
 	}
@@ -234,7 +240,10 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 		}
 		for index := range trs {
 			tr := trs[index]
-			if metav1.IsControlledBy(tr, ttr) {
+			// if metav1.IsControlledBy(tr, ttr) {
+			if metav1.IsControlledBy(tr, ttr) && (ttr.Status.RetriesStatus == nil || !slices.ContainsFunc(ttr.Status.RetriesStatus, func(trs v1alpha1.TaskTestRunStatus) bool {
+				return trs.TaskRunName != nil && *trs.TaskRunName == tr.Name
+			})) {
 				logger.Infof("boom: Now found TaskRun %s in list controlled by TTR %s", tr.Name, ttr.Name)
 				taskRun = tr
 				ttr.Status.TaskRunName = &taskRun.Name

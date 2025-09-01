@@ -50,6 +50,18 @@ type TaskTestRun struct {
 	Status TaskTestRunStatus `json:"status,omitempty"`
 }
 
+func (ttr *TaskTestRun) HasNotFailedYet() bool {
+	if ttr.Status.RetriesStatus == nil {
+		return true
+	}
+	for _, s := range ttr.Status.RetriesStatus {
+		if s.GetCondition(apis.ConditionSucceeded).IsFalse() {
+			return false
+		}
+	}
+	return true
+}
+
 func (ttr *TaskTestRun) GetTaskRunName() string {
 	result := ttr.Name + "-run"
 	if ttr.Spec.Retries != 0 {
