@@ -38,8 +38,6 @@ import (
 	"knative.dev/pkg/reconciler"
 )
 
-const WorkspacePreparationImage = "busybox:1.37.0"
-
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
 	KubeClientSet     kubernetes.Interface
@@ -265,6 +263,7 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 			ttr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
 				fmt.Errorf("failed to create PVC for TaskTestRun %s workspaces correctly: %w",
 					fmt.Sprintf("%s/%s", ttr.Namespace, ttr.Name), err))
+			return err
 		}
 	}
 
@@ -519,11 +518,10 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 		taskRunSpec.Params = ttr.Status.TaskTestSpec.Inputs.Params
 
 		if ttr.Status.TaskTestSpec.Inputs.Env != nil {
-			for _, envVar := range ttr.Status.TaskTestSpec.Inputs.Env {
-				for idx := range task.Spec.Steps {
-					task.Spec.Steps[idx].Env = append(task.Spec.Steps[idx].Env, envVar)
-				}
+			if task.Spec.StepTemplate == nil {
+				task.Spec.StepTemplate = &v1.StepTemplate{}
 			}
+			task.Spec.StepTemplate.Env = ttr.Status.TaskTestSpec.Inputs.Env
 		}
 
 		if ttr.Status.TaskTestSpec.Inputs.StepEnvs != nil {
@@ -551,7 +549,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 				}
 			}
 
-			workspacePreparationStep, err := generateWorkspacePreparationStep(ttr.Status.TaskTestSpec.Inputs.WorkspaceContents)
+			workspacePreparationStep, err := c.generateWorkspacePreparationStep(ttr.Status.TaskTestSpec.Inputs.WorkspaceContents)
 			if err != nil {
 				return nil, fmt.Errorf("error while generating workspace preparation step: %w", err)
 			}
@@ -597,9 +595,9 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 	return taskRun, nil
 }
 
-func generateWorkspacePreparationStep(initialWorkspaceContents []v1alpha1.InitialWorkspaceContents) (*v1.Step, error) {
+func (r *Reconciler) generateWorkspacePreparationStep(initialWorkspaceContents []v1alpha1.InitialWorkspaceContents) (*v1.Step, error) {
 	preparationStep := &v1.Step{
-		Image:   WorkspacePreparationImage,
+		Image:   r.Images.ShellImage,
 		Name:    "prepare-workspace",
 		Command: []string{"sh", "-c"},
 		Args:    []string{""},

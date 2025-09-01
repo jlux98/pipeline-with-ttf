@@ -39,8 +39,6 @@ const (
 	debugScriptsDir        = "/tekton/debug/scripts"
 	defaultScriptPreamble  = "#!/bin/sh\nset -e\n"
 	debugInfoDir           = "/tekton/debug/info"
-	environmentVolumeName  = "tekton-internal-environment"
-	environmentDir         = "/tekton/environment"
 )
 
 var (

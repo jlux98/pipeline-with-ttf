@@ -34,13 +34,13 @@ spec:
         - path: /tekton/results/current-date
           type: "TextFile"
   retries: 1
-  # workspaces:
-  # - name: time-workspace
-  #   # volumeClaimTemplate:
-  #   #   spec:
-  #   #     accessModes:
-  #   #     - ReadWriteOnce
-  #   #     resources:
-  #   #       requests:
-  #   #         storage: 10Mi
-  #   emptyDir: {}
+  workspaces:
+  - name: time-workspace
+    # volumeClaimTemplate:
+    #   spec:
+    #     accessModes:
+    #     - ReadWriteOnce
+    #     resources:
+    #       requests:
+    #         storage: 10Mi
+    emptyDir: {}

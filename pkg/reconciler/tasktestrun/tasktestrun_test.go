@@ -335,10 +335,14 @@ spec:
       default: ""
     workspaces:
     - name: hello-workspace
+    stepTemplate:
+      env:
+      - name: FOO
+        value: bar
     steps:
     - computeResources: {}
       name: prepare-workspace
-      image: busybox:1.37.0
+      image: shell-image
       command: ["sh", "-c"]
       args:
       - |
@@ -347,8 +351,6 @@ spec:
           mkdir -p $(workspaces.hello-workspace.path)/test/dir
     - computeResources: {}
       env:
-      - name: FOO
-        value: bar
       - name: ANOTHER_FOO
         value: ANOTHER_BAR
       image: alpine
@@ -357,9 +359,6 @@ spec:
         echo "Hello world!"
         date +%%Y-%%m-%%d | tee $(results.current-date.path)
     - computeResources: {}
-      env:
-      - name: FOO
-        value: bar
       image: alpine
       name: time-step
       script: |
@@ -1561,7 +1560,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 func getTaskTestRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 	t.Helper()
 	names.TestingSeed()
-	return initializeTaskTestRunControllerAssets(t, d, pipeline.Options{Images: pipeline.Images{}})
+	return initializeTaskTestRunControllerAssets(t, d, pipeline.Options{Images: pipeline.Images{ShellImage: "shell-image"}})
 }
 
 func initializeTaskTestRunControllerAssets(
