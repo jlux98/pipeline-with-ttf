@@ -102,7 +102,7 @@ type TaskTestSuiteRunSpec struct {
 	// TaskTestRef and the SpecStatus fields.
 	//
 	// +optional
-	DefaultRunSpecTemplate TaskTestRunTemplate `json:"defaultRunSpecTemplate"`
+	DefaultRunSpecTemplate *TaskTestRunTemplate `json:"defaultRunSpecTemplate"`
 
 	// RunSpecs is a list of RunSpecs, except that the
 	// SpecStatus fields are not allowed. It contains all the tests that will be
@@ -114,6 +114,17 @@ type TaskTestSuiteRunSpec struct {
 	// +listType=map
 	// +listMapKey=name
 	RunSpecs []SuiteTaskTestRun `json:"runSpecs,omitempty"`
+
+	// RunSpecs is a list of RunSpecs, except that the
+	// SpecStatus fields are not allowed. It contains all the tests that will be
+	// executed by this run, in addition to providing the option of configuring
+	// them on a case-by-case basis. Configurations made in this field overwrite
+	// the default template.
+	//
+	// +optional
+	// +listType=map
+	// +listMapKey=name
+	RunSpecMap TaskTestRunTemplateMap `json:"-"`
 
 	// Used for cancelling a TaskTestSuiteRun
 	//
@@ -132,6 +143,16 @@ type TaskTestSuiteRunSpec struct {
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 }
 
+type TaskTestRunTemplateMap map[string]*TaskTestRunTemplate
+
+func (m *TaskTestRunTemplateMap) GenerateMap(items []SuiteTaskTestRun) {
+	res := make(TaskTestRunTemplateMap)
+	for _, item := range items {
+		res[item.Name] = item.GetRunTemplate()
+	}
+	*m = res
+}
+
 type TaskTestSuiteRef struct {
 	Name string `json:"name"`
 }
@@ -144,8 +165,8 @@ type TestSuiteExecutionMode string
 // doesn't overwhelm the cluster with too many test being triggered at the
 // same time.
 const (
-	Parallel   TestSuiteExecutionMode = "Parallel"
-	Sequential TestSuiteExecutionMode = "Sequential"
+	TaskTestSuiteRunExecutionModeParallel   TestSuiteExecutionMode = "Parallel"
+	TaskTestSuiteRunExecutionModeSequential TestSuiteExecutionMode = "Sequential"
 )
 
 type TaskTestRunTemplate struct {
@@ -173,6 +194,14 @@ type SuiteTaskTestRun struct {
 	TaskTestRunTemplate `json:",inline"`
 }
 
+func (in SuiteTaskTestRun) GetRunTemplate() *TaskTestRunTemplate {
+	return &TaskTestRunTemplate{
+		Workspaces:         in.Workspaces,
+		ServiceAccountName: in.ServiceAccountName,
+		ComputeResources:   in.ComputeResources,
+	}
+}
+
 // Status and its resources start here
 
 type TaskTestSuiteRunStatus struct {
@@ -195,6 +224,13 @@ type TaskTestSuiteRunStatusFields struct {
 	// can either be declared inline in the TaskTestSuiteRun manifest or it can
 	// come from referencing a pre-existing TaskTestSuite
 	TaskTestSuiteSpec *TaskTestSuiteSpec `json:"taskTestSuiteSpec"`
+
+	// CurrentSuiteTest contains the name of the suite test currently being
+	// executed, if execution mode is set to Sequential. If execution mode is
+	// set to Parallel, then this field will stay empty.
+	//
+	// +optional
+	CurrentSuiteTest *string `json:"currentSuiteTest,omitempty"`
 
 	// TaskTestRunStatuses is the list containing the status fields of the
 	// TaskTestRuns responsible for executing this suite's TasksTests.

@@ -292,89 +292,96 @@ func (c *Reconciler) reconcileSuiteTest(
 ) error {
 	logger := logging.FromContext(ctx)
 	var err error
-
-	// Get the TaskTest's TaskTestRun if it should have one. Otherwise, create the TaskRun.
-	var taskTestRun *v1alpha1.TaskTestRun
-	if ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)] != nil {
-		logger.Infof(
-			"boom: Now retrieving TaskTestRun %s for TTSR %s",
-			taskTest.GetTaskTestRunName(ttsr.Name),
-			ttsr.Name,
-		)
-		taskTestRun, err = c.TaskTestRunLister.TaskTestRuns(ttsr.Namespace).
-			Get(taskTest.GetTaskTestRunName(ttsr.Name))
-		if k8serrors.IsNotFound(err) {
-			// Keep going, this will result in the TaskRun being created below.
-		} else if err != nil {
-			// This is considered a transient error, so we return error, do not update
-			// the task test run condition, and return an error which will cause this key to
-			// be requeued for reconcile.
-			logger.Errorf("Error getting TaskTestRun %q: %v", taskTest.GetTaskTestRunName(ttsr.Name), err)
-			events.Emit(ctx, nil, ttsr.Status.GetCondition(apis.ConditionSucceeded), ttsr)
-			return err
-		}
-	} else {
-		// List TaskRuns that have a label with this TaskTestSuiteRun name.  Do not include other labels from the
-		// TaskTestSuiteRun in this selector.  The user could change them during the lifetime of the TaskTestSuiteRun so the
-		// current labels may not be set on a previously created TaskRun.
-		logger.Infof("boom: Now retrieving TaskRun from list for TTR %s", ttsr.Name)
-		labelSelector := labels.Set{pipeline.TaskTestSuiteRunLabelKey: ttsr.Name}
-		ttrs, err := c.TaskTestRunLister.TaskTestRuns(ttsr.Namespace).List(labelSelector.AsSelector())
-		if err != nil {
-			logger.Errorf("Error listing task test runs: %v", err)
-			events.Emit(ctx, nil, ttsr.Status.GetCondition(apis.ConditionSucceeded), ttsr)
-			return err
-		}
-		for index := range ttrs {
-			tr := ttrs[index]
-			if metav1.IsControlledBy(tr, ttsr) && tr.GetSuiteTestName() == taskTest.Name {
-				logger.Infof("boom: Now found TaskRun %s in list controlled by TTR %s", tr.Name, ttsr.Name)
-				taskTestRun = tr
-				if ttsr.Status.TaskTestRunStatuses == nil {
-					ttsr.Status.TaskTestRunStatuses = map[string]*v1alpha1.TaskTestRunStatus{}
-				}
-				ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)] = &taskTestRun.Status
-			}
-		}
+	if ttsr.Spec.ExecutionMode == v1alpha1.TaskTestSuiteRunExecutionModeSequential && ttsr.Status.CurrentSuiteTest == nil {
+		ttsr.Status.CurrentSuiteTest = &taskTest.Name
 	}
-
-	if taskTestRun == nil {
-		logger.Infof(
-			"boom: Now creating TaskTestRun %q for TTSR %q",
-			ttsr.Name+"-"+taskTest.Name,
-			ttsr.Name,
-		)
-		taskTestRun, err = c.createTaskTestRun(ctx, ttsr, &taskTest, ttsr.Namespace)
-		if err != nil {
-			logger.Errorf(
-				"Failed to create task test run %q for taskTestSuiteRun %q: %v",
+	if ttsr.Spec.ExecutionMode == v1alpha1.TaskTestSuiteRunExecutionModeParallel ||
+		*ttsr.Status.CurrentSuiteTest == taskTest.Name {
+		// Get the TaskTest's TaskTestRun if it should have one. Otherwise, create the TaskRun.
+		var taskTestRun *v1alpha1.TaskTestRun
+		if ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)] != nil {
+			logger.Infof(
+				"boom: Now retrieving TaskTestRun %s for TTSR %s",
 				taskTest.GetTaskTestRunName(ttsr.Name),
 				ttsr.Name,
-				err,
 			)
-			return err
+			taskTestRun, err = c.TaskTestRunLister.TaskTestRuns(ttsr.Namespace).
+				Get(taskTest.GetTaskTestRunName(ttsr.Name))
+			if k8serrors.IsNotFound(err) {
+				// Keep going, this will result in the TaskRun being created below.
+			} else if err != nil {
+				// This is considered a transient error, so we return error, do not update
+				// the task test run condition, and return an error which will cause this key to
+				// be requeued for reconcile.
+				logger.Errorf("Error getting TaskTestRun %q: %v", taskTest.GetTaskTestRunName(ttsr.Name), err)
+				events.Emit(ctx, nil, ttsr.Status.GetCondition(apis.ConditionSucceeded), ttsr)
+				return err
+			}
+		} else {
+			// List TaskRuns that have a label with this TaskTestSuiteRun name.  Do not include other labels from the
+			// TaskTestSuiteRun in this selector.  The user could change them during the lifetime of the TaskTestSuiteRun so the
+			// current labels may not be set on a previously created TaskRun.
+			logger.Infof("boom: Now retrieving TaskRun from list for TTR %s", ttsr.Name)
+			labelSelector := labels.Set{pipeline.TaskTestSuiteRunLabelKey: ttsr.Name}
+			ttrs, err := c.TaskTestRunLister.TaskTestRuns(ttsr.Namespace).List(labelSelector.AsSelector())
+			if err != nil {
+				logger.Errorf("Error listing task test runs: %v", err)
+				events.Emit(ctx, nil, ttsr.Status.GetCondition(apis.ConditionSucceeded), ttsr)
+				return err
+			}
+			for index := range ttrs {
+				tr := ttrs[index]
+				if metav1.IsControlledBy(tr, ttsr) && tr.GetSuiteTestName() == taskTest.Name {
+					logger.Infof("boom: Now found TaskRun %s in list controlled by TTR %s", tr.Name, ttsr.Name)
+					taskTestRun = tr
+					if ttsr.Status.TaskTestRunStatuses == nil {
+						ttsr.Status.TaskTestRunStatuses = map[string]*v1alpha1.TaskTestRunStatus{}
+					}
+					ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)] = &taskTestRun.Status
+				}
+			}
 		}
 
-		if ttsr.Status.TaskTestRunStatuses == nil {
-			ttsr.Status.TaskTestRunStatuses = map[string]*v1alpha1.TaskTestRunStatus{}
-		}
-		ttsr.Status.TaskTestRunStatuses[taskTestRun.Name] = &taskTestRun.Status
-		ttsr.Status.StartTime = &metav1.Time{
-			Time: c.Clock.Now(),
-		}
-	}
+		if taskTestRun == nil {
+			logger.Infof(
+				"boom: Now creating TaskTestRun %q for TTSR %q",
+				ttsr.Name+"-"+taskTest.Name,
+				ttsr.Name,
+			)
+			taskTestRun, err = c.createTaskTestRun(ctx, ttsr, &taskTest, ttsr.Namespace)
+			if err != nil {
+				logger.Errorf(
+					"Failed to create task test run %q for taskTestSuiteRun %q: %v",
+					taskTest.GetTaskTestRunName(ttsr.Name),
+					ttsr.Name,
+					err,
+				)
+				return err
+			}
 
-	if ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)] == nil ||
-		!cmp.Equal(
-			ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)],
-			taskTestRun.Status,
-		) {
-		logger.Infof("boom: Now setting task run name for TTR %s", ttsr.Name)
-		ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)] = &taskTestRun.Status
-	}
+			if ttsr.Status.TaskTestRunStatuses == nil {
+				ttsr.Status.TaskTestRunStatuses = map[string]*v1alpha1.TaskTestRunStatus{}
+			}
+			ttsr.Status.TaskTestRunStatuses[taskTestRun.Name] = &taskTestRun.Status
+			ttsr.Status.StartTime = &metav1.Time{
+				Time: c.Clock.Now(),
+			}
+		}
 
-	if taskTestRun.Status.CompletionTime == nil {
-		*allTaskTestRunsFinished = false
+		if ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)] == nil ||
+			!cmp.Equal(
+				ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)],
+				taskTestRun.Status,
+			) {
+			logger.Infof("boom: Now setting task run name for TTR %s", ttsr.Name)
+			ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)] = &taskTestRun.Status
+		}
+
+		if taskTestRun.Status.CompletionTime == nil {
+			*allTaskTestRunsFinished = false
+		} else {
+			ttsr.Status.CurrentSuiteTest = nil
+		}
 	}
 	return nil
 }
@@ -444,7 +451,6 @@ func aggregateSuccessStatusOfTaskTestRuns(
 	unsuccessful := ""
 	logger := logging.FromContext(ctx)
 
-	// TODO(jlux98) write logic for checking this
 	for i, suiteTest := range ttsr.Status.TaskTestSuiteSpec.TaskTests {
 		trName := suiteTest.GetTaskTestRunName(ttsr.Name)
 		condition := ttsr.Status.TaskTestRunStatuses[trName].GetCondition(
@@ -522,10 +528,24 @@ func (c *Reconciler) createTaskTestRun(ctx context.Context, ttsr *v1alpha1.TaskT
 	}
 
 	taskTestRun.Spec.TaskTestSpec = suiteTest.TaskTestSpec
+
+	if ttsr.Spec.DefaultRunSpecTemplate != nil {
+		taskTestRun.Spec.Workspaces = append(taskTestRun.Spec.Workspaces, ttsr.Spec.DefaultRunSpecTemplate.Workspaces...)
+	}
+
+	if ttsr.Spec.RunSpecMap == nil && ttsr.Spec.RunSpecs != nil {
+		ttsr.Spec.RunSpecMap = v1alpha1.TaskTestRunTemplateMap{}
+		ttsr.Spec.RunSpecMap.GenerateMap(ttsr.Spec.RunSpecs)
+	}
+	if ttsr.Spec.RunSpecs != nil && ttsr.Spec.RunSpecMap[suiteTest.Name] != nil {
+		taskTestRun.Spec.Workspaces = append(taskTestRun.Spec.Workspaces, ttsr.Spec.RunSpecMap[suiteTest.Name].Workspaces...)
+	}
+
 	taskTestRun.Spec.Retries = suiteTest.Retries
+	taskTestRun.Spec.AllTriesMustSucceed = suiteTest.AllTriesMustSucceed
 
 	taskTestRun.Status.InitializeConditions()
-
+	taskTestRun.SetDefaults(ctx)
 	taskTestRun, err := c.PipelineClientSet.TektonV1alpha1().
 		TaskTestRuns(namespace).
 		Create(ctx, taskTestRun, metav1.CreateOptions{})

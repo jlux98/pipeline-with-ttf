@@ -2803,7 +2803,6 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunSpec(ref common.Reference
 					"defaultRunSpecTemplate": {
 						SchemaProps: spec.SchemaProps{
 							Description: "DefaultRunSpecTemplate defines the template after which the TaskTestRuns for the tests in this suite are generated. It supports the same fields as the Spec of a TaskTestRun with the exception of TaskTestRef and the SpecStatus fields.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestRunTemplate"),
 						},
 					},
@@ -2926,6 +2925,13 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunStatus(ref common.Referen
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuiteSpec"),
 						},
 					},
+					"currentSuiteTest": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CurrentSuiteTest contains the name of the suite test currently being executed, if execution mode is set to Sequential. If execution mode is set to Parallel, then this field will stay empty.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"taskTestRunStatuses": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TaskTestRunStatuses is the list containing the status fields of the TaskTestRuns responsible for executing this suite's TasksTests.",
@@ -2978,6 +2984,13 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunStatusFields(ref common.R
 						SchemaProps: spec.SchemaProps{
 							Description: "TaskTestSuiteSpec is the spec of the TaskTestSuite being run. This spec can either be declared inline in the TaskTestSuiteRun manifest or it can come from referencing a pre-existing TaskTestSuite",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuiteSpec"),
+						},
+					},
+					"currentSuiteTest": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CurrentSuiteTest contains the name of the suite test currently being executed, if execution mode is set to Sequential. If execution mode is set to Parallel, then this field will stay empty.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"taskTestRunStatuses": {

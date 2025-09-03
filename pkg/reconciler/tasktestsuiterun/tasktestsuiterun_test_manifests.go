@@ -205,7 +205,7 @@ spec:
 //         date +%Y-%m-%d | tee /tekton/results/current-date`
 
 // Valid TaskTestRun manifests
-const ttrManifestTemplateNewRun = `
+const ttrManifestTemplateSpec = `
 metadata:
   name: %s-%s
   namespace: foo
@@ -219,6 +219,11 @@ metadata:
     controller: true
     blockOwnerDeletion: true
 spec:
+  retries: %s
+  allTriesMustSucceed: %s
+  workspaces:
+  - name: time-workspace
+    emptyDir: {}
   taskTestSpec:
     taskRef:
       name: task
@@ -232,7 +237,7 @@ status:
     reason: Started
 `
 
-const ttrManifestTemplateCompletedSuccessful = `
+const ttrTemplateCompletedSuccess = `
 metadata:
   name: %s-%s
   namespace: foo
@@ -246,6 +251,11 @@ metadata:
     controller: true
     blockOwnerDeletion: true
 spec:
+  retries: %s
+  allTriesMustSucceed: %s
+  workspaces:
+  - name: time-workspace
+    emptyDir: {}
   taskTestSpec:
     taskRef:
       name: task
@@ -294,7 +304,7 @@ status:
   completionTime: "2025-08-15T15:17:59Z"
 `
 
-const ttrManifestTemplateCompletedFailed = `
+const ttrTemplateCompletedFail = `
 metadata:
   name: %s-%s
   namespace: foo
@@ -308,6 +318,11 @@ metadata:
     controller: true
     blockOwnerDeletion: true
 spec:
+  retries: %s
+  allTriesMustSucceed: %s
+  workspaces:
+  - name: time-workspace
+    emptyDir: {}
   taskTestSpec:
     taskRef:
       name: task
@@ -539,9 +554,16 @@ metadata:
   name: %s
   namespace: foo
 spec:
+  executionMode: %s
+  defaultRunSpecTemplate:
+    workspaces:
+    - name: time-workspace
+      emptyDir: {}
   taskTestSuiteSpec:
     taskTests:
     - name: task-0
+      retries: %s
+      allTriesMustSucceed: %s
       taskTestRef:
         name: task-test
     - name: task-1
@@ -551,14 +573,29 @@ spec:
         expects:
           successStatus: true
           successReason: Succeeded
-      retries: 1
-`
+      retries: %s
+      allTriesMustSucceed: %s
+  runSpecs:
+  - name: task-1
+    workspaces:
+    - name: date-workspace
+      emptyDir: {}`
 
 const ttsrManifestTemplateReferencedTts = `
 metadata:
   name: %s
   namespace: foo
 spec:
+  executionMode: Parallel
+  defaultRunSpecTemplate:
+    workspaces:
+    - name: time-workspace
+      emptyDir: {}
   taskTestSuiteRef:
     name: suite
+  runSpecs:
+  - name: task-1
+    workspaces:
+    - name: date-workspace
+      emptyDir: {}
 `

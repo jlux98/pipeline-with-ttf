@@ -44,6 +44,6 @@ func (t *TaskTestSuiteRunSpec) Validate(ctx context.Context) *apis.FieldError {
 var _ apis.Validatable = (*TaskTestSuiteRunSpec)(nil)
 
 var AllowedTestSuiteExecutionModes []TestSuiteExecutionMode = []TestSuiteExecutionMode{
-	Parallel,
-	Sequential,
+	TaskTestSuiteRunExecutionModeParallel,
+	TaskTestSuiteRunExecutionModeSequential,
 }

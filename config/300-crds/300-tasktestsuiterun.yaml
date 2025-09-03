@@ -2161,6 +2161,12 @@ spec:
                       type:
                         description: Type of condition.
                         type: string
+                currentSuiteTest:
+                  description: |-
+                    CurrentSuiteTest contains the name of the suite test currently being
+                    executed, if execution mode is set to Sequential. If execution mode is
+                    set to Parallel, then this field will stay empty.
+                  type: string
                 observedGeneration:
                   description: |-
                     ObservedGeneration is the 'Generation' of the Service that

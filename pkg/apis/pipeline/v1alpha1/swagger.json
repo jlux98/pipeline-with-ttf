@@ -1512,7 +1512,6 @@
       "properties": {
         "defaultRunSpecTemplate": {
           "description": "DefaultRunSpecTemplate defines the template after which the TaskTestRuns for the tests in this suite are generated. It supports the same fields as the Spec of a TaskTestRun with the exception of TaskTestRef and the SpecStatus fields.",
-          "default": {},
           "$ref": "#/definitions/v1alpha1.TaskTestRunTemplate"
         },
         "executionMode": {
@@ -1583,6 +1582,10 @@
           "x-kubernetes-patch-merge-key": "type",
           "x-kubernetes-patch-strategy": "merge"
         },
+        "currentSuiteTest": {
+          "description": "CurrentSuiteTest contains the name of the suite test currently being executed, if execution mode is set to Sequential. If execution mode is set to Parallel, then this field will stay empty.",
+          "type": "string"
+        },
         "observedGeneration": {
           "description": "ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.",
           "type": "integer",
@@ -1619,6 +1622,10 @@
         "completionTime": {
           "description": "CompletionTime is the time the test completed.",
           "$ref": "#/definitions/v1.Time"
+        },
+        "currentSuiteTest": {
+          "description": "CurrentSuiteTest contains the name of the suite test currently being executed, if execution mode is set to Sequential. If execution mode is set to Parallel, then this field will stay empty.",
+          "type": "string"
         },
         "startTime": {
           "description": "StartTime is the time the build is actually started.",

@@ -21,6 +21,10 @@ func (trs *TaskTestSuiteRunSpec) SetDefaults(ctx context.Context) {
 	if trs.Timeout == nil {
 		trs.Timeout = &metav1.Duration{Duration: time.Duration(cfg.Defaults.DefaultTimeoutMinutes) * time.Minute}
 	}
+
+	if trs.TaskTestSuiteSpec != nil {
+		trs.TaskTestSuiteSpec.SetDefaults(ctx)
+	}
 }
 
 var _ apis.Defaultable = (*TaskTestSuiteRun)(nil)
