@@ -105,6 +105,11 @@ const (
 	TaskRunCancelledByPipelineMsg TaskRunSpecStatusMessage = "TaskRun cancelled as the PipelineRun it belongs to has been cancelled."
 	// TaskRunCancelledByPipelineTimeoutMsg indicates that the TaskRun was cancelled because the PipelineRun running it timed out.
 	TaskRunCancelledByPipelineTimeoutMsg TaskRunSpecStatusMessage = "TaskRun cancelled as the PipelineRun it belongs to has timed out."
+	// TaskRunCancelledByPipelineMsg indicates that the PipelineRun of which this
+	// TaskRun was a part of has been cancelled.
+	TaskRunCancelledByTaskTestMsg TaskRunSpecStatusMessage = "TaskRun cancelled as the TaskTestRun it belongs to has been cancelled."
+	// TaskRunCancelledByPipelineTimeoutMsg indicates that the TaskRun was cancelled because the PipelineRun running it timed out.
+	TaskRunCancelledByTaskTestTimeoutMsg TaskRunSpecStatusMessage = "TaskRun cancelled as the TaskTestRun it belongs to has timed out."
 )
 
 const (

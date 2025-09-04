@@ -18,3 +18,4 @@ spec:
           echo "Hello world!"
           date +%H:%M:%S | tee $(results.current-time.path)
           date +%Y:%m:%d | tee $(results.current-date.path)
+          sleep 100

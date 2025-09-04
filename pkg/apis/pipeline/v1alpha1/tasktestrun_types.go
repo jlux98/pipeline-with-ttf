@@ -191,13 +191,21 @@ type TaskTestRef struct {
 // TaskTestRunSpecStatus defines the TaskRun spec status the user can provide
 type TaskTestRunSpecStatus string
 
+const (
+	// TaskTestRunSpecStatusCancelled indicates that the user wants to cancel
+	// the task test, if not already cancelled or terminated
+	TaskTestRunSpecStatusCancelled = "TaskTestRunCancelled"
+)
+
 // TaskTestRunSpecStatusMessage defines human readable status messages for the TaskRun.
 type TaskTestRunSpecStatusMessage string
 
 const (
-	// TaskTestRunSpecStatusCancelled indicates that the user wants to cancel the task,
-	// if not already cancelled or terminated
-	TaskTestRunSpecStatusCancelled = "TaskTestRunCancelled"
+	// TaskRunCancelledByPipelineMsg indicates that the PipelineRun of which this
+	// TaskRun was a part of has been cancelled.
+	TaskTestRunCancelledByTaskTestSuiteMsg TaskTestRunSpecStatusMessage = "TaskTestRun cancelled as the TaskTestSuiteRun it belongs to has been cancelled."
+	// TaskRunCancelledByPipelineTimeoutMsg indicates that the TaskRun was cancelled because the PipelineRun running it timed out.
+	TaskTestRunCancelledByTaskTestSuiteTimeoutMsg TaskTestRunSpecStatusMessage = "TaskTestRun cancelled as the TaskTestSuiteRun it belongs to has timed out."
 )
 
 // Status and its resources start here

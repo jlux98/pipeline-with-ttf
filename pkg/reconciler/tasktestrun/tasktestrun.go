@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -14,6 +15,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -24,10 +26,12 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
+	"gomodules.xyz/jsonpatch/v2"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/clock"
 	"k8s.io/utils/ptr"
@@ -58,6 +62,8 @@ type Reconciler struct {
 	// resolutionRequester      resolution.Requester
 	// tracerProvider           trace.TracerProvider
 }
+
+var cancelTaskRunPatchBytes []byte
 
 // ReconcileKind implements tasktestrun.Interface.
 func (c *Reconciler) ReconcileKind(ctx context.Context, ttr *v1alpha1.TaskTestRun) reconciler.Event {
@@ -101,7 +107,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, ttr *v1alpha1.TaskTestRu
 	// If the TaskRun is cancelled, kill resources and update status
 	if ttr.IsCancelled() {
 		message := fmt.Sprintf("TaskTestRun %q was cancelled. %s", ttr.Name, ttr.Spec.StatusMessage)
-		err := c.failTaskRun(ctx, ttr, v1alpha1.TaskTestRunReasonCancelled, message)
+		err := c.failTaskTestRun(ctx, ttr, v1alpha1.TaskTestRunReasonCancelled, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, ttr, before, err)
 	}
 
@@ -109,7 +115,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, ttr *v1alpha1.TaskTestRu
 	// accordingly.
 	if ttr.HasTimedOut(ctx, c.Clock) {
 		message := fmt.Sprintf("TaskRun %q failed to finish within %q", ttr.Name, ttr.GetTimeout(ctx))
-		err := c.failTaskRun(ctx, ttr, v1alpha1.TaskTestRunReasonTimedOut, message)
+		err := c.failTaskTestRun(ctx, ttr, v1alpha1.TaskTestRunReasonTimedOut, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, ttr, before, err)
 	}
 
@@ -134,10 +140,38 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, ttr *v1alpha1.TaskTestRu
 	return nil
 }
 
-func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1alpha1.TaskTestRun, cancelled v1alpha1.TaskTestRunReason, message string) error {
+func (c *Reconciler) failTaskTestRun(ctx context.Context, ttr *v1alpha1.TaskTestRun, reason v1alpha1.TaskTestRunReason, message string) error {
 	// TODO(jlux98) implement this
-	logging.FromContext(ctx).Error("boom: Totally failing TaskTestRun %q right now with the reason %q and the message %q", tr.Name, cancelled, message)
-	return nil
+
+	logger := logging.FromContext(ctx)
+	logger.Warnf("stopping task test run %q because of %q", ttr.Name, reason)
+	ttr.Status.MarkResourceFailed(reason, errors.New(message))
+
+	completionTime := metav1.Time{Time: c.Clock.Now()}
+	// update tr completed time
+	ttr.Status.CompletionTime = &completionTime
+
+	taskRun, err := c.getTaskRun(ctx, ttr)
+	if err != nil {
+		return err
+	}
+
+	if taskRun == nil {
+		logger.Warnf("task test run %q has no task run running yet", ttr.Name)
+		return nil
+	}
+
+	_, err = c.PipelineClientSet.TektonV1().TaskRuns(ttr.Namespace).Patch(ctx, taskRun.Name, types.JSONPatchType, cancelTaskRunPatchBytes, metav1.PatchOptions{}, "")
+	if k8serrors.IsNotFound(err) {
+		// The resource may have been deleted in the meanwhile, but we should
+		// still be able to cancel the PipelineRun
+		return nil
+	}
+	if pipelineErrors.IsImmutableTaskRunSpecError(err) {
+		// The TaskRun may have completed and the spec field is immutable, we should ignore this error.
+		return nil
+	}
+	return err
 }
 
 func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, ttr *v1alpha1.TaskTestRun, beforeCondition *apis.Condition, previousError error) reconciler.Event {
@@ -207,47 +241,11 @@ func (c *Reconciler) prepare(ctx context.Context, ttr *v1alpha1.TaskTestRun) err
 // events. `reconcile` consumes spec and resources returned by `prepare`
 func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, rtr *resources.ResolvedTask) error {
 	logger := logging.FromContext(ctx)
-	var err error
 
 	// Get the TaskTestRun's TaskRun if it should have one. Otherwise, create the TaskRun.
-	var taskRun *v1.TaskRun
-
-	if ttr.Status.TaskRunName != nil {
-		logger.Infof("boom: Now retrieving TaskRun %s for TTR %s", *ttr.Status.TaskRunName, ttr.Name)
-		taskRun, err = c.taskRunLister.TaskRuns(ttr.Namespace).Get(*ttr.Status.TaskRunName)
-		if k8serrors.IsNotFound(err) {
-			// Keep going, this will result in the TaskRun being created below.
-		} else if err != nil {
-			// This is considered a transient error, so we return error, do not update
-			// the task test run condition, and return an error which will cause this key to
-			// be requeued for reconcile.
-			logger.Errorf("Error getting TaskRun %q: %v", ttr.Status.TaskRunName, err)
-			events.Emit(ctx, nil, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
-			return err
-		}
-	} else {
-		// List TaskRuns that have a label with this TaskTestRun name.  Do not include other labels from the
-		// TaskTestRun in this selector.  The user could change them during the lifetime of the TasTestkRun so the
-		// current labels may not be set on a previously created TaskRun.
-		logger.Infof("boom: Now retrieving TaskRun from list for TTR %s", ttr.Name)
-		labelSelector := labels.Set{pipeline.TaskTestRunLabelKey: ttr.Name}
-		trs, err := c.taskRunLister.TaskRuns(ttr.Namespace).List(labelSelector.AsSelector())
-		if err != nil {
-			logger.Errorf("Error listing task runs: %v", err)
-			events.Emit(ctx, nil, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
-			return err
-		}
-		for index := range trs {
-			tr := trs[index]
-			// if metav1.IsControlledBy(tr, ttr) {
-			if metav1.IsControlledBy(tr, ttr) && (ttr.Status.RetriesStatus == nil || !slices.ContainsFunc(ttr.Status.RetriesStatus, func(trs v1alpha1.TaskTestRunStatus) bool {
-				return trs.TaskRunName != nil && *trs.TaskRunName == tr.Name
-			})) {
-				logger.Infof("boom: Now found TaskRun %s in list controlled by TTR %s", tr.Name, ttr.Name)
-				taskRun = tr
-				ttr.Status.TaskRunName = &taskRun.Name
-			}
-		}
+	taskRun, err := c.getTaskRun(ctx, ttr)
+	if err != nil {
+		return err
 	}
 
 	if taskRun == nil {
@@ -319,6 +317,50 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 
 	logger.Infof("Successfully reconciled tasktestrun %s/%s with status: %#v", ttr.Name, ttr.Namespace, ttr.Status.GetCondition(apis.ConditionSucceeded))
 	return nil
+}
+
+func (c *Reconciler) getTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRun) (*v1.TaskRun, error) {
+	var taskRun *v1.TaskRun = nil
+	var err error
+	logger := logging.FromContext(ctx)
+	if ttr.Status.TaskRunName != nil {
+		logger.Infof("boom: Now retrieving TaskRun %s for TTR %s", *ttr.Status.TaskRunName, ttr.Name)
+		taskRun, err = c.taskRunLister.TaskRuns(ttr.Namespace).Get(*ttr.Status.TaskRunName)
+		if k8serrors.IsNotFound(err) {
+			// Keep going, this will result in the TaskRun being created below.
+		} else if err != nil {
+			// This is considered a transient error, so we return error, do not update
+			// the task test run condition, and return an error which will cause this key to
+			// be requeued for reconcile.
+			logger.Errorf("Error getting TaskRun %q: %v", ttr.Status.TaskRunName, err)
+			events.Emit(ctx, nil, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
+			return nil, err
+		}
+		return taskRun, nil
+	}
+
+	// List TaskRuns that have a label with this TaskTestRun name.  Do not include other labels from the
+	// TaskTestRun in this selector.  The user could change them during the lifetime of the TasTestkRun so the
+	// current labels may not be set on a previously created TaskRun.
+	logger.Infof("boom: Now retrieving TaskRun from list for TTR %s", ttr.Name)
+	labelSelector := labels.Set{pipeline.TaskTestRunLabelKey: ttr.Name}
+	trs, err := c.taskRunLister.TaskRuns(ttr.Namespace).List(labelSelector.AsSelector())
+	if err != nil {
+		logger.Errorf("Error listing task runs: %v", err)
+		events.Emit(ctx, nil, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
+		return nil, err
+	}
+	for index := range trs {
+		tr := trs[index]
+		if metav1.IsControlledBy(tr, ttr) && (ttr.Status.RetriesStatus == nil || !slices.ContainsFunc(ttr.Status.RetriesStatus, func(trs v1alpha1.TaskTestRunStatus) bool {
+			return trs.TaskRunName != nil && *trs.TaskRunName == tr.Name
+		})) {
+			logger.Infof("boom: Now found TaskRun %s in list controlled by TTR %s", tr.Name, ttr.Name)
+			taskRun = tr
+			ttr.Status.TaskRunName = &taskRun.Name
+		}
+	}
+	return taskRun, nil
 }
 
 func checkActualOutcomesAgainstExpectations(ctx context.Context, ttrs *v1alpha1.TaskTestRunStatus, trs *v1.TaskRunStatus) (error, bool, string) {
@@ -750,3 +792,21 @@ func checkExpectationsForFileSystemObjects(ctx context.Context, ttrs *v1alpha1.T
 
 // Check that our Reconciler implements taskrunreconciler.Interface
 var _ tasktestrunreconciler.Interface = (*Reconciler)(nil)
+
+func init() {
+	var err error
+	cancelTaskRunPatchBytes, err = json.Marshal([]jsonpatch.JsonPatchOperation{
+		{
+			Operation: "add",
+			Path:      "/spec/status",
+			Value:     v1.TaskRunSpecStatusCancelled,
+		},
+		{
+			Operation: "add",
+			Path:      "/spec/statusMessage",
+			Value:     v1.TaskRunCancelledByTaskTestMsg,
+		}})
+	if err != nil {
+		log.Fatalf("failed to marshal TaskRun cancel patch bytes: %v", err)
+	}
+}

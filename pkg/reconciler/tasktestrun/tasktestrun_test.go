@@ -377,6 +377,11 @@ status:
   startTime: "2025-08-15T15:17:55Z"
 `
 
+const trSpecCancelled = `
+  status: TaskRunCancelled
+  statusMessage: TaskRun cancelled as the TaskTestRun it belongs to has been cancelled.
+`
+
 const trStatusFinished = `
 status:
   completionTime: "2025-08-15T15:17:59Z"
@@ -495,6 +500,7 @@ spec:
           value: "/froot"
   retries: %s
   allTriesMustSucceed: %s
+  status: %s
 `
 
 const ttrSpecTemplateDecTestInaccurateExpectations = `
@@ -547,6 +553,7 @@ spec:
           value: "/froot"
   retries: %s
   allTriesMustSucceed: %s
+  status: %s
 `
 
 const ttrSpecTemplateRefTest = `
@@ -566,6 +573,7 @@ status:
   - type: Succeeded
     reason: Started
     status: Unknown
+  taskRunName : %s
 `
 const ttrStatusToBeRetried = `
 status:
@@ -609,6 +617,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 	const (
 		tcStartNewRunDecTest                             = "start-new-run-inline-test"
 		tcCheckRunningDecTest                            = "check-running-inline-test"
+		tcCancelRunningDecTest                           = "cancel-running-dec-test"
 		tcCheckCompletedSuccessfulDecTest                = "check-completed-successful-inline-test"
 		tcCheckCompletedSuccessfulRefTest                = "check-completed-successful-referenced-test"
 		tcCheckCompletedSuccessDecTestRetriesMustSucceed = "check-completed-successful-inline-test-with-retries"
@@ -622,6 +631,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 	// fill maps
 	taskRunMap := map[string]*v1.TaskRun{
 		tcCheckRunningDecTest:                           generateTaskRun(t, trSpecTemplate+trStatusRunning, tcCheckRunningDecTest),
+		tcCancelRunningDecTest:                          generateTaskRun(t, trSpecTemplate+trStatusRunning, tcCancelRunningDecTest),
 		tcCheckCompletedSuccessfulDecTest:               generateTaskRun(t, trSpecTemplate+trStatusFinished, tcCheckCompletedSuccessfulDecTest),
 		tcCheckCompletedSuccessfulRefTest:               generateTaskRun(t, trSpecTemplate+trStatusFinished, tcCheckCompletedSuccessfulRefTest),
 		tcCheckCompletedFailedDecTestNoRetries:          generateTaskRun(t, trSpecTemplate+trStatusFinished, tcCheckCompletedFailedDecTestNoRetries),
@@ -637,7 +647,8 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 
 	taskTestRunMap := map[string]*v1alpha1.TaskTestRun{
 		tcStartNewRunDecTest:                             generateTaskTestRun(t, ttrSpecTemplateDecTest, tcStartNewRunDecTest),
-		tcCheckRunningDecTest:                            generateTaskTestRun(t, ttrSpecTemplateDecTest, tcCheckRunningDecTest),
+		tcCheckRunningDecTest:                            generateTaskTestRun(t, ttrSpecTemplateDecTest+fmt.Sprintf(ttrStatusRunning, tcCheckRunningDecTest+"-run"), tcCheckRunningDecTest),
+		tcCancelRunningDecTest:                           generateTaskTestRun(t, ttrSpecTemplateDecTest+fmt.Sprintf(ttrStatusRunning, tcCancelRunningDecTest+"-run"), tcCancelRunningDecTest, "0", "false", "TaskTestRunCancelled"),
 		tcCheckCompletedSuccessfulDecTest:                generateTaskTestRun(t, ttrSpecTemplateDecTest+"\nstatus:\n  taskRunName: "+tcCheckCompletedSuccessfulDecTest+"-run", tcCheckCompletedSuccessfulDecTest),
 		tcCheckCompletedSuccessfulRefTest:                parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateRefTest, tcCheckCompletedSuccessfulRefTest)),
 		tcCheckCompletedSuccessDecTestRetriesMustSucceed: generateTaskTestRun(t, ttrSpecTemplateDecTest+fmt.Sprintf(ttrStatusCompletedSuccessful, tcCheckCompletedSuccessDecTestRetriesMustSucceed+"-run-0"), tcCheckCompletedSuccessDecTestRetriesMustSucceed, "1", "true"),
@@ -649,6 +660,8 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 		tcStartRetryFailedDecTest:     generateTaskTestRun(t, ttrSpecTemplateDecTest+fmt.Sprintf(ttrStatusToBeRetried, "False", "TaskTestRunUnexpectedOutcomes", tcStartRetryFailedDecTest+"-run-0"), tcStartRetryFailedDecTest, "1"),
 		tcStartRetrySuccessfulDecTest: generateTaskTestRun(t, ttrSpecTemplateDecTest+fmt.Sprintf(ttrStatusToBeRetried, "True", "Succeeded", tcStartRetrySuccessfulDecTest+"-run-0"), tcStartRetrySuccessfulDecTest, "1", "true"),
 	}
+
+	taskTestRunMap[tcCancelRunningDecTest].Status.TaskRunStatus = &taskRunMap[tcCancelRunningDecTest].Status
 
 	// load custom resources into data for the fake cluster
 	data := test.Data{
@@ -681,17 +694,17 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 	diffContent := cmp.Diff("foo", "bar")
 
 	type tc struct {
-		ttr                *v1alpha1.TaskTestRun
-		wantTtrStatus      *v1alpha1.TaskTestRunStatus
-		wantTr             *v1.TaskRun
-		wantStartTime      bool
-		wantCompletionTime bool
+		ttr                   *v1alpha1.TaskTestRun
+		wantTtrStatus         *v1alpha1.TaskTestRunStatus
+		wantTr                *v1.TaskRun
+		wantStartTime         bool
+		wantTtrCompletionTime bool
+		wantTrCompletionTime  *bool
 	}
 	tests := map[string]tc{
 		tcStartNewRunDecTest: {
 			ttr: taskTestRunMap[tcStartNewRunDecTest],
-			wantTtrStatus: patchTaskTestRunStatus(generateTaskTestRun(t, ttrSpecTemplateDecTest+ttrStatusRunning, tcStartNewRunDecTest), func(ttr *v1alpha1.TaskTestRun) {
-				ttr.Status.TaskRunName = ptr.To(tcStartNewRunDecTest + "-run")
+			wantTtrStatus: patchTaskTestRunStatus(generateTaskTestRun(t, ttrSpecTemplateDecTest+fmt.Sprintf(ttrStatusRunning, tcStartNewRunDecTest+"-run"), tcStartNewRunDecTest), func(ttr *v1alpha1.TaskTestRun) {
 				ttr.Status.TaskTestSpec = ttr.Spec.TaskTestSpec
 			}),
 			wantTr:        generateTaskRun(t, trSpecTemplate+trStatusRunning, tcStartNewRunDecTest),
@@ -699,13 +712,29 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 		},
 		tcCheckRunningDecTest: {
 			ttr: taskTestRunMap[tcCheckRunningDecTest],
-			wantTtrStatus: patchTaskTestRunStatus(generateTaskTestRun(t, ttrSpecTemplateDecTest+ttrStatusRunning, tcCheckRunningDecTest),
+			wantTtrStatus: patchTaskTestRunStatus(taskTestRunMap[tcCheckRunningDecTest],
 				func(ttr *v1alpha1.TaskTestRun) {
 					ttr.Status.TaskRunName = ptr.To(tcCheckRunningDecTest + "-run")
 					ttr.Status.TaskTestSpec = ttr.Spec.TaskTestSpec
 				}),
 			wantTr:        taskRunMap[tcCheckRunningDecTest],
 			wantStartTime: true,
+		},
+		tcCancelRunningDecTest: {
+			ttr: taskTestRunMap[tcCancelRunningDecTest],
+			wantTtrStatus: patchTaskTestRunStatus(taskTestRunMap[tcCancelRunningDecTest], func(ttr *v1alpha1.TaskTestRun) {
+				ttr.Status.Conditions = duckv1.Conditions{{
+					Type:    "Succeeded",
+					Status:  "False",
+					Reason:  "TaskTestRunCancelled",
+					Message: `TaskTestRun "cancel-running-dec-test" was cancelled. `,
+				}}
+				ttr.Status.TaskTestSpec = ttr.Spec.TaskTestSpec
+			}),
+			wantTr:                generateTaskRun(t, trSpecTemplate+trSpecCancelled+trStatusRunning, tcCancelRunningDecTest),
+			wantStartTime:         true,
+			wantTtrCompletionTime: true,
+			wantTrCompletionTime:  ptr.To(false),
 		},
 		tcCheckCompletedSuccessfulDecTest: {
 			ttr: taskTestRunMap[tcCheckCompletedSuccessfulDecTest],
@@ -768,9 +797,9 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 					}
 				},
 			),
-			wantTr:             taskRunMap[tcCheckCompletedSuccessfulDecTest],
-			wantStartTime:      true,
-			wantCompletionTime: true,
+			wantTr:                taskRunMap[tcCheckCompletedSuccessfulDecTest],
+			wantStartTime:         true,
+			wantTtrCompletionTime: true,
 		},
 		tcCheckCompletedSuccessfulRefTest: {
 			ttr: taskTestRunMap[tcCheckCompletedSuccessfulRefTest],
@@ -841,9 +870,9 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 					}
 				},
 			),
-			wantTr:             taskRunMap[tcCheckCompletedSuccessfulRefTest],
-			wantStartTime:      true,
-			wantCompletionTime: true,
+			wantTr:                taskRunMap[tcCheckCompletedSuccessfulRefTest],
+			wantStartTime:         true,
+			wantTtrCompletionTime: true,
 		},
 		tcCheckCompletedFailedDecTestNoRetries: {
 			ttr: taskTestRunMap[tcCheckCompletedFailedDecTestNoRetries],
@@ -929,9 +958,9 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 					ttr.Status.TaskTestSpec = ttr.Spec.TaskTestSpec
 				},
 			),
-			wantTr:             taskRunMap[tcCheckCompletedFailedDecTestNoRetries],
-			wantStartTime:      true,
-			wantCompletionTime: true,
+			wantTr:                taskRunMap[tcCheckCompletedFailedDecTestNoRetries],
+			wantStartTime:         true,
+			wantTtrCompletionTime: true,
 		},
 		tcCheckCompletedFailedDecTestRetries: {
 			ttr: taskTestRunMap[tcCheckCompletedFailedDecTestRetries],
@@ -958,9 +987,9 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 			wantTtrStatus: patchTaskTestRunStatus(taskTestRunMap[tcCheckCompletedFailedDecTestRetriesMustSucceed].DeepCopy(), func(ttr *v1alpha1.TaskTestRun) {
 				ttr.Status.TaskTestSpec = ttr.Spec.TaskTestSpec
 			}),
-			wantTr:             taskRunMap[tcCheckCompletedFailedDecTestRetriesMustSucceed],
-			wantStartTime:      true,
-			wantCompletionTime: true,
+			wantTr:                taskRunMap[tcCheckCompletedFailedDecTestRetriesMustSucceed],
+			wantStartTime:         true,
+			wantTtrCompletionTime: true,
 		},
 		tcStartRetryFailedDecTest: {
 			ttr: taskTestRunMap[tcStartRetryFailedDecTest],
@@ -978,21 +1007,23 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 		},
 		tcCheckCompletedSuccessDecTestRetriesMustSucceed: {
 			ttr: taskTestRunMap[tcCheckCompletedSuccessDecTestRetriesMustSucceed],
-			wantTtrStatus: patchTaskTestRunStatus(generateTaskTestRun(t, ttrSpecTemplateDecTest+fmt.Sprintf(ttrStatusCompletedSuccessful, tcCheckCompletedSuccessDecTestRetriesMustSucceed+"-run-0"), tcCheckCompletedSuccessDecTestRetriesMustSucceed), func(ttr *v1alpha1.TaskTestRun) {
-				ttr.Status.TaskTestSpec = ttr.Spec.TaskTestSpec
-				statusCopy := *ttr.Status.DeepCopy()
-				statusCopy.RetriesStatus = nil
-				ttr.Status.RetriesStatus = append(ttr.Status.RetriesStatus, statusCopy)
-				ttr.Status.Outcomes = nil
-				ttr.Status.TaskRunName = nil
-				ttr.Status.Conditions = duckv1.Conditions{{
-					Type:    "Succeeded",
-					Status:  "Unknown",
-					Reason:  "ToBeRetried",
-					Message: "TaskRun completed executing and outcomes were as expected",
-				}}
-			},
-			)},
+			wantTtrStatus: patchTaskTestRunStatus(
+				generateTaskTestRun(
+					t, ttrSpecTemplateDecTest+fmt.Sprintf(ttrStatusCompletedSuccessful, tcCheckCompletedSuccessDecTestRetriesMustSucceed+"-run-0"), tcCheckCompletedSuccessDecTestRetriesMustSucceed), func(ttr *v1alpha1.TaskTestRun) {
+					ttr.Status.TaskTestSpec = ttr.Spec.TaskTestSpec
+					statusCopy := *ttr.Status.DeepCopy()
+					statusCopy.RetriesStatus = nil
+					ttr.Status.RetriesStatus = append(ttr.Status.RetriesStatus, statusCopy)
+					ttr.Status.Outcomes = nil
+					ttr.Status.TaskRunName = nil
+					ttr.Status.Conditions = duckv1.Conditions{{
+						Type:    "Succeeded",
+						Status:  "Unknown",
+						Reason:  "ToBeRetried",
+						Message: "TaskRun completed executing and outcomes were as expected",
+					}}
+				}),
+		},
 		tcStartRetrySuccessfulDecTest: {
 			ttr: taskTestRunMap[tcStartRetrySuccessfulDecTest],
 			wantTtrStatus: patchTaskTestRunStatus(taskTestRunMap[tcStartRetrySuccessfulDecTest].DeepCopy(), func(ttr *v1alpha1.TaskTestRun) {
@@ -1014,6 +1045,10 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 			clients := testAssets.Clients
 			defer cancel()
 
+			if tt.wantTrCompletionTime == nil {
+				tt.wantTrCompletionTime = &tt.wantTtrCompletionTime
+			}
+
 			_ = testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tt.ttr))
 			// gotErr := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tt.ttr))
 
@@ -1033,10 +1068,10 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 			if !tt.wantStartTime && ttr.Status.StartTime != nil {
 				t.Error("TaskTestRun: Expected start time to be nil")
 			}
-			if tt.wantCompletionTime && ttr.Status.CompletionTime == nil {
+			if tt.wantTtrCompletionTime && ttr.Status.CompletionTime == nil {
 				t.Error("TaskTestRun: Didn't expect completion time to be nil")
 			}
-			if !tt.wantCompletionTime && ttr.Status.CompletionTime != nil {
+			if !tt.wantTtrCompletionTime && ttr.Status.CompletionTime != nil {
 				t.Error("TaskTestRun: Expected completion time to be nil")
 			}
 			if d := cmp.Diff(*tt.wantTtrStatus, ttr.Status,
@@ -1065,10 +1100,10 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 				if !tt.wantStartTime && tr.Status.StartTime != nil {
 					t.Error("TaskRun: Expected start time to be nil")
 				}
-				if tt.wantCompletionTime && tr.Status.CompletionTime == nil {
+				if *tt.wantTrCompletionTime && tr.Status.CompletionTime == nil {
 					t.Error("TaskRun: Didn't expect completion time to be nil")
 				}
-				if !tt.wantCompletionTime && tr.Status.CompletionTime != nil {
+				if !*tt.wantTrCompletionTime && tr.Status.CompletionTime != nil {
 					t.Error("TaskRun: Expected completion time to be nil")
 				}
 				if d := cmp.Diff(tt.wantTr, tr,
@@ -1681,11 +1716,11 @@ func generateTaskRun(t *testing.T, yaml, taskTestRunName string, retries ...int)
 func generateTaskTestRun(t *testing.T, yaml, taskTestRunName string, optionalArgs ...string) *v1alpha1.TaskTestRun {
 	t.Helper()
 
-	if len(optionalArgs) > 2 {
-		panic("only two optional args allowed for this function")
+	if len(optionalArgs) > 3 {
+		panic("only three optional args allowed for this function")
 	}
-	if len(optionalArgs) < 2 {
-		optionalArgs = append(optionalArgs, "", "")
+	if len(optionalArgs) < 3 {
+		optionalArgs = append(optionalArgs, "", "", "")
 	}
 
 	if optionalArgs[0] == "" {
@@ -1696,5 +1731,9 @@ func generateTaskTestRun(t *testing.T, yaml, taskTestRunName string, optionalArg
 		optionalArgs[1] = "false"
 	}
 
-	return parse.MustParseTaskTestRun(t, fmt.Sprintf(yaml, taskTestRunName, optionalArgs[0], optionalArgs[1]))
+	if optionalArgs[2] == "" {
+		optionalArgs[2] = `""`
+	}
+
+	return parse.MustParseTaskTestRun(t, fmt.Sprintf(yaml, taskTestRunName, optionalArgs[0], optionalArgs[1], optionalArgs[2]))
 }
