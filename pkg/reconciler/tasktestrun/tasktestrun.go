@@ -63,7 +63,7 @@ type Reconciler struct {
 	// tracerProvider           trace.TracerProvider
 }
 
-var cancelTaskRunPatchBytes []byte
+var cancelTaskRunPatchBytes, timeoutTaskRunPatchBytes []byte
 
 // ReconcileKind implements tasktestrun.Interface.
 func (c *Reconciler) ReconcileKind(ctx context.Context, ttr *v1alpha1.TaskTestRun) reconciler.Event {
@@ -114,7 +114,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, ttr *v1alpha1.TaskTestRu
 	// Check if the TaskRun has timed out; if it is, this will set its status
 	// accordingly.
 	if ttr.HasTimedOut(ctx, c.Clock) {
-		message := fmt.Sprintf("TaskRun %q failed to finish within %q", ttr.Name, ttr.GetTimeout(ctx))
+		message := fmt.Sprintf("TaskTestRun %q failed to finish within %q", ttr.Name, ttr.GetTimeout(ctx))
 		err := c.failTaskTestRun(ctx, ttr, v1alpha1.TaskTestRunReasonTimedOut, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, ttr, before, err)
 	}
@@ -161,7 +161,18 @@ func (c *Reconciler) failTaskTestRun(ctx context.Context, ttr *v1alpha1.TaskTest
 		return nil
 	}
 
-	_, err = c.PipelineClientSet.TektonV1().TaskRuns(ttr.Namespace).Patch(ctx, taskRun.Name, types.JSONPatchType, cancelTaskRunPatchBytes, metav1.PatchOptions{}, "")
+	var patch []byte
+	switch reason {
+	case v1alpha1.TaskTestRunReasonCancelled:
+		patch = cancelTaskRunPatchBytes
+	case v1alpha1.TaskTestRunReasonTimedOut:
+		patch = timeoutTaskRunPatchBytes
+	case v1alpha1.TaskTestRunReasonFailedValidation, v1alpha1.TaskTestRunReasonSuccessful, v1alpha1.TaskTestRunUnexpectatedOutcomes:
+		panic(fmt.Sprintf("unsupported v1alpha1.TaskTestRunReason: %#v", reason))
+	default:
+		panic(fmt.Sprintf("unexpected v1alpha1.TaskTestRunReason: %#v", reason))
+	}
+	_, err = c.PipelineClientSet.TektonV1().TaskRuns(ttr.Namespace).Patch(ctx, taskRun.Name, types.JSONPatchType, patch, metav1.PatchOptions{}, "")
 	if k8serrors.IsNotFound(err) {
 		// The resource may have been deleted in the meanwhile, but we should
 		// still be able to cancel the PipelineRun
@@ -805,6 +816,20 @@ func init() {
 			Operation: "add",
 			Path:      "/spec/statusMessage",
 			Value:     v1.TaskRunCancelledByTaskTestMsg,
+		}})
+	if err != nil {
+		log.Fatalf("failed to marshal TaskRun cancel patch bytes: %v", err)
+	}
+	timeoutTaskRunPatchBytes, err = json.Marshal([]jsonpatch.JsonPatchOperation{
+		{
+			Operation: "add",
+			Path:      "/spec/status",
+			Value:     v1.TaskRunSpecStatusCancelled,
+		},
+		{
+			Operation: "add",
+			Path:      "/spec/statusMessage",
+			Value:     v1.TaskRunCancelledByTaskTestTimeoutMsg,
 		}})
 	if err != nil {
 		log.Fatalf("failed to marshal TaskRun cancel patch bytes: %v", err)

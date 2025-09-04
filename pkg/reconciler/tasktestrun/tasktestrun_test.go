@@ -379,7 +379,7 @@ status:
 
 const trSpecCancelled = `
   status: TaskRunCancelled
-  statusMessage: TaskRun cancelled as the TaskTestRun it belongs to has been cancelled.
+  statusMessage: %s
 `
 
 const trStatusFinished = `
@@ -618,6 +618,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 		tcStartNewRunDecTest                             = "start-new-run-inline-test"
 		tcCheckRunningDecTest                            = "check-running-inline-test"
 		tcCancelRunningDecTest                           = "cancel-running-dec-test"
+		tcCancelTimeoutDecTest                           = "cancel-timeout-dec-test"
 		tcCheckCompletedSuccessfulDecTest                = "check-completed-successful-inline-test"
 		tcCheckCompletedSuccessfulRefTest                = "check-completed-successful-referenced-test"
 		tcCheckCompletedSuccessDecTestRetriesMustSucceed = "check-completed-successful-inline-test-with-retries"
@@ -632,6 +633,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 	taskRunMap := map[string]*v1.TaskRun{
 		tcCheckRunningDecTest:                           generateTaskRun(t, trSpecTemplate+trStatusRunning, tcCheckRunningDecTest),
 		tcCancelRunningDecTest:                          generateTaskRun(t, trSpecTemplate+trStatusRunning, tcCancelRunningDecTest),
+		tcCancelTimeoutDecTest:                          generateTaskRun(t, trSpecTemplate+trStatusRunning, tcCancelTimeoutDecTest),
 		tcCheckCompletedSuccessfulDecTest:               generateTaskRun(t, trSpecTemplate+trStatusFinished, tcCheckCompletedSuccessfulDecTest),
 		tcCheckCompletedSuccessfulRefTest:               generateTaskRun(t, trSpecTemplate+trStatusFinished, tcCheckCompletedSuccessfulRefTest),
 		tcCheckCompletedFailedDecTestNoRetries:          generateTaskRun(t, trSpecTemplate+trStatusFinished, tcCheckCompletedFailedDecTestNoRetries),
@@ -649,6 +651,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 		tcStartNewRunDecTest:                             generateTaskTestRun(t, ttrSpecTemplateDecTest, tcStartNewRunDecTest),
 		tcCheckRunningDecTest:                            generateTaskTestRun(t, ttrSpecTemplateDecTest+fmt.Sprintf(ttrStatusRunning, tcCheckRunningDecTest+"-run"), tcCheckRunningDecTest),
 		tcCancelRunningDecTest:                           generateTaskTestRun(t, ttrSpecTemplateDecTest+fmt.Sprintf(ttrStatusRunning, tcCancelRunningDecTest+"-run"), tcCancelRunningDecTest, "0", "false", "TaskTestRunCancelled"),
+		tcCancelTimeoutDecTest:                           generateTaskTestRun(t, ttrSpecTemplateDecTest+fmt.Sprintf(ttrStatusRunning, tcCancelTimeoutDecTest+"-run"), tcCancelTimeoutDecTest),
 		tcCheckCompletedSuccessfulDecTest:                generateTaskTestRun(t, ttrSpecTemplateDecTest+"\nstatus:\n  taskRunName: "+tcCheckCompletedSuccessfulDecTest+"-run", tcCheckCompletedSuccessfulDecTest),
 		tcCheckCompletedSuccessfulRefTest:                parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateRefTest, tcCheckCompletedSuccessfulRefTest)),
 		tcCheckCompletedSuccessDecTestRetriesMustSucceed: generateTaskTestRun(t, ttrSpecTemplateDecTest+fmt.Sprintf(ttrStatusCompletedSuccessful, tcCheckCompletedSuccessDecTestRetriesMustSucceed+"-run-0"), tcCheckCompletedSuccessDecTestRetriesMustSucceed, "1", "true"),
@@ -662,6 +665,9 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 	}
 
 	taskTestRunMap[tcCancelRunningDecTest].Status.TaskRunStatus = &taskRunMap[tcCancelRunningDecTest].Status
+
+	taskTestRunMap[tcCancelTimeoutDecTest].Status.TaskRunStatus = &taskRunMap[tcCancelRunningDecTest].Status
+	taskTestRunMap[tcCancelTimeoutDecTest].Status.StartTime = &metav1.Time{Time: time.Date(1922, time.January, 1, 0, 0, 0, 0, time.UTC)}
 
 	// load custom resources into data for the fake cluster
 	data := test.Data{
@@ -727,11 +733,27 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 					Type:    "Succeeded",
 					Status:  "False",
 					Reason:  "TaskTestRunCancelled",
-					Message: `TaskTestRun "cancel-running-dec-test" was cancelled. `,
+					Message: `TaskTestRun "` + tcCancelRunningDecTest + `" was cancelled. `,
 				}}
 				ttr.Status.TaskTestSpec = ttr.Spec.TaskTestSpec
 			}),
-			wantTr:                generateTaskRun(t, trSpecTemplate+trSpecCancelled+trStatusRunning, tcCancelRunningDecTest),
+			wantTr:                generateTaskRun(t, trSpecTemplate+fmt.Sprintf(trSpecCancelled, "TaskRun cancelled as the TaskTestRun it belongs to has been cancelled.")+trStatusRunning, tcCancelRunningDecTest),
+			wantStartTime:         true,
+			wantTtrCompletionTime: true,
+			wantTrCompletionTime:  ptr.To(false),
+		},
+		tcCancelTimeoutDecTest: {
+			ttr: taskTestRunMap[tcCancelTimeoutDecTest],
+			wantTtrStatus: patchTaskTestRunStatus(taskTestRunMap[tcCancelTimeoutDecTest], func(ttr *v1alpha1.TaskTestRun) {
+				ttr.Status.Conditions = duckv1.Conditions{{
+					Type:    "Succeeded",
+					Status:  "False",
+					Reason:  "TaskTestRunTimedOut",
+					Message: `TaskTestRun "` + tcCancelTimeoutDecTest + `" failed to finish within "1h0m0s"`,
+				}}
+				ttr.Status.TaskTestSpec = ttr.Spec.TaskTestSpec
+			}),
+			wantTr:                generateTaskRun(t, trSpecTemplate+fmt.Sprintf(trSpecCancelled, "TaskRun cancelled as the TaskTestRun it belongs to has timed out.")+trStatusRunning, tcCancelTimeoutDecTest),
 			wantStartTime:         true,
 			wantTtrCompletionTime: true,
 			wantTrCompletionTime:  ptr.To(false),
