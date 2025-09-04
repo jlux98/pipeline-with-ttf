@@ -141,8 +141,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, ttr *v1alpha1.TaskTestRu
 }
 
 func (c *Reconciler) failTaskTestRun(ctx context.Context, ttr *v1alpha1.TaskTestRun, reason v1alpha1.TaskTestRunReason, message string) error {
-	// TODO(jlux98) implement this
-
 	logger := logging.FromContext(ctx)
 	logger.Warnf("stopping task test run %q because of %q", ttr.Name, reason)
 	ttr.Status.MarkResourceFailed(reason, errors.New(message))

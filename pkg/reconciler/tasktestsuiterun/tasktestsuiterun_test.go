@@ -80,6 +80,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 		tcStartSecondSequentialTtrInlineTts = "start-second-sequential-ttr-inline-tts"
 		tcStartNewParallelTtrsInlineTts     = "start-new-parallel-inline-ttrs-inline-tts"
 		tcStartNewTtrsRefTts                = "start-new-ttrs-referenced-tts"
+		tcCancelDecTts                      = "cancel-dec-tts"
 		tcCheckSuccessDecTts                = "check-success-dec-tts"
 		tcCheckSuccessTtrsRefTts            = "check-success-ttrs-ref-tts"
 		tcCheckFailTtrsDecTts               = "check-fail-ttrs-dec-tts"
@@ -102,6 +103,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 		tcStartNewParallelTtrsInlineTts:     generateTaskTestSuiteRun(t, ttsrManifestTemplateInlineTts, tcStartNewParallelTtrsInlineTts),
 		tcStartNewSequentialTtrInlineTts:    generateTaskTestSuiteRun(t, ttsrManifestTemplateInlineTts, tcStartNewSequentialTtrInlineTts, "Sequential"),
 		tcStartSecondSequentialTtrInlineTts: generateTaskTestSuiteRun(t, ttsrManifestTemplateInlineTts, tcStartSecondSequentialTtrInlineTts, "Sequential"),
+		tcCancelDecTts:                      generateTaskTestSuiteRun(t, ttsrManifestTemplateInlineTts+"\n  status: TaskTestSuiteRunCancelled", tcCancelDecTts),
 		tcCheckSuccessDecTts:                generateTaskTestSuiteRun(t, ttsrManifestTemplateInlineTts, tcCheckSuccessDecTts),
 		tcCheckFailTtrsDecTts:               generateTaskTestSuiteRun(t, ttsrManifestTemplateInlineTts, tcCheckFailTtrsDecTts),
 		tcStartNewTtrsRefTts:                parse.MustParseTaskTestSuiteRun(t, fmt.Sprintf(ttsrManifestTemplateReferencedTts, tcStartNewTtrsRefTts)),
@@ -114,6 +116,8 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 			)),
 	}
 	taskTestRunMap := map[string]*v1alpha1.TaskTestRun{
+		tcCancelDecTts + "-0":                      generateTaskTestRun(t, ttrManifestTemplateSpec, tcCancelDecTts, "task-0"),
+		tcCancelDecTts + "-1":                      generateTaskTestRun(t, addWorkspace(ttrManifestTemplateSpec, dateWorkspace), tcCancelDecTts, "task-1"),
 		tcStartSecondSequentialTtrInlineTts + "-0": generateTaskTestRun(t, ttrTemplateCompletedSuccess, tcStartSecondSequentialTtrInlineTts, "task-0"),
 		tcCheckSuccessDecTts + "-0":                generateTaskTestRun(t, ttrTemplateCompletedSuccess, tcCheckSuccessDecTts, "task-0"),
 		tcCheckSuccessDecTts + "-1":                generateTaskTestRun(t, addWorkspace(ttrTemplateCompletedSuccess, dateWorkspace), tcCheckSuccessDecTts, "task-1"),
@@ -250,6 +254,28 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 			},
 			wantStartTimeSuiteRun: true,
 		},
+		tcCancelDecTts: {
+			wantTtsrStatus: patchTaskTestSuiteRun(ttsrMap[tcCancelDecTts], func(ttsr *v1alpha1.TaskTestSuiteRun) {
+				ttsr.Status.Conditions = duckv1.Conditions{{
+					Type:    "Succeeded",
+					Status:  "False",
+					Reason:  "TaskTestSuiteRunCancelled",
+					Message: `TaskTestSuiteRun "` + tcCancelDecTts + `" was cancelled. `,
+				}}
+				ttsr.Status.CompletionTime = &metav1.Time{Time: testClock.Now()}
+				ttsr.Spec.TaskTestSuiteSpec.TaskTests[0].TaskTestSpec = &taskTestMap["simple_task_test"].Spec
+				ttsr.Status.TaskTestSuiteSpec = ttsr.Spec.TaskTestSuiteSpec
+			}),
+			wantTtrs: []v1alpha1.TaskTestRun{
+				*generateTaskTestRun(t, ttrManifestTemplateSpec, tcCancelDecTts, "task-0",
+					"0", "false", fmt.Sprintf(ttrSpecCancelled, "TaskTestRun cancelled as the TaskTestSuiteRun it belongs to has been cancelled.")),
+				*generateTaskTestRun(t, addWorkspace(ttrManifestTemplateSpec, dateWorkspace), tcCancelDecTts, "task-1",
+					"0", "false", fmt.Sprintf(ttrSpecCancelled, "TaskTestRun cancelled as the TaskTestSuiteRun it belongs to has been cancelled.")),
+			},
+			wantStartTimeSuiteRun:       true,
+			wantCompletionTimeSuiteRun:  true,
+			wantCompletionTimesTestRuns: []bool{false, false},
+		},
 		tcCheckSuccessDecTts: {
 			wantTtsrStatus: patchTaskTestSuiteRun(
 				ttsrMap[tcCheckSuccessDecTts],
@@ -320,7 +346,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 					ttsr.Status.Conditions = duckv1.Conditions{{
 						Type:   "Succeeded",
 						Status: "False",
-						Reason: "TaskTestRunUnexpectedOutcomes",
+						Reason: "TaskTestSuiteRunUnexpectedOutcomes",
 						Message: "all TaskTestRuns completed executing and not all were successful: " +
 							ttsr.Status.TaskTestSuiteSpec.TaskTests[1].GetTaskTestRunName(
 								ttsr.Name,
@@ -352,7 +378,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 					ttsr.Status.Conditions = duckv1.Conditions{{
 						Type:   "Succeeded",
 						Status: "False",
-						Reason: "TaskTestRunUnexpectedOutcomes",
+						Reason: "TaskTestSuiteRunUnexpectedOutcomes",
 						Message: "all TaskTestRuns completed executing and not all were successful: " +
 							ttsr.Status.TaskTestSuiteSpec.TaskTests[1].GetTaskTestRunName(
 								ttsr.Name,
@@ -653,10 +679,7 @@ func initializeTaskTestSuiteRunControllerAssets(
 
 type statusPatchFunc = func(*v1alpha1.TaskTestSuiteRun)
 
-func patchTaskTestSuiteRun(
-	ttrs *v1alpha1.TaskTestSuiteRun,
-	pf statusPatchFunc,
-) *v1alpha1.TaskTestSuiteRunStatus {
+func patchTaskTestSuiteRun(ttrs *v1alpha1.TaskTestSuiteRun, pf statusPatchFunc) *v1alpha1.TaskTestSuiteRunStatus {
 	ttrsCopy := ttrs.DeepCopy()
 	pf(ttrsCopy)
 	return &ttrsCopy.Status
@@ -669,16 +692,14 @@ func taskTestRunSortFunc(a, b v1alpha1.TaskTestRun) int {
 	return strings.Compare(a.GetNamespacedName().String(), b.GetNamespacedName().String())
 }
 
-func generateTaskTestRun(
-	t *testing.T, yaml, suiteRunName, suiteTaskName string, optionalArgs ...string,
-) *v1alpha1.TaskTestRun {
+func generateTaskTestRun(t *testing.T, yaml, suiteRunName, suiteTaskName string, optionalArgs ...string) *v1alpha1.TaskTestRun {
 	t.Helper()
 
-	if len(optionalArgs) > 2 {
-		panic("only two optional args allowed for this function")
+	if len(optionalArgs) > 3 {
+		panic("only three optional args allowed for this function")
 	}
-	if len(optionalArgs) < 2 {
-		optionalArgs = append(optionalArgs, "", "")
+	if len(optionalArgs) < 3 {
+		optionalArgs = append(optionalArgs, "", "", "")
 	}
 
 	if optionalArgs[0] == "" {
@@ -687,6 +708,10 @@ func generateTaskTestRun(
 
 	if optionalArgs[1] == "" {
 		optionalArgs[1] = "false"
+	}
+
+	if optionalArgs[2] != "" {
+		yaml = strings.Replace(yaml, "spec:", "spec:\n"+optionalArgs[2], 1)
 	}
 
 	result := parse.MustParseTaskTestRun(

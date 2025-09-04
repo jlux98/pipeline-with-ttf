@@ -194,7 +194,7 @@ type TaskTestRunSpecStatus string
 const (
 	// TaskTestRunSpecStatusCancelled indicates that the user wants to cancel
 	// the task test, if not already cancelled or terminated
-	TaskTestRunSpecStatusCancelled = "TaskTestRunCancelled"
+	TaskTestRunSpecStatusCancelled TaskTestRunSpecStatus = "TaskTestRunCancelled"
 )
 
 // TaskTestRunSpecStatusMessage defines human readable status messages for the TaskRun.

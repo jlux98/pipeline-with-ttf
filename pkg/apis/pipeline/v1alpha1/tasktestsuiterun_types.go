@@ -129,7 +129,7 @@ type TaskTestSuiteRunSpec struct {
 	// Used for cancelling a TaskTestSuiteRun
 	//
 	// +optional
-	Status TaskTestRunSpecStatus `json:"status,omitempty"`
+	Status TaskTestSuiteRunSpecStatus `json:"status,omitempty"`
 
 	// Status message for cancellation.
 	//
@@ -281,9 +281,18 @@ func (ttr *TaskTestSuiteRun) IsDone() bool {
 	return !ttr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown()
 }
 
-func (ttr *TaskTestSuiteRun) IsCancelled() bool {
-	return ttr.Spec.Status == TaskTestRunSpecStatusCancelled
+func (ttsr *TaskTestSuiteRun) IsCancelled() bool {
+	return ttsr.Spec.Status == TaskTestSuiteRunSpecStatusCancelled
 }
+
+// TaskTestRunSpecStatus defines the TaskRun spec status the user can provide
+type TaskTestSuiteRunSpecStatus string
+
+const (
+	// TaskTestRunSpecStatusCancelled indicates that the user wants to cancel
+	// the task test, if not already cancelled or terminated
+	TaskTestSuiteRunSpecStatusCancelled TaskTestSuiteRunSpecStatus = "TaskTestSuiteRunCancelled"
+)
 
 // GetTimeout returns the timeout for the TaskTestRun, or the default if not specified
 func (ttr *TaskTestSuiteRun) GetTimeout(ctx context.Context) time.Duration {
@@ -308,9 +317,22 @@ func (ttr *TaskTestSuiteRun) HasTimedOut(ctx context.Context, c clock.PassiveClo
 	return runtime > timeout
 }
 
+type TaskTestSuiteRunReason string
+
+func (r TaskTestSuiteRunReason) String() string {
+	return string(r)
+}
+
+const (
+	TaskTestSuiteRunReasonSuccessful     TaskTestSuiteRunReason = "Succeeded"
+	TaskTestSuiteRunReasonCancelled      TaskTestSuiteRunReason = "TaskTestSuiteRunCancelled"
+	TaskTestSuiteRunReasonTimedOut       TaskTestSuiteRunReason = "TaskTestSuiteRunTimedOut"
+	TaskTestSuiteRunUnexpectatedOutcomes TaskTestSuiteRunReason = "TaskTestSuiteRunUnexpectedOutcomes"
+)
+
 // MarkResourceFailed sets the ConditionSucceeded condition to ConditionFalse
 // based on an error that occurred and a reason
-func (trs *TaskTestSuiteRunStatus) MarkResourceFailed(reason TaskTestRunReason, err error) {
+func (trs *TaskTestSuiteRunStatus) MarkResourceFailed(reason TaskTestSuiteRunReason, err error) {
 	taskTestRunCondSet.Manage(trs).SetCondition(apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
@@ -330,7 +352,7 @@ func (trs *TaskTestSuiteRunStatus) MarkSuccessful() {
 	taskTestRunCondSet.Manage(trs).SetCondition(apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionTrue,
-		Reason:  TaskTestRunReasonSuccessful.String(),
+		Reason:  TaskTestSuiteRunReasonSuccessful.String(),
 		Message: "all TaskTestRuns completed executing and were successful",
 	})
 }

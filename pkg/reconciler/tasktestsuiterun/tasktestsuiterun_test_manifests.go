@@ -235,6 +235,12 @@ status:
   - type: Succeeded
     status: Unknown
     reason: Started
+  startTime: "2025-08-15T15:17:55Z"
+`
+
+const ttrSpecCancelled = `
+  status: TaskTestRunCancelled
+  statusMessage: %s
 `
 
 const ttrTemplateCompletedSuccess = `

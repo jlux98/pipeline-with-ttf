@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	tasktestsuiterunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1alpha1/tasktestsuiterun"
@@ -17,10 +19,12 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
+	"gomodules.xyz/jsonpatch/v2"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/clock"
 	"knative.dev/pkg/apis"
@@ -28,6 +32,8 @@ import (
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/reconciler"
 )
+
+var cancelTaskTestRunPatchBytes, timeoutTaskTestRunPatchBytes []byte
 
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
@@ -105,11 +111,11 @@ func (c *Reconciler) ReconcileKind(
 	// If the TaskTestRun is cancelled, kill resources and update status
 	if ttsr.IsCancelled() {
 		message := fmt.Sprintf(
-			"TaskTestRun %q was cancelled. %s",
+			"TaskTestSuiteRun %q was cancelled. %s",
 			ttsr.Name,
 			ttsr.Spec.StatusMessage,
 		)
-		err := c.failTaskRun(ctx, ttsr, v1alpha1.TaskTestRunReasonCancelled, message)
+		err := c.failTaskRun(ctx, ttsr, v1alpha1.TaskTestSuiteRunReasonCancelled, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, ttsr, before, err)
 	}
 
@@ -121,7 +127,7 @@ func (c *Reconciler) ReconcileKind(
 			ttsr.Name,
 			ttsr.GetTimeout(ctx),
 		)
-		err := c.failTaskRun(ctx, ttsr, v1alpha1.TaskTestRunReasonTimedOut, message)
+		err := c.failTaskRun(ctx, ttsr, v1alpha1.TaskTestSuiteRunReasonTimedOut, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, ttsr, before, err)
 	}
 
@@ -148,15 +154,110 @@ func (c *Reconciler) ReconcileKind(
 	return nil
 }
 
-func (c *Reconciler) failTaskRun(
-	ctx context.Context,
-	tr *v1alpha1.TaskTestSuiteRun,
-	cancelled v1alpha1.TaskTestRunReason,
-	message string,
-) error {
-	// TODO(jlux98) implement this
-	logging.FromContext(ctx).Error("boom: Totally failing the TaskTestSuiteRun right now")
+func (c *Reconciler) failTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestSuiteRun, reason v1alpha1.TaskTestSuiteRunReason, message string) error {
+	logger := logging.FromContext(ctx)
+	logger.Warnf("stopping task test run %q because of %q", ttr.Name, reason)
+	ttr.Status.MarkResourceFailed(reason, errors.New(message))
+
+	completionTime := metav1.Time{Time: c.Clock.Now()}
+	// update tr completed time
+	ttr.Status.CompletionTime = &completionTime
+
+	for _, taskTest := range ttr.Status.TaskTestSuiteSpec.TaskTests {
+		err := c.cancelTaskTestRun(ctx, ttr, reason, taskTest)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
+}
+
+func (c *Reconciler) cancelTaskTestRun(ctx context.Context, ttsr *v1alpha1.TaskTestSuiteRun, reason v1alpha1.TaskTestSuiteRunReason, taskTest v1alpha1.SuiteTest) error {
+	logger := logging.FromContext(ctx)
+	taskTestRun, err := c.getTaskTestRun(ctx, ttsr, taskTest)
+	if err != nil {
+		return err
+	}
+
+	if taskTestRun == nil {
+		logger.Warnf("task test run %q has no task run running yet", ttsr.Name)
+		return nil
+	}
+
+	var patch []byte
+	switch reason {
+	case v1alpha1.TaskTestSuiteRunReasonCancelled:
+		patch = cancelTaskTestRunPatchBytes
+	case v1alpha1.TaskTestSuiteRunReasonTimedOut:
+		patch = timeoutTaskTestRunPatchBytes
+	case v1alpha1.TaskTestSuiteRunReasonSuccessful, v1alpha1.TaskTestSuiteRunUnexpectatedOutcomes:
+		panic(fmt.Sprintf("unsupported v1alpha1.TaskTestRunReason: %#v", reason))
+	default:
+		panic(fmt.Sprintf("unexpected v1alpha1.TaskTestRunReason: %#v", reason))
+	}
+
+	_, err = c.PipelineClientSet.TektonV1alpha1().TaskTestRuns(ttsr.Namespace).Patch(ctx, taskTestRun.Name, types.JSONPatchType, patch, metav1.PatchOptions{}, "")
+	if k8serrors.IsNotFound(err) {
+		// The resource may have been deleted in the meanwhile, but we should
+		// still be able to cancel the PipelineRun
+		return nil
+	}
+	if pipelineErrors.IsImmutableTaskRunSpecError(err) {
+		// The TaskRun may have completed and the spec field is immutable, we should ignore this error.
+		return nil
+	}
+	return err
+}
+
+func (c *Reconciler) getTaskTestRun(ctx context.Context, ttsr *v1alpha1.TaskTestSuiteRun, taskTest v1alpha1.SuiteTest) (*v1alpha1.TaskTestRun, error) {
+	logger := logging.FromContext(ctx)
+	var taskTestRun *v1alpha1.TaskTestRun
+	var err error
+
+	if ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)] != nil {
+		logger.Infof(
+			"boom: Now retrieving TaskTestRun %s for TTSR %s",
+			taskTest.GetTaskTestRunName(ttsr.Name),
+			ttsr.Name,
+		)
+		taskTestRun, err = c.TaskTestRunLister.TaskTestRuns(ttsr.Namespace).
+			Get(taskTest.GetTaskTestRunName(ttsr.Name))
+		if k8serrors.IsNotFound(err) {
+			// Keep going, this will result in the TaskRun being created below.
+		} else if err != nil {
+			// This is considered a transient error, so we return error, do not update
+			// the task test run condition, and return an error which will cause this key to
+			// be requeued for reconcile.
+			logger.Errorf("Error getting TaskTestRun %q: %v", taskTest.GetTaskTestRunName(ttsr.Name), err)
+			events.Emit(ctx, nil, ttsr.Status.GetCondition(apis.ConditionSucceeded), ttsr)
+			return nil, err
+		}
+	} else {
+		// List TaskRuns that have a label with this TaskTestSuiteRun name.  Do not include other labels from the
+		// TaskTestSuiteRun in this selector.  The user could change them during the lifetime of the TaskTestSuiteRun so the
+		// current labels may not be set on a previously created TaskRun.
+		logger.Infof("boom: Now retrieving TaskRun from list for TTR %s", ttsr.Name)
+		labelSelector := labels.Set{pipeline.TaskTestSuiteRunLabelKey: ttsr.Name}
+		ttrs, err := c.TaskTestRunLister.TaskTestRuns(ttsr.Namespace).List(labelSelector.AsSelector())
+		if err != nil {
+			logger.Errorf("Error listing task test runs: %v", err)
+			events.Emit(ctx, nil, ttsr.Status.GetCondition(apis.ConditionSucceeded), ttsr)
+			return nil, err
+		}
+		for index := range ttrs {
+			tr := ttrs[index]
+			if metav1.IsControlledBy(tr, ttsr) && tr.GetSuiteTestName() == taskTest.Name {
+				logger.Infof("boom: Now found TaskRun %s in list controlled by TTR %s", tr.Name, ttsr.Name)
+				taskTestRun = tr
+				if ttsr.Status.TaskTestRunStatuses == nil {
+					ttsr.Status.TaskTestRunStatuses = map[string]*v1alpha1.TaskTestRunStatus{}
+				}
+				ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)] = &taskTestRun.Status
+			}
+		}
+	}
+	return taskTestRun, nil
 }
 
 func (c *Reconciler) finishReconcileUpdateEmitEvents(
@@ -276,7 +377,7 @@ func (c *Reconciler) reconcile(
 			ttsr.Status.MarkSuccessful()
 		} else {
 			err := fmt.Errorf("all TaskTestRuns completed executing and not all were successful: %s", unsuccessful)
-			ttsr.Status.MarkResourceFailed(v1alpha1.TaskTestRunUnexpectatedOutcomes, err)
+			ttsr.Status.MarkResourceFailed(v1alpha1.TaskTestSuiteRunUnexpectatedOutcomes, err)
 		}
 		events.Emit(ctx, beforeCondition, ttsr.Status.GetCondition(apis.ConditionSucceeded), ttsr)
 		return resultErr
@@ -284,62 +385,17 @@ func (c *Reconciler) reconcile(
 	return nil
 }
 
-func (c *Reconciler) reconcileSuiteTest(
-	ctx context.Context,
-	ttsr *v1alpha1.TaskTestSuiteRun,
-	taskTest v1alpha1.SuiteTest,
-	allTaskTestRunsFinished *bool,
-) error {
+func (c *Reconciler) reconcileSuiteTest(ctx context.Context, ttsr *v1alpha1.TaskTestSuiteRun, taskTest v1alpha1.SuiteTest, allTaskTestRunsFinished *bool) error {
 	logger := logging.FromContext(ctx)
-	var err error
 	if ttsr.Spec.ExecutionMode == v1alpha1.TaskTestSuiteRunExecutionModeSequential && ttsr.Status.CurrentSuiteTest == nil {
 		ttsr.Status.CurrentSuiteTest = &taskTest.Name
 	}
 	if ttsr.Spec.ExecutionMode == v1alpha1.TaskTestSuiteRunExecutionModeParallel ||
 		*ttsr.Status.CurrentSuiteTest == taskTest.Name {
 		// Get the TaskTest's TaskTestRun if it should have one. Otherwise, create the TaskRun.
-		var taskTestRun *v1alpha1.TaskTestRun
-		if ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)] != nil {
-			logger.Infof(
-				"boom: Now retrieving TaskTestRun %s for TTSR %s",
-				taskTest.GetTaskTestRunName(ttsr.Name),
-				ttsr.Name,
-			)
-			taskTestRun, err = c.TaskTestRunLister.TaskTestRuns(ttsr.Namespace).
-				Get(taskTest.GetTaskTestRunName(ttsr.Name))
-			if k8serrors.IsNotFound(err) {
-				// Keep going, this will result in the TaskRun being created below.
-			} else if err != nil {
-				// This is considered a transient error, so we return error, do not update
-				// the task test run condition, and return an error which will cause this key to
-				// be requeued for reconcile.
-				logger.Errorf("Error getting TaskTestRun %q: %v", taskTest.GetTaskTestRunName(ttsr.Name), err)
-				events.Emit(ctx, nil, ttsr.Status.GetCondition(apis.ConditionSucceeded), ttsr)
-				return err
-			}
-		} else {
-			// List TaskRuns that have a label with this TaskTestSuiteRun name.  Do not include other labels from the
-			// TaskTestSuiteRun in this selector.  The user could change them during the lifetime of the TaskTestSuiteRun so the
-			// current labels may not be set on a previously created TaskRun.
-			logger.Infof("boom: Now retrieving TaskRun from list for TTR %s", ttsr.Name)
-			labelSelector := labels.Set{pipeline.TaskTestSuiteRunLabelKey: ttsr.Name}
-			ttrs, err := c.TaskTestRunLister.TaskTestRuns(ttsr.Namespace).List(labelSelector.AsSelector())
-			if err != nil {
-				logger.Errorf("Error listing task test runs: %v", err)
-				events.Emit(ctx, nil, ttsr.Status.GetCondition(apis.ConditionSucceeded), ttsr)
-				return err
-			}
-			for index := range ttrs {
-				tr := ttrs[index]
-				if metav1.IsControlledBy(tr, ttsr) && tr.GetSuiteTestName() == taskTest.Name {
-					logger.Infof("boom: Now found TaskRun %s in list controlled by TTR %s", tr.Name, ttsr.Name)
-					taskTestRun = tr
-					if ttsr.Status.TaskTestRunStatuses == nil {
-						ttsr.Status.TaskTestRunStatuses = map[string]*v1alpha1.TaskTestRunStatus{}
-					}
-					ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)] = &taskTestRun.Status
-				}
-			}
+		taskTestRun, err := c.getTaskTestRun(ctx, ttsr, taskTest)
+		if err != nil {
+			return err
 		}
 
 		if taskTestRun == nil {
@@ -561,3 +617,35 @@ func (c *Reconciler) createTaskTestRun(ctx context.Context, ttsr *v1alpha1.TaskT
 
 // Check that our Reconciler implements taskrunreconciler.Interface
 var _ tasktestsuiterunreconciler.Interface = (*Reconciler)(nil)
+
+func init() {
+	var err error
+	cancelTaskTestRunPatchBytes, err = json.Marshal([]jsonpatch.JsonPatchOperation{
+		{
+			Operation: "add",
+			Path:      "/spec/status",
+			Value:     v1alpha1.TaskTestRunSpecStatusCancelled,
+		},
+		{
+			Operation: "add",
+			Path:      "/spec/statusMessage",
+			Value:     v1alpha1.TaskTestRunCancelledByTaskTestSuiteMsg,
+		}})
+	if err != nil {
+		log.Fatalf("failed to marshal TaskRun cancel patch bytes: %v", err)
+	}
+	timeoutTaskTestRunPatchBytes, err = json.Marshal([]jsonpatch.JsonPatchOperation{
+		{
+			Operation: "add",
+			Path:      "/spec/status",
+			Value:     v1alpha1.TaskTestRunSpecStatusCancelled,
+		},
+		{
+			Operation: "add",
+			Path:      "/spec/statusMessage",
+			Value:     v1alpha1.TaskTestRunCancelledByTaskTestSuiteTimeoutMsg,
+		}})
+	if err != nil {
+		log.Fatalf("failed to marshal TaskRun cancel patch bytes: %v", err)
+	}
+}
