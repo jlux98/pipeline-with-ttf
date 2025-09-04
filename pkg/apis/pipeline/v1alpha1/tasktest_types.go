@@ -189,6 +189,35 @@ type InputFileSystemObject struct {
 	//
 	// +optional
 	Content string `json:"content,omitempty"`
+
+	// CopyFrom holds the name of a volume and a path within that volume. During
+	// setup the file system object at the specified path in CopyFrom is
+	// recursively copied to the path specified in this InputFileSystemObject.
+	// If CopyFrom is populated then Type or Content may not be populated, as
+	// well.
+	//
+	// LIMITATION: The volume to be copied from must currently be declared in
+	// the Spec of the Task under Test
+	//
+	// N2H: Have the option to declare volumes in the TaskTest, which get
+	// patched down to the TaskSpec in the TaskRun executing the Task under test
+	// so that the Task's original spec doesn't need to be touched in order to
+	// inject the relevant data.
+	//
+	// +optional
+	CopyFrom *CopyFromRef `json:"copyFrom,omitempty"`
+}
+
+type CopyFromRef struct {
+	// VolumeName is the name of the volume to copy from. It must be in
+	// the same namespace as this TaskTest.
+	VolumeName string `json:"volumeName"`
+
+	// Path is the path of the file system object to copy into the
+	// workspace for the TaskTest. Relative paths are interpreted from
+	// the root of the volume, while for absolute paths the leading
+	// slash denotes the root of the volume.
+	Path string `json:"path"`
 }
 
 // InputFileSystemObjectType is an enum containing file system object types

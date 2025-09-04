@@ -122,6 +122,9 @@ spec:
     script: |
       echo "Hello world!"
       date \+%H:%M:%S | tee $(results.current-time.path)
+  volumes:
+  - name: copy-volume
+    emptyDir: {}
 `
 )
 
@@ -333,6 +336,9 @@ spec:
     params:
     - name: args
       default: ""
+    volumes:
+    - name: copy-volume
+      emptyDir: {}
     workspaces:
     - name: hello-workspace
     stepTemplate:
@@ -342,6 +348,10 @@ spec:
     steps:
     - computeResources: {}
       name: prepare-workspace
+      volumeMounts:
+      - name: copy-volume
+        readOnly: true
+        mountPath: /ttf/copyfrom/copy-volume
       image: shell-image
       command: ["sh", "-c"]
       args:
@@ -349,6 +359,7 @@ spec:
           mkdir -p $(workspaces.hello-workspace.path)/test
           printf "%%s" "bar" > $(workspaces.hello-workspace.path)/test/foo
           mkdir -p $(workspaces.hello-workspace.path)/test/dir
+          cp -R /ttf/copyfrom/copy-volume/data $(workspaces.hello-workspace.path)/test/copy
     - computeResources: {}
       env:
       - name: ANOTHER_FOO
@@ -469,6 +480,10 @@ spec:
           content: bar
         - path: /test/dir
           type: Directory
+        - path: /test/copy
+          copyFrom:
+            volumeName: copy-volume
+            path: /data
     expects:
       successStatus: true
       successReason: Succeeded
