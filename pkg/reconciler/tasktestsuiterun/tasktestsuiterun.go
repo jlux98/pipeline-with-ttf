@@ -123,7 +123,7 @@ func (c *Reconciler) ReconcileKind(
 	// accordingly.
 	if ttsr.HasTimedOut(ctx, c.Clock) {
 		message := fmt.Sprintf(
-			"TaskRun %q failed to finish within %q",
+			"TaskTestSuiteRun %q failed to finish within %q",
 			ttsr.Name,
 			ttsr.GetTimeout(ctx),
 		)

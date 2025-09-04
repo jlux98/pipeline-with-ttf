@@ -81,6 +81,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 		tcStartNewParallelTtrsInlineTts     = "start-new-parallel-inline-ttrs-inline-tts"
 		tcStartNewTtrsRefTts                = "start-new-ttrs-referenced-tts"
 		tcCancelDecTts                      = "cancel-dec-tts"
+		tcCancelTimeoutDecTts               = "cancel-timeout-dec-tts"
 		tcCheckSuccessDecTts                = "check-success-dec-tts"
 		tcCheckSuccessTtrsRefTts            = "check-success-ttrs-ref-tts"
 		tcCheckFailTtrsDecTts               = "check-fail-ttrs-dec-tts"
@@ -104,6 +105,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 		tcStartNewSequentialTtrInlineTts:    generateTaskTestSuiteRun(t, ttsrManifestTemplateInlineTts, tcStartNewSequentialTtrInlineTts, "Sequential"),
 		tcStartSecondSequentialTtrInlineTts: generateTaskTestSuiteRun(t, ttsrManifestTemplateInlineTts, tcStartSecondSequentialTtrInlineTts, "Sequential"),
 		tcCancelDecTts:                      generateTaskTestSuiteRun(t, ttsrManifestTemplateInlineTts+"\n  status: TaskTestSuiteRunCancelled", tcCancelDecTts),
+		tcCancelTimeoutDecTts:               generateTaskTestSuiteRun(t, ttsrManifestTemplateInlineTts, tcCancelTimeoutDecTts),
 		tcCheckSuccessDecTts:                generateTaskTestSuiteRun(t, ttsrManifestTemplateInlineTts, tcCheckSuccessDecTts),
 		tcCheckFailTtrsDecTts:               generateTaskTestSuiteRun(t, ttsrManifestTemplateInlineTts, tcCheckFailTtrsDecTts),
 		tcStartNewTtrsRefTts:                parse.MustParseTaskTestSuiteRun(t, fmt.Sprintf(ttsrManifestTemplateReferencedTts, tcStartNewTtrsRefTts)),
@@ -115,9 +117,12 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 				tcCheckFailTtrsOnErrContRefTts,
 			)),
 	}
+	ttsrMap[tcCancelTimeoutDecTts].Status.StartTime = &metav1.Time{Time: time.Date(1922, time.January, 1, 0, 0, 0, 0, time.UTC)}
 	taskTestRunMap := map[string]*v1alpha1.TaskTestRun{
 		tcCancelDecTts + "-0":                      generateTaskTestRun(t, ttrManifestTemplateSpec, tcCancelDecTts, "task-0"),
 		tcCancelDecTts + "-1":                      generateTaskTestRun(t, addWorkspace(ttrManifestTemplateSpec, dateWorkspace), tcCancelDecTts, "task-1"),
+		tcCancelTimeoutDecTts + "-0":               generateTaskTestRun(t, ttrManifestTemplateSpec, tcCancelTimeoutDecTts, "task-0"),
+		tcCancelTimeoutDecTts + "-1":               generateTaskTestRun(t, addWorkspace(ttrManifestTemplateSpec, dateWorkspace), tcCancelTimeoutDecTts, "task-1"),
 		tcStartSecondSequentialTtrInlineTts + "-0": generateTaskTestRun(t, ttrTemplateCompletedSuccess, tcStartSecondSequentialTtrInlineTts, "task-0"),
 		tcCheckSuccessDecTts + "-0":                generateTaskTestRun(t, ttrTemplateCompletedSuccess, tcCheckSuccessDecTts, "task-0"),
 		tcCheckSuccessDecTts + "-1":                generateTaskTestRun(t, addWorkspace(ttrTemplateCompletedSuccess, dateWorkspace), tcCheckSuccessDecTts, "task-1"),
@@ -271,6 +276,28 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 					"0", "false", fmt.Sprintf(ttrSpecCancelled, "TaskTestRun cancelled as the TaskTestSuiteRun it belongs to has been cancelled.")),
 				*generateTaskTestRun(t, addWorkspace(ttrManifestTemplateSpec, dateWorkspace), tcCancelDecTts, "task-1",
 					"0", "false", fmt.Sprintf(ttrSpecCancelled, "TaskTestRun cancelled as the TaskTestSuiteRun it belongs to has been cancelled.")),
+			},
+			wantStartTimeSuiteRun:       true,
+			wantCompletionTimeSuiteRun:  true,
+			wantCompletionTimesTestRuns: []bool{false, false},
+		},
+		tcCancelTimeoutDecTts: {
+			wantTtsrStatus: patchTaskTestSuiteRun(ttsrMap[tcCancelTimeoutDecTts], func(ttsr *v1alpha1.TaskTestSuiteRun) {
+				ttsr.Status.Conditions = duckv1.Conditions{{
+					Type:    "Succeeded",
+					Status:  "False",
+					Reason:  "TaskTestSuiteRunTimedOut",
+					Message: `TaskTestSuiteRun "` + tcCancelTimeoutDecTts + `" failed to finish within "1h0m0s"`,
+				}}
+				ttsr.Status.CompletionTime = &metav1.Time{Time: testClock.Now()}
+				ttsr.Spec.TaskTestSuiteSpec.TaskTests[0].TaskTestSpec = &taskTestMap["simple_task_test"].Spec
+				ttsr.Status.TaskTestSuiteSpec = ttsr.Spec.TaskTestSuiteSpec
+			}),
+			wantTtrs: []v1alpha1.TaskTestRun{
+				*generateTaskTestRun(t, ttrManifestTemplateSpec, tcCancelTimeoutDecTts, "task-0",
+					"0", "false", fmt.Sprintf(ttrSpecCancelled, "TaskTestRun cancelled as the TaskTestSuiteRun it belongs to has timed out.")),
+				*generateTaskTestRun(t, addWorkspace(ttrManifestTemplateSpec, dateWorkspace), tcCancelTimeoutDecTts, "task-1",
+					"0", "false", fmt.Sprintf(ttrSpecCancelled, "TaskTestRun cancelled as the TaskTestSuiteRun it belongs to has timed out.")),
 			},
 			wantStartTimeSuiteRun:       true,
 			wantCompletionTimeSuiteRun:  true,
