@@ -207,12 +207,24 @@ type ExpectedOutcomes struct {
 	// values the Task is expected to fill these Results with given the input
 	// data.
 	//
-	// +listType=atomic
-	// +optional
+	// Limitation: Tekton only emits results if a TaskRun succeeded, so if the
+	// TaskRun is expected to fail then no expected results can occur.
+	//
+	// +listType=atomic +optional
 	Results []v1.TaskResult `json:"results,omitempty"`
 
 	// List of environment variables with expected values to be checked for in
 	// all of the Task's Steps.
+	//
+	// Limitation: Currently these values are gathered from the container
+	// running the test using commands appended to the end of its script and
+	// exported using Tekton Results. Since failure will result in the script
+	// exiting before being able to observe the environment and Tekton only
+	// emits results for successful TaskRuns, if the TaskRun fails then no
+	// environment variable expectations can be checked.
+	//
+	// N2H: figure out a way to observe environment even if the script exits early
+	// N2H: figure out a way to emit observed environment even if the container fails
 	//
 	// +optional
 	// +patchMergeKey=name
@@ -225,8 +237,17 @@ type ExpectedOutcomes struct {
 	// Expected values defined here will take precedence over expectations
 	// defined in 'env'.
 	//
-	// +listType=atomic
-	// +optional
+	// Limitation: Currently these values are gathered from the container
+	// running the test using commands appended to the end of its script and
+	// exported using Tekton Results. Since failure will result in the script
+	// exiting before being able to observe the environment and Tekton only
+	// emits results for successful TaskRuns, if the TaskRun fails then no
+	// environment variable expectations can be checked.
+	//
+	// N2H: figure out a way to observe environment even if the script exits early
+	// N2H: figure out a way to emit observed environment even if the container fails
+	//
+	// +listType=atomic +optional
 	StepEnvs []StepEnv `json:"stepEnvs,omitempty"`
 
 	// SuccessStatus reports, whether the TaskRuns initiated by this test are
@@ -242,12 +263,17 @@ type ExpectedOutcomes struct {
 	// +optional
 	SuccessReason *v1.TaskRunReason `json:"successReason,omitempty"`
 
-	// FileSystemContents is a list step names, each one paired with a list of expected
-	// file system objects.
+	// FileSystemContents is a list step names, each one paired with a list of
+	// expected file system objects.
 	//
-	// +listType=map
-	// +listMapKey=stepName
-	// +optional
+	// Limitation: Currently these values are exported from the Pod running the
+	// test using Tekton Results. Since Tekton only emits results for successful
+	// TaskRuns, if the TaskRun fails then the observed file system objects will
+	// not be exported.
+	//
+	// N2H: figure out a way to emit observed file system object even if the container fails
+	//
+	// +listType=map +listMapKey=stepName +optional
 	FileSystemContents []ExpectedStepFileSystemContent `json:"fileSystemContents,omitempty"`
 }
 

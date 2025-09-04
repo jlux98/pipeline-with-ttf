@@ -102,7 +102,7 @@ type TaskTestSuiteRunSpec struct {
 	// TaskTestRef and the SpecStatus fields.
 	//
 	// +optional
-	DefaultRunSpecTemplate *TaskTestRunTemplate `json:"defaultRunSpecTemplate"`
+	DefaultRunSpecTemplate *TaskTestRunTemplate `json:"defaultRunSpecTemplate,omitempty"`
 
 	// RunSpecs is a list of RunSpecs, except that the
 	// SpecStatus fields are not allowed. It contains all the tests that will be

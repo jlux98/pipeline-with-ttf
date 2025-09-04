@@ -24,7 +24,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
-	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -101,7 +100,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, ttr *v1alpha1.TaskTestRu
 
 	// If the TaskRun is cancelled, kill resources and update status
 	if ttr.IsCancelled() {
-		message := fmt.Sprintf("TaskRun %q was cancelled. %s", ttr.Name, ttr.Spec.StatusMessage)
+		message := fmt.Sprintf("TaskTestRun %q was cancelled. %s", ttr.Name, ttr.Spec.StatusMessage)
 		err := c.failTaskRun(ctx, ttr, v1alpha1.TaskTestRunReasonCancelled, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, ttr, before, err)
 	}
@@ -266,14 +265,15 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 	}
 
 	if cond := taskRun.Status.GetCondition(apis.ConditionSucceeded); cond.IsFalse() {
-		if cond.Reason == volumeclaim.ReasonCouldntCreateWorkspacePVC {
-			err := errors.New(cond.Message)
-			logger.Errorf("Failed to create PVC for TaskTestRun %s: %v", ttr.Name, err)
-			ttr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
-				fmt.Errorf("failed to create PVC for TaskTestRun %s workspaces correctly: %w",
-					fmt.Sprintf("%s/%s", ttr.Namespace, ttr.Name), err))
-			return err
-		}
+		// if cond.Reason == volumeclaim.ReasonCouldntCreateWorkspacePVC {
+		// 	err := errors.New(cond.Message)
+		// 	logger.Errorf("Failed to create PVC for TaskTestRun %s: %v", ttr.Name, err)
+		// 	ttr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
+		// 		fmt.Errorf("failed to create PVC for TaskTestRun %s workspaces correctly: %w",
+		// 			fmt.Sprintf("%s/%s", ttr.Namespace, ttr.Name), err))
+		// 	return err
+		// }
+		events.Emit(ctx, ttr.Status.GetCondition(apis.ConditionSucceeded), cond, ttr)
 	}
 
 	if ttr.Status.TaskRunName == nil || *ttr.Status.TaskRunName != taskRun.Name {
@@ -320,63 +320,6 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 	logger.Infof("Successfully reconciled tasktestrun %s/%s with status: %#v", ttr.Name, ttr.Namespace, ttr.Status.GetCondition(apis.ConditionSucceeded))
 	return nil
 }
-
-// // Please note that this block is required to run before `applyParamsContextsResultsAndWorkspaces` is called the first time,
-// // and that `applyParamsContextsResultsAndWorkspaces` _must_ be called on every reconcile.
-// if taskRun == nil && ttr.HasVolumeClaimTemplate() {
-// 	for _, ws := range ttr.Spec.Workspaces {
-// 		if err := c.pvcHandler.CreatePVCFromVolumeClaimTemplate(ctx, ws, *kmeta.NewControllerRef(ttr), ttr.Namespace); err != nil {
-// 			logger.Errorf("Failed to create PVC for TaskRun %s: %v", ttr.Name, err)
-// 			ttr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
-// 				fmt.Errorf("failed to create PVC for TaskRun %s workspaces correctly: %w",
-// 					fmt.Sprintf("%s/%s", ttr.Namespace, ttr.Name), err))
-// 			return controller.NewPermanentError(err)
-// 		}
-// 	}
-
-// 	taskRunWorkspaces := applyVolumeClaimTemplates(ttr.Spec.Workspaces, *kmeta.NewControllerRef(ttr))
-// 	// This is used by createPod below. Changes to the Spec are not updated.
-// 	ttr.Spec.Workspaces = taskRunWorkspaces
-// }
-
-// resources.ApplyParametersToWorkspaceBindings(rtr.TaskSpec, ttr)
-// // Get the randomized volume names assigned to workspace bindings
-// workspaceVolumes := workspace.CreateVolumes(ttr.Spec.Workspaces)
-
-// ts, err := applyParamsContextsResultsAndWorkspaces(ctx, ttr, rtr, workspaceVolumes)
-// if err != nil {
-// 	logger.Errorf("Error updating task spec parameters, contexts, results and workspaces: %s", err)
-// 	return err
-// }
-// ttr.Status.TaskSpec = ts
-
-// if len(ttr.Status.TaskSpec.Steps) > 0 {
-// 	logger.Debugf("set taskspec for %s/%s - script: %s", ttr.Namespace, ttr.Name, ttr.Status.TaskSpec.Steps[0].Script)
-// }
-
-// if podconvert.IsPodExceedingNodeResources(taskRun) {
-// 	recorder.Eventf(ttr, corev1.EventTypeWarning, podconvert.ReasonExceededNodeResources, "Insufficient resources to schedule taskRun %q", taskRun.Name)
-// }
-
-// if podconvert.SidecarsReady(taskRun.Status) {
-// 	if err := podconvert.UpdateReady(ctx, c.KubeClientSet, *taskRun); err != nil {
-// 		return err
-// 	}
-// 	if err := c.metrics.RecordPodLatency(ctx, taskRun, ttr); err != nil {
-// 		logger.Warnf("Failed to log the metrics : %v", err)
-// 	}
-// }
-
-// // Convert the taskRun's status to the equivalent TaskRun Status.
-// ttr.Status, err = podconvert.MakeTaskRunStatus(ctx, logger, *ttr, taskRun, c.KubeClientSet, rtr.TaskSpec)
-// if err != nil {
-// 	return err
-// }
-
-// if err := validateTaskRunResults(ttr, rtr.TaskSpec); err != nil {
-// 	ttr.Status.MarkResourceFailed(v1.TaskRunReasonFailedValidation, err)
-// 	return err
-// }
 
 func checkActualOutcomesAgainstExpectations(ctx context.Context, ttrs *v1alpha1.TaskTestRunStatus, trs *v1.TaskRunStatus) (error, bool, string) {
 	expectationsMet := true

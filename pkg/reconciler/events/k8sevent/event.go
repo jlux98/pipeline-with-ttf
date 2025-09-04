@@ -28,8 +28,8 @@ import (
 )
 
 const (
-	// EventReasonSucceded is the reason set for events about successful completion of TaskRuns / PipelineRuns
-	EventReasonSucceded = "Succeeded"
+	// EventReasonSucceeded is the reason set for events about successful completion of TaskRuns / PipelineRuns
+	EventReasonSucceeded = "Succeeded"
 	// EventReasonFailed is the reason set for events about unsuccessful completion of TaskRuns / PipelineRuns
 	EventReasonFailed = "Failed"
 	// EventReasonStarted is the reason set for events about the start of TaskRuns / PipelineRuns
@@ -48,13 +48,13 @@ func EmitK8sEvents(ctx context.Context, beforeCondition *apis.Condition, afterCo
 	//   beforeCondition == nil, emit EventReasonStarted
 	//   beforeCondition != nil, emit afterCondition.Reason
 	//
-	//  Status "ConditionTrue": emit EventReasonSucceded
+	//  Status "ConditionTrue": emit EventReasonSucceeded
 	//  Status "ConditionFalse": emit EventReasonFailed
 	if !equality.Semantic.DeepEqual(beforeCondition, afterCondition) && afterCondition != nil {
 		// If the condition changed, and the target condition is not empty, we send an event
 		switch afterCondition.Status {
 		case corev1.ConditionTrue:
-			recorder.Event(object, corev1.EventTypeNormal, EventReasonSucceded, afterCondition.Message)
+			recorder.Event(object, corev1.EventTypeNormal, EventReasonSucceeded, afterCondition.Message)
 		case corev1.ConditionFalse:
 			recorder.Event(object, corev1.EventTypeWarning, EventReasonFailed, afterCondition.Message)
 		case corev1.ConditionUnknown:
