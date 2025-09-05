@@ -339,6 +339,8 @@ spec:
     volumes:
     - name: copy-volume
       emptyDir: {}
+    - name: copy-volume-2
+      emptyDir: {}
     workspaces:
     - name: hello-workspace
     stepTemplate:
@@ -352,6 +354,9 @@ spec:
       - name: copy-volume
         readOnly: true
         mountPath: /ttf/copyfrom/copy-volume
+      - name: copy-volume-2
+        readOnly: true
+        mountPath: /ttf/copyfrom/copy-volume-2
       image: shell-image
       command: ["sh", "-c"]
       args:
@@ -360,6 +365,7 @@ spec:
           printf "%%s" "bar" > $(workspaces.hello-workspace.path)/test/foo
           mkdir -p $(workspaces.hello-workspace.path)/test/dir
           cp -R /ttf/copyfrom/copy-volume/data $(workspaces.hello-workspace.path)/test/copy
+          cp -R /ttf/copyfrom/copy-volume-2/data $(workspaces.hello-workspace.path)/test/copy-2
     - computeResources: {}
       env:
       - name: ANOTHER_FOO
@@ -484,6 +490,10 @@ spec:
           copyFrom:
             volumeName: copy-volume
             path: /data
+        - path: /test/copy-2
+          copyFrom:
+            volumeName: copy-volume-2
+            path: /data
     expects:
       successStatus: true
       successReason: Succeeded
@@ -513,6 +523,9 @@ spec:
         env:
         - name: FHOME
           value: "/froot"
+  volumes:
+    - name: copy-volume-2
+      emptyDir: {}
   retries: %s
   allTriesMustSucceed: %s
   status: %s

@@ -46,6 +46,11 @@ const dateWorkspace = `
     emptyDir: {}
 `
 
+const copyVolume2 = `
+  - name: copy-volume-2
+    emptyDir: {}
+`
+
 // IgnoreFields options
 var (
 	ignoreResourceVersion = cmpopts.IgnoreFields(
@@ -79,7 +84,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 		tcStartNewSequentialTtrInlineTts    = "start-new-sequential-ttr-inline-tts"
 		tcStartSecondSequentialTtrInlineTts = "start-second-sequential-ttr-inline-tts"
 		tcStartNewParallelTtrsInlineTts     = "start-new-parallel-inline-ttrs-inline-tts"
-		tcStartNewTtrsRefTts                = "start-new-ttrs-referenced-tts"
+		tcStartNewTtsrRefTts                = "start-new-ttsr-referenced-tts"
 		tcCancelDecTts                      = "cancel-dec-tts"
 		tcCancelTimeoutDecTts               = "cancel-timeout-dec-tts"
 		tcCheckSuccessDecTts                = "check-success-dec-tts"
@@ -108,7 +113,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 		tcCancelTimeoutDecTts:               generateTaskTestSuiteRun(t, ttsrManifestTemplateInlineTts, tcCancelTimeoutDecTts),
 		tcCheckSuccessDecTts:                generateTaskTestSuiteRun(t, ttsrManifestTemplateInlineTts, tcCheckSuccessDecTts),
 		tcCheckFailTtrsDecTts:               generateTaskTestSuiteRun(t, ttsrManifestTemplateInlineTts, tcCheckFailTtrsDecTts),
-		tcStartNewTtrsRefTts:                parse.MustParseTaskTestSuiteRun(t, fmt.Sprintf(ttsrManifestTemplateReferencedTts, tcStartNewTtrsRefTts)),
+		tcStartNewTtsrRefTts:                parse.MustParseTaskTestSuiteRun(t, fmt.Sprintf(ttsrManifestTemplateReferencedTts, tcStartNewTtsrRefTts)),
 		tcCheckSuccessTtrsRefTts:            parse.MustParseTaskTestSuiteRun(t, fmt.Sprintf(ttsrManifestTemplateReferencedTts, tcCheckSuccessTtrsRefTts)),
 		tcCheckFailTtrsRefTts:               parse.MustParseTaskTestSuiteRun(t, fmt.Sprintf(ttsrManifestTemplateReferencedTts, tcCheckFailTtrsRefTts)),
 		tcCheckFailTtrsOnErrContRefTts: parse.MustParseTaskTestSuiteRun(
@@ -119,21 +124,21 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 	}
 	ttsrMap[tcCancelTimeoutDecTts].Status.StartTime = &metav1.Time{Time: time.Date(1922, time.January, 1, 0, 0, 0, 0, time.UTC)}
 	taskTestRunMap := map[string]*v1alpha1.TaskTestRun{
-		tcCancelDecTts + "-0":                      generateTaskTestRun(t, ttrManifestTemplateSpec, tcCancelDecTts, "task-0"),
-		tcCancelDecTts + "-1":                      generateTaskTestRun(t, addWorkspace(ttrManifestTemplateSpec, dateWorkspace), tcCancelDecTts, "task-1"),
-		tcCancelTimeoutDecTts + "-0":               generateTaskTestRun(t, ttrManifestTemplateSpec, tcCancelTimeoutDecTts, "task-0"),
-		tcCancelTimeoutDecTts + "-1":               generateTaskTestRun(t, addWorkspace(ttrManifestTemplateSpec, dateWorkspace), tcCancelTimeoutDecTts, "task-1"),
+		tcCancelDecTts + "-0":                      generateTaskTestRun(t, ttrManifestTemplateSpec+ttrStatusRunning, tcCancelDecTts, "task-0"),
+		tcCancelDecTts + "-1":                      generateTaskTestRun(t, addWorkspaceAndVolume(ttrManifestTemplateSpec+ttrStatusRunning, dateWorkspace, copyVolume2), tcCancelDecTts, "task-1"),
+		tcCancelTimeoutDecTts + "-0":               generateTaskTestRun(t, ttrManifestTemplateSpec+ttrStatusRunning, tcCancelTimeoutDecTts, "task-0"),
+		tcCancelTimeoutDecTts + "-1":               generateTaskTestRun(t, addWorkspaceAndVolume(ttrManifestTemplateSpec+ttrStatusRunning, dateWorkspace, copyVolume2), tcCancelTimeoutDecTts, "task-1"),
 		tcStartSecondSequentialTtrInlineTts + "-0": generateTaskTestRun(t, ttrTemplateCompletedSuccess, tcStartSecondSequentialTtrInlineTts, "task-0"),
 		tcCheckSuccessDecTts + "-0":                generateTaskTestRun(t, ttrTemplateCompletedSuccess, tcCheckSuccessDecTts, "task-0"),
-		tcCheckSuccessDecTts + "-1":                generateTaskTestRun(t, addWorkspace(ttrTemplateCompletedSuccess, dateWorkspace), tcCheckSuccessDecTts, "task-1"),
+		tcCheckSuccessDecTts + "-1":                generateTaskTestRun(t, addWorkspaceAndVolume(ttrTemplateCompletedSuccess, dateWorkspace, copyVolume2), tcCheckSuccessDecTts, "task-1"),
 		tcCheckSuccessTtrsRefTts + "-0":            generateTaskTestRun(t, ttrTemplateCompletedSuccess, tcCheckSuccessTtrsRefTts, "task-0"),
-		tcCheckSuccessTtrsRefTts + "-1":            generateTaskTestRun(t, addWorkspace(ttrTemplateCompletedSuccess, dateWorkspace), tcCheckSuccessTtrsRefTts, "task-1"),
+		tcCheckSuccessTtrsRefTts + "-1":            generateTaskTestRun(t, addWorkspaceAndVolume(ttrTemplateCompletedSuccess, dateWorkspace, copyVolume2), tcCheckSuccessTtrsRefTts, "task-1"),
 		tcCheckFailTtrsDecTts + "-0":               generateTaskTestRun(t, ttrTemplateCompletedSuccess, tcCheckFailTtrsDecTts, "task-0"),
-		tcCheckFailTtrsDecTts + "-1":               generateTaskTestRun(t, addWorkspace(ttrTemplateCompletedFail, dateWorkspace), tcCheckFailTtrsDecTts, "task-1"),
+		tcCheckFailTtrsDecTts + "-1":               generateTaskTestRun(t, addWorkspaceAndVolume(ttrTemplateCompletedFail, dateWorkspace, copyVolume2), tcCheckFailTtrsDecTts, "task-1"),
 		tcCheckFailTtrsRefTts + "-0":               generateTaskTestRun(t, ttrTemplateCompletedSuccess, tcCheckFailTtrsRefTts, "task-0"),
-		tcCheckFailTtrsRefTts + "-1":               generateTaskTestRun(t, addWorkspace(ttrTemplateCompletedFail, dateWorkspace), tcCheckFailTtrsRefTts, "task-1"),
+		tcCheckFailTtrsRefTts + "-1":               generateTaskTestRun(t, addWorkspaceAndVolume(ttrTemplateCompletedFail, dateWorkspace, copyVolume2), tcCheckFailTtrsRefTts, "task-1"),
 		tcCheckFailTtrsOnErrContRefTts + "-0":      generateTaskTestRun(t, ttrTemplateCompletedSuccess, tcCheckFailTtrsOnErrContRefTts, "task-0"),
-		tcCheckFailTtrsOnErrContRefTts + "-1":      generateTaskTestRun(t, addWorkspace(ttrTemplateCompletedSuccess, dateWorkspace), tcCheckFailTtrsOnErrContRefTts, "task-1"),
+		tcCheckFailTtrsOnErrContRefTts + "-1":      generateTaskTestRun(t, addWorkspaceAndVolume(ttrTemplateCompletedSuccess, dateWorkspace, copyVolume2), tcCheckFailTtrsOnErrContRefTts, "task-1"),
 	}
 
 	// load custom resources into data for the fake cluster
@@ -176,8 +181,8 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 				},
 			),
 			wantTtrs: []v1alpha1.TaskTestRun{
-				*generateTaskTestRun(t, ttrManifestTemplateSpec, tcStartNewParallelTtrsInlineTts, "task-0"),
-				*generateTaskTestRun(t, addWorkspace(ttrManifestTemplateSpec, dateWorkspace), tcStartNewParallelTtrsInlineTts, "task-1"),
+				*generateTaskTestRun(t, ttrManifestTemplateSpec+ttrStatusRunning, tcStartNewParallelTtrsInlineTts, "task-0"),
+				*generateTaskTestRun(t, addWorkspaceAndVolume(ttrManifestTemplateSpec+ttrStatusRunning, dateWorkspace, copyVolume2), tcStartNewParallelTtrsInlineTts, "task-1"),
 			},
 			wantStartTimeSuiteRun: true,
 		},
@@ -202,7 +207,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 				},
 			),
 			wantTtrs: []v1alpha1.TaskTestRun{
-				*generateTaskTestRun(t, ttrManifestTemplateSpec, tcStartNewSequentialTtrInlineTts, "task-0"),
+				*generateTaskTestRun(t, ttrManifestTemplateSpec+ttrStatusRunning, tcStartNewSequentialTtrInlineTts, "task-0"),
 			},
 			wantStartTimeSuiteRun: true,
 		},
@@ -228,14 +233,14 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 			),
 			wantTtrs: []v1alpha1.TaskTestRun{
 				*taskTestRunMap[tcStartSecondSequentialTtrInlineTts+"-0"],
-				*generateTaskTestRun(t, addWorkspace(ttrManifestTemplateSpec, dateWorkspace), tcStartSecondSequentialTtrInlineTts, "task-1"),
+				*generateTaskTestRun(t, addWorkspaceAndVolume(ttrManifestTemplateSpec+ttrStatusRunning, dateWorkspace, copyVolume2), tcStartSecondSequentialTtrInlineTts, "task-1"),
 			},
 			wantStartTimeSuiteRun:       true,
 			wantCompletionTimesTestRuns: []bool{true, false},
 		},
-		tcStartNewTtrsRefTts: {
+		tcStartNewTtsrRefTts: {
 			wantTtsrStatus: patchTaskTestSuiteRun(
-				ttsrMap[tcStartNewTtrsRefTts],
+				ttsrMap[tcStartNewTtsrRefTts],
 				func(ttsr *v1alpha1.TaskTestSuiteRun) {
 					ttsr.Status.Conditions = duckv1.Conditions{{
 						Type:   "Succeeded",
@@ -254,8 +259,8 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 				},
 			),
 			wantTtrs: []v1alpha1.TaskTestRun{
-				*generateTaskTestRun(t, ttrManifestTemplateSpec, tcStartNewTtrsRefTts, "task-0"),
-				*generateTaskTestRun(t, addWorkspace(ttrManifestTemplateSpec, dateWorkspace), tcStartNewTtrsRefTts, "task-1"),
+				*generateTaskTestRun(t, ttrManifestTemplateSpec+ttrStatusRunning, tcStartNewTtsrRefTts, "task-0"),
+				*generateTaskTestRun(t, addWorkspaceAndVolume(ttrManifestTemplateSpec+ttrStatusRunning, dateWorkspace, copyVolume2), tcStartNewTtsrRefTts, "task-1"),
 			},
 			wantStartTimeSuiteRun: true,
 		},
@@ -272,10 +277,12 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 				ttsr.Status.TaskTestSuiteSpec = ttsr.Spec.TaskTestSuiteSpec
 			}),
 			wantTtrs: []v1alpha1.TaskTestRun{
-				*generateTaskTestRun(t, ttrManifestTemplateSpec, tcCancelDecTts, "task-0",
-					"0", "false", fmt.Sprintf(ttrSpecCancelled, "TaskTestRun cancelled as the TaskTestSuiteRun it belongs to has been cancelled.")),
-				*generateTaskTestRun(t, addWorkspace(ttrManifestTemplateSpec, dateWorkspace), tcCancelDecTts, "task-1",
-					"0", "false", fmt.Sprintf(ttrSpecCancelled, "TaskTestRun cancelled as the TaskTestSuiteRun it belongs to has been cancelled.")),
+				*generateTaskTestRun(t, ttrManifestTemplateSpec+fmt.Sprintf(
+					ttrSpecCancelled, "TaskTestRun cancelled as the TaskTestSuiteRun it belongs to has been cancelled.")+
+					ttrStatusRunning, tcCancelDecTts, "task-0", "0", "false"),
+				*generateTaskTestRun(t, addWorkspaceAndVolume(
+					ttrManifestTemplateSpec+fmt.Sprintf(ttrSpecCancelled, "TaskTestRun cancelled as the TaskTestSuiteRun it belongs to has been cancelled.")+
+						ttrStatusRunning, dateWorkspace, copyVolume2), tcCancelDecTts, "task-1", "0", "false"),
 			},
 			wantStartTimeSuiteRun:       true,
 			wantCompletionTimeSuiteRun:  true,
@@ -294,10 +301,12 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 				ttsr.Status.TaskTestSuiteSpec = ttsr.Spec.TaskTestSuiteSpec
 			}),
 			wantTtrs: []v1alpha1.TaskTestRun{
-				*generateTaskTestRun(t, ttrManifestTemplateSpec, tcCancelTimeoutDecTts, "task-0",
-					"0", "false", fmt.Sprintf(ttrSpecCancelled, "TaskTestRun cancelled as the TaskTestSuiteRun it belongs to has timed out.")),
-				*generateTaskTestRun(t, addWorkspace(ttrManifestTemplateSpec, dateWorkspace), tcCancelTimeoutDecTts, "task-1",
-					"0", "false", fmt.Sprintf(ttrSpecCancelled, "TaskTestRun cancelled as the TaskTestSuiteRun it belongs to has timed out.")),
+				*generateTaskTestRun(t, ttrManifestTemplateSpec+fmt.Sprintf(
+					ttrSpecCancelled, "TaskTestRun cancelled as the TaskTestSuiteRun it belongs to has timed out.")+
+					ttrStatusRunning, tcCancelTimeoutDecTts, "task-0", "0", "false"),
+				*generateTaskTestRun(t, addWorkspaceAndVolume(ttrManifestTemplateSpec+fmt.Sprintf(
+					ttrSpecCancelled, "TaskTestRun cancelled as the TaskTestSuiteRun it belongs to has timed out.")+
+					ttrStatusRunning, dateWorkspace, copyVolume2), tcCancelTimeoutDecTts, "task-1", "0", "false"),
 			},
 			wantStartTimeSuiteRun:       true,
 			wantCompletionTimeSuiteRun:  true,
@@ -722,11 +731,11 @@ func taskTestRunSortFunc(a, b v1alpha1.TaskTestRun) int {
 func generateTaskTestRun(t *testing.T, yaml, suiteRunName, suiteTaskName string, optionalArgs ...string) *v1alpha1.TaskTestRun {
 	t.Helper()
 
-	if len(optionalArgs) > 3 {
-		panic("only three optional args allowed for this function")
+	if len(optionalArgs) > 2 {
+		panic("only two optional args allowed for this function")
 	}
-	if len(optionalArgs) < 3 {
-		optionalArgs = append(optionalArgs, "", "", "")
+	if len(optionalArgs) < 2 {
+		optionalArgs = append(optionalArgs, "", "")
 	}
 
 	if optionalArgs[0] == "" {
@@ -735,10 +744,6 @@ func generateTaskTestRun(t *testing.T, yaml, suiteRunName, suiteTaskName string,
 
 	if optionalArgs[1] == "" {
 		optionalArgs[1] = "false"
-	}
-
-	if optionalArgs[2] != "" {
-		yaml = strings.Replace(yaml, "spec:", "spec:\n"+optionalArgs[2], 1)
 	}
 
 	result := parse.MustParseTaskTestRun(
@@ -786,7 +791,7 @@ func generateTaskTestSuiteRun(
 	return result
 }
 
-func addWorkspace(manifest, workspace string) string {
+func addWorkspaceAndVolume(manifest, workspace, volume string) string {
 	result := strings.Replace(manifest, `  workspaces:
   - name: time-workspace
     emptyDir: {}
@@ -795,5 +800,13 @@ func addWorkspace(manifest, workspace string) string {
   - name: time-workspace
     emptyDir: {}
 `+workspace, 1)
+	result = strings.Replace(result, `  volumes:
+  - name: copy-volume
+    emptyDir: {}
+`, `
+  volumes:
+  - name: copy-volume
+    emptyDir: {}
+`+volume, 1)
 	return result
 }

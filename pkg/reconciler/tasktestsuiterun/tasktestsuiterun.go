@@ -587,6 +587,7 @@ func (c *Reconciler) createTaskTestRun(ctx context.Context, ttsr *v1alpha1.TaskT
 
 	if ttsr.Spec.DefaultRunSpecTemplate != nil {
 		taskTestRun.Spec.Workspaces = append(taskTestRun.Spec.Workspaces, ttsr.Spec.DefaultRunSpecTemplate.Workspaces...)
+		taskTestRun.Spec.Volumes = append(taskTestRun.Spec.Volumes, ttsr.Spec.DefaultRunSpecTemplate.Volumes...)
 	}
 
 	if ttsr.Spec.RunSpecMap == nil && ttsr.Spec.RunSpecs != nil {
@@ -595,6 +596,7 @@ func (c *Reconciler) createTaskTestRun(ctx context.Context, ttsr *v1alpha1.TaskT
 	}
 	if ttsr.Spec.RunSpecs != nil && ttsr.Spec.RunSpecMap[suiteTest.Name] != nil {
 		taskTestRun.Spec.Workspaces = append(taskTestRun.Spec.Workspaces, ttsr.Spec.RunSpecMap[suiteTest.Name].Workspaces...)
+		taskTestRun.Spec.Volumes = append(taskTestRun.Spec.Volumes, ttsr.Spec.RunSpecMap[suiteTest.Name].Volumes...)
 	}
 
 	taskTestRun.Spec.Retries = suiteTest.Retries

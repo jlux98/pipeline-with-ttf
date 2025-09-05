@@ -181,6 +181,17 @@ type TaskTestRunSpec struct {
 	// Compute resources to use for this TaskRun
 	// +optional
 	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
+
+	// Volumes is a list of volumes that gets patched down to the
+	// TaskSpec of the TaskRun being provisioned by this TaskTestRun.
+	// The intent is to allow the injection of data into test runs, e.g.
+	// via CopyFrom objects, without having to change the spec of the
+	// Task under test.
+	//
+	// +listType=map
+	// +listMapKey=name
+	// +optional
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
 }
 
 type TaskTestRef struct {

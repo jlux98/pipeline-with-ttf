@@ -176,6 +176,25 @@
         }
       }
     },
+    "v1alpha1.CopyFromRef": {
+      "type": "object",
+      "required": [
+        "volumeName",
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "description": "Path is the path of the file system object to copy into the workspace for the TaskTest. Relative paths are interpreted from the root of the volume, while for absolute paths the leading slash denotes the root of the volume.",
+          "type": "string",
+          "default": ""
+        },
+        "volumeName": {
+          "description": "VolumeName is the name of the volume to copy from. It must be in the same namespace as this TaskTest.",
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
     "v1alpha1.EmbeddedRunSpec": {
       "description": "EmbeddedRunSpec allows custom task definitions to be embedded",
       "type": "object",
@@ -201,7 +220,7 @@
       "type": "object",
       "properties": {
         "env": {
-          "description": "List of environment variables with expected values to be checked for in all of the Task's Steps.",
+          "description": "List of environment variables with expected values to be checked for in all of the Task's Steps.\n\nLimitation: Currently these values are gathered from the container running the test using commands appended to the end of its script and exported using Tekton Results. Since failure will result in the script exiting before being able to observe the environment and Tekton only emits results for successful TaskRuns, if the TaskRun fails then no environment variable expectations can be checked.\n\nN2H(jlux98): figure out a way to observe environment even if the script exits early N2H(jlux98): figure out a way to emit observed environment even if the container fails",
           "type": "array",
           "items": {
             "default": {},
@@ -212,7 +231,7 @@
           "x-kubernetes-patch-strategy": "merge"
         },
         "fileSystemContents": {
-          "description": "FileSystemContents is a list step names, each one paired with a list of expected file system objects.",
+          "description": "FileSystemContents is a list step names, each one paired with a list of expected file system objects.\n\nLimitation: Currently these values are exported from the Pod running the test using Tekton Results. Since Tekton only emits results for successful TaskRuns, if the TaskRun fails then the observed file system objects will not be exported.\n\nN2H(jlux98): figure out a way to emit observed file system object even if the container fails",
           "type": "array",
           "items": {
             "default": {},
@@ -224,7 +243,7 @@
           "x-kubernetes-list-type": "map"
         },
         "results": {
-          "description": "Results is a list of Results declared in the Task under test and the values the Task is expected to fill these Results with given the input data.",
+          "description": "Results is a list of Results declared in the Task under test and the values the Task is expected to fill these Results with given the input data.\n\nLimitation: Tekton only emits results if a TaskRun succeeded, so if the TaskRun is expected to fail then no expected results can occur.",
           "type": "array",
           "items": {
             "default": {},
@@ -233,7 +252,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "stepEnvs": {
-          "description": "List of Step environments, where expected values for environment variables can be individually defined for all of the Task's Steps. Expected values defined here will take precedence over expectations defined in 'env'.",
+          "description": "List of Step environments, where expected values for environment variables can be individually defined for all of the Task's Steps. Expected values defined here will take precedence over expectations defined in 'env'.\n\nLimitation: Currently these values are gathered from the container running the test using commands appended to the end of its script and exported using Tekton Results. Since failure will result in the script exiting before being able to observe the environment and Tekton only emits results for successful TaskRuns, if the TaskRun fails then no environment variable expectations can be checked.\n\nN2H(jlux98): figure out a way to observe environment even if the script exits early N2H(jlux98): figure out a way to emit observed environment even if the container fails",
           "type": "array",
           "items": {
             "default": {},
@@ -285,7 +304,7 @@
       ],
       "properties": {
         "content": {
-          "description": "The content of the file system object. Setting this value is only acceptable, if the field Type is set to 'TextFile'. N2H: it might be useful to be able to populate the contents field using values from a ConfigMap or Secret.",
+          "description": "The content of the file system object. Setting this value is only acceptable, if the field Type is set to 'TextFile'.\n\nN2H(jlux98): it might be useful to be able to populate the contents field using values from a ConfigMap or Secret.",
           "type": "string"
         },
         "path": {
@@ -300,7 +319,7 @@
       }
     },
     "v1alpha1.InitialWorkspaceContents": {
-      "description": "InitialWorkspaceContents describes the desired contents of a workspace declared in the Task under Test before starting the test. N2H: it might be useful to be able to populate a workspace with files from a git repo.",
+      "description": "InitialWorkspaceContents describes the desired contents of a workspace declared in the Task under Test before starting the test. N2H(jlux98): it might be useful to be able to populate a workspace with files from a git repo, as the git repo volume type is deprecated and can't be used with CopyFrom anymore.",
       "type": "object",
       "required": [
         "name",
@@ -335,8 +354,12 @@
       ],
       "properties": {
         "content": {
-          "description": "The content of the file system object. Setting this value is only acceptable, if the field Type is set to 'TextFile'. N2H: it might be useful to be able to populate the contents field using values from a ConfigMap or Secret.",
+          "description": "The content of the file system object. Setting this value is only acceptable, if the field Type is set to 'TextFile'.",
           "type": "string"
+        },
+        "copyFrom": {
+          "description": "CopyFrom holds the name of a volume and a path within that volume. During setup the file system object at the specified path in CopyFrom is recursively copied to the path specified in this InputFileSystemObject. If CopyFrom is populated then Type or Content may not be populated, as well.\n\nLIMITATION: The volume to be copied from must be declared either in the Spec of the Task under Test or the Spec of any TaskTestRun executing the test",
+          "$ref": "#/definitions/v1alpha1.CopyFromRef"
         },
         "path": {
           "description": "Path is the path to this file system object. Relative paths are interpreted from the root of the workspace, and for absolute paths the leading '/' denotes the root of the workspace.",
@@ -955,6 +978,18 @@
         "serviceAccountName": {
           "type": "string"
         },
+        "volumes": {
+          "description": "Volumes is a list of volumes that gets patched down to the TaskSpec of the TaskTestRuns being provisioned by this TaskTestSuiteRun. The intent is to allow the injection of data into test runs, e.g. via CopyFrom objects, without having to change the spec of the Task under test.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Volume"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
         "workspaces": {
           "description": "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
           "type": "array",
@@ -962,7 +997,10 @@
             "default": {},
             "$ref": "#/definitions/v1.WorkspaceBinding"
           },
-          "x-kubernetes-list-type": "atomic"
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
         }
       }
     },
@@ -1232,6 +1270,18 @@
           "description": "Time after which one retry attempt times out. Defaults to 1 hour. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
           "$ref": "#/definitions/v1.Duration"
         },
+        "volumes": {
+          "description": "Volumes is a list of volumes that gets patched down to the TaskSpec of the TaskRun being provisioned by this TaskTestRun. The intent is to allow the injection of data into test runs, e.g. via CopyFrom objects, without having to change the spec of the Task under test.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Volume"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
         "workspaces": {
           "description": "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
           "type": "array",
@@ -1356,6 +1406,18 @@
         "serviceAccountName": {
           "type": "string"
         },
+        "volumes": {
+          "description": "Volumes is a list of volumes that gets patched down to the TaskSpec of the TaskTestRuns being provisioned by this TaskTestSuiteRun. The intent is to allow the injection of data into test runs, e.g. via CopyFrom objects, without having to change the spec of the Task under test.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Volume"
+          },
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
+        },
         "workspaces": {
           "description": "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
           "type": "array",
@@ -1363,7 +1425,10 @@
             "default": {},
             "$ref": "#/definitions/v1.WorkspaceBinding"
           },
-          "x-kubernetes-list-type": "atomic"
+          "x-kubernetes-list-map-keys": [
+            "name"
+          ],
+          "x-kubernetes-list-type": "map"
         }
       }
     },
@@ -1380,7 +1445,7 @@
           "$ref": "#/definitions/v1alpha1.TaskTestInputs"
         },
         "taskRef": {
-          "description": "TaskRef is a reference to a task definition, which must be in the same namespace as the this test. N2H: in the future this might use v1.TaskRef and be able to resolve remote tasks.",
+          "description": "TaskRef is a reference to a task definition, which must be in the same namespace as the this test.\n\nN2H(jlux98): in the future this might use v1.TaskRef and be able to resolve remote tasks.",
           "$ref": "#/definitions/v1alpha1.SimpleTaskRef"
         }
       }

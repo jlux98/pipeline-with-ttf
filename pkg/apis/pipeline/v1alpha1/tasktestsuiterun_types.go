@@ -159,11 +159,7 @@ type TaskTestSuiteRef struct {
 
 type TestSuiteExecutionMode string
 
-// N2H: Maybe a compromise in the form of a "Staggered" execution mode would
-// be interesting, where a delay can be defined so that the runner doesn't
-// always wait until the previous test has finished executing but still
-// doesn't overwhelm the cluster with too many test being triggered at the
-// same time.
+// N2H(jlux98): "Staggered" executionMode where the controller waits a little bit to create new TaskTestRuns to not spam the KubeAPI-Server
 const (
 	TaskTestSuiteRunExecutionModeParallel   TestSuiteExecutionMode = "Parallel"
 	TaskTestSuiteRunExecutionModeSequential TestSuiteExecutionMode = "Sequential"
@@ -172,9 +168,21 @@ const (
 type TaskTestRunTemplate struct {
 	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
 	//
-	// +listType=atomic
+	// +listType=map
+	// +listMapKey=name
 	// +optional
 	Workspaces []v1.WorkspaceBinding `json:"workspaces,omitempty"`
+
+	// Volumes is a list of volumes that gets patched down to the
+	// TaskSpec of the TaskTestRuns being provisioned by this TaskTestSuiteRun.
+	// The intent is to allow the injection of data into test runs, e.g.
+	// via CopyFrom objects, without having to change the spec of the
+	// Task under test.
+	//
+	// +listType=map
+	// +listMapKey=name
+	// +optional
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
 
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
@@ -199,6 +207,7 @@ func (in SuiteTaskTestRun) GetRunTemplate() *TaskTestRunTemplate {
 		Workspaces:         in.Workspaces,
 		ServiceAccountName: in.ServiceAccountName,
 		ComputeResources:   in.ComputeResources,
+		Volumes:            in.Volumes,
 	}
 }
 

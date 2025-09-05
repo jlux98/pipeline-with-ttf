@@ -44,8 +44,8 @@ type TaskTestList struct {
 type TaskTestSpec struct {
 	// TaskRef is a reference to a task definition, which must be in the same
 	// namespace as the this test.
-	// N2H: in the future this might use v1.TaskRef and be able to resolve
-	// remote tasks.
+	//
+	// N2H(jlux98): in the future this might use v1.TaskRef and be able to resolve remote tasks.
 	TaskRef *SimpleTaskRef `json:"taskRef,omitempty"`
 
 	// Inputs represents the test data for executing the test case.
@@ -150,8 +150,7 @@ type StepEnv struct {
 
 // InitialWorkspaceContents describes the desired contents of a workspace
 // declared in the Task under Test before starting the test.
-// N2H: it might be useful to be able to populate a workspace with files from a
-// git repo.
+// N2H(jlux98): it might be useful to be able to populate a workspace with files from a git repo, as the git repo volume type is deprecated and can't be used with CopyFrom anymore.
 type InitialWorkspaceContents struct {
 	// Name is the name of the workspace as declared by the Task under test.
 	Name string `json:"name"`
@@ -184,8 +183,6 @@ type InputFileSystemObject struct {
 
 	// The content of the file system object. Setting this value is only
 	// acceptable, if the field Type is set to 'TextFile'.
-	// N2H: it might be useful to be able to populate the contents field using
-	// values from a ConfigMap or Secret.
 	//
 	// +optional
 	Content string `json:"content,omitempty"`
@@ -196,13 +193,9 @@ type InputFileSystemObject struct {
 	// If CopyFrom is populated then Type or Content may not be populated, as
 	// well.
 	//
-	// LIMITATION: The volume to be copied from must currently be declared in
-	// the Spec of the Task under Test
-	//
-	// N2H: Have the option to declare volumes in the TaskTest, which get
-	// patched down to the TaskSpec in the TaskRun executing the Task under test
-	// so that the Task's original spec doesn't need to be touched in order to
-	// inject the relevant data.
+	// LIMITATION: The volume to be copied from must be declared either in
+	// the Spec of the Task under Test or the Spec of any TaskTestRun executing
+	// the test
 	//
 	// +optional
 	CopyFrom *CopyFromRef `json:"copyFrom,omitempty"`
@@ -239,7 +232,8 @@ type ExpectedOutcomes struct {
 	// Limitation: Tekton only emits results if a TaskRun succeeded, so if the
 	// TaskRun is expected to fail then no expected results can occur.
 	//
-	// +listType=atomic +optional
+	// +listType=atomic
+	// +optional
 	Results []v1.TaskResult `json:"results,omitempty"`
 
 	// List of environment variables with expected values to be checked for in
@@ -252,8 +246,8 @@ type ExpectedOutcomes struct {
 	// emits results for successful TaskRuns, if the TaskRun fails then no
 	// environment variable expectations can be checked.
 	//
-	// N2H: figure out a way to observe environment even if the script exits early
-	// N2H: figure out a way to emit observed environment even if the container fails
+	// N2H(jlux98): figure out a way to observe environment even if the script exits early
+	// N2H(jlux98): figure out a way to emit observed environment even if the container fails
 	//
 	// +optional
 	// +patchMergeKey=name
@@ -273,10 +267,11 @@ type ExpectedOutcomes struct {
 	// emits results for successful TaskRuns, if the TaskRun fails then no
 	// environment variable expectations can be checked.
 	//
-	// N2H: figure out a way to observe environment even if the script exits early
-	// N2H: figure out a way to emit observed environment even if the container fails
+	// N2H(jlux98): figure out a way to observe environment even if the script exits early
+	// N2H(jlux98): figure out a way to emit observed environment even if the container fails
 	//
-	// +listType=atomic +optional
+	// +listType=atomic
+	// +optional
 	StepEnvs []StepEnv `json:"stepEnvs,omitempty"`
 
 	// SuccessStatus reports, whether the TaskRuns initiated by this test are
@@ -300,9 +295,11 @@ type ExpectedOutcomes struct {
 	// TaskRuns, if the TaskRun fails then the observed file system objects will
 	// not be exported.
 	//
-	// N2H: figure out a way to emit observed file system object even if the container fails
+	// N2H(jlux98): figure out a way to emit observed file system object even if the container fails
 	//
-	// +listType=map +listMapKey=stepName +optional
+	// +listType=map
+	// +listMapKey=stepName
+	// +optional
 	FileSystemContents []ExpectedStepFileSystemContent `json:"fileSystemContents,omitempty"`
 }
 
@@ -344,8 +341,8 @@ type FileSystemObject struct {
 
 	// The content of the file system object. Setting this value is only
 	// acceptable, if the field Type is set to 'TextFile'.
-	// N2H: it might be useful to be able to populate the contents field using
-	// values from a ConfigMap or Secret.
+	//
+	// N2H(jlux98): it might be useful to be able to populate the contents field using values from a ConfigMap or Secret.
 	//
 	// +optional
 	Content string `json:"content,omitempty"`

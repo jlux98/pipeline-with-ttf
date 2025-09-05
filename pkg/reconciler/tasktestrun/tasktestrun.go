@@ -502,10 +502,12 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 		}
 	}
 
+	task.Spec.Volumes = append(task.Spec.Volumes, ttr.Spec.Volumes...)
 	taskRunSpec := v1.TaskRunSpec{
 		TaskSpec:   &task.Spec,
 		Workspaces: ttr.Spec.Workspaces,
 	}
+
 	if ttr.Status.TaskTestSpec.Inputs != nil {
 		if ttr.Status.TaskTestSpec.Inputs.Params != nil {
 			for i, param := range ttr.Status.TaskTestSpec.Inputs.Params {
@@ -624,7 +626,6 @@ func (r *Reconciler) generateWorkspacePreparationStep(initialWorkspaceContents [
 				objectPath = string(filepath.Separator) + objectPath
 			}
 			if object.CopyFrom != nil {
-				// NEXT implement this
 				var mountPath string
 				copyPath := filepath.Clean(object.CopyFrom.Path)
 
