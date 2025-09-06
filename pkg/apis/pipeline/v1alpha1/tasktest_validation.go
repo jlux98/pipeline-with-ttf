@@ -90,11 +90,6 @@ var DisallowedInputFileSystemPathEndings []rune = []rune{
 
 func (e *ExpectedOutcomes) Validate(ctx context.Context) *apis.FieldError {
 	var errs *apis.FieldError
-	if e.SuccessStatus != nil && !*e.SuccessStatus && e.Results != nil {
-		err := apis.ErrDisallowedFields("results")
-		err.Details += `must not set field "results" if the TaskRun is expected to fail`
-		errs = errs.Also(err)
-	}
 	errs = errs.Also(ValidateIdentifierUniqueness(extractNamesFromTaskResults(e.Results), "name").ViaField("results"))
 	for i := range e.FileSystemContents {
 		errs = errs.Also(e.FileSystemContents[i].Validate(ctx).ViaFieldIndex("fileSystemContents", i))

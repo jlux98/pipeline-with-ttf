@@ -508,7 +508,12 @@ func (e Entrypointer) WritePostFile(postFile string, err error) {
 }
 
 func (e Entrypointer) WriteFileSystemObservations() error {
-	filePath := filepath.Join(pipeline.DefaultResultPath, v1alpha1.ResultNameFileSystemContents)
+	resultPath := pipeline.DefaultResultPath
+	if e.ResultsDirectory != "" {
+		resultPath = e.ResultsDirectory
+	}
+
+	filePath := filepath.Join(resultPath, v1alpha1.ResultNameFileSystemContents)
 	existingObjects := []v1alpha1.ExpectedStepFileSystemContent{}
 
 	data, err := os.ReadFile(filePath)

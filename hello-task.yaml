@@ -30,6 +30,7 @@ spec:
       set -x
 
       cat $(workspaces.time-workspace.path)/test/time > $(results.current-time.path)
+      exit 1
   # echo -n $(date +%H:%M:%S) > $(results.current-time.path)
   # - computeResources: {}
   #   image: alpine

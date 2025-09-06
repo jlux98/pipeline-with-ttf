@@ -220,7 +220,7 @@
       "type": "object",
       "properties": {
         "env": {
-          "description": "List of environment variables with expected values to be checked for in all of the Task's Steps.\n\nLimitation: Currently these values are gathered from the container running the test using commands appended to the end of its script and exported using Tekton Results. Since failure will result in the script exiting before being able to observe the environment and Tekton only emits results for successful TaskRuns, if the TaskRun fails then no environment variable expectations can be checked.\n\nN2H(jlux98): figure out a way to observe environment even if the script exits early N2H(jlux98): figure out a way to emit observed environment even if the container fails",
+          "description": "List of environment variables with expected values to be checked for in all of the Task's Steps.",
           "type": "array",
           "items": {
             "default": {},
@@ -231,7 +231,7 @@
           "x-kubernetes-patch-strategy": "merge"
         },
         "fileSystemContents": {
-          "description": "FileSystemContents is a list step names, each one paired with a list of expected file system objects.\n\nLimitation: Currently these values are exported from the Pod running the test using Tekton Results. Since Tekton only emits results for successful TaskRuns, if the TaskRun fails then the observed file system objects will not be exported.\n\nN2H(jlux98): figure out a way to emit observed file system object even if the container fails",
+          "description": "FileSystemContents is a list step names, each one paired with a list of expected file system objects.",
           "type": "array",
           "items": {
             "default": {},
@@ -243,7 +243,7 @@
           "x-kubernetes-list-type": "map"
         },
         "results": {
-          "description": "Results is a list of Results declared in the Task under test and the values the Task is expected to fill these Results with given the input data.\n\nLimitation: Tekton only emits results if a TaskRun succeeded, so if the TaskRun is expected to fail then no expected results can occur.",
+          "description": "Results is a list of Results declared in the Task under test and the values the Task is expected to fill these Results with given the input data.",
           "type": "array",
           "items": {
             "default": {},
@@ -252,13 +252,12 @@
           "x-kubernetes-list-type": "atomic"
         },
         "stepEnvs": {
-          "description": "List of Step environments, where expected values for environment variables can be individually defined for all of the Task's Steps. Expected values defined here will take precedence over expectations defined in 'env'.\n\nLimitation: Currently these values are gathered from the container running the test using commands appended to the end of its script and exported using Tekton Results. Since failure will result in the script exiting before being able to observe the environment and Tekton only emits results for successful TaskRuns, if the TaskRun fails then no environment variable expectations can be checked.\n\nN2H(jlux98): figure out a way to observe environment even if the script exits early N2H(jlux98): figure out a way to emit observed environment even if the container fails",
+          "description": "List of Step environments, where expected values for environment variables can be individually defined for all of the Task's Steps. Expected values defined here will take precedence over expectations defined in 'env'.",
           "type": "array",
           "items": {
             "default": {},
             "$ref": "#/definitions/v1alpha1.StepEnv"
-          },
-          "x-kubernetes-list-type": "atomic"
+          }
         },
         "successReason": {
           "description": "SuccessReason is the reason, with which the TaskRuns initiated by this test are expected to be marked upon completion.",
@@ -304,7 +303,7 @@
       ],
       "properties": {
         "content": {
-          "description": "The content of the file system object. Setting this value is only acceptable, if the field Type is set to 'TextFile'.\n\nN2H(jlux98): it might be useful to be able to populate the contents field using values from a ConfigMap or Secret.",
+          "description": "The content of the file system object. Setting this value is only acceptable, if the field Type is set to 'TextFile'.",
           "type": "string"
         },
         "path": {
@@ -319,7 +318,7 @@
       }
     },
     "v1alpha1.InitialWorkspaceContents": {
-      "description": "InitialWorkspaceContents describes the desired contents of a workspace declared in the Task under Test before starting the test. N2H(jlux98): it might be useful to be able to populate a workspace with files from a git repo, as the git repo volume type is deprecated and can't be used with CopyFrom anymore.",
+      "description": "InitialWorkspaceContents describes the desired contents of a workspace declared in the Task under Test before starting the test.",
       "type": "object",
       "required": [
         "name",
@@ -358,7 +357,7 @@
           "type": "string"
         },
         "copyFrom": {
-          "description": "CopyFrom holds the name of a volume and a path within that volume. During setup the file system object at the specified path in CopyFrom is recursively copied to the path specified in this InputFileSystemObject. If CopyFrom is populated then Type or Content may not be populated, as well.\n\nLIMITATION: The volume to be copied from must be declared either in the Spec of the Task under Test or the Spec of any TaskTestRun executing the test",
+          "description": "CopyFrom holds the name of a volume and a path within that volume. During setup the file system object at the specified path in CopyFrom is recursively copied to the path specified in this InputFileSystemObject. If CopyFrom is populated then Type or Content may not be populated, as well.",
           "$ref": "#/definitions/v1alpha1.CopyFromRef"
         },
         "path": {
@@ -984,11 +983,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.Volume"
-          },
-          "x-kubernetes-list-map-keys": [
-            "name"
-          ],
-          "x-kubernetes-list-type": "map"
+          }
         },
         "workspaces": {
           "description": "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
@@ -1263,7 +1258,6 @@
           "$ref": "#/definitions/v1alpha1.TaskTestRef"
         },
         "taskTestSpec": {
-          "description": "TaskTestSpec is a task test definition. Either this or TaskTestRef must be set, if neither or both are set then validation of this TaskTestRun fails.",
           "$ref": "#/definitions/v1alpha1.TaskTestSpec"
         },
         "timeout": {
@@ -1276,11 +1270,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.Volume"
-          },
-          "x-kubernetes-list-map-keys": [
-            "name"
-          ],
-          "x-kubernetes-list-type": "map"
+          }
         },
         "workspaces": {
           "description": "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
@@ -1412,11 +1402,7 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.Volume"
-          },
-          "x-kubernetes-list-map-keys": [
-            "name"
-          ],
-          "x-kubernetes-list-type": "map"
+          }
         },
         "workspaces": {
           "description": "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
@@ -1445,7 +1431,7 @@
           "$ref": "#/definitions/v1alpha1.TaskTestInputs"
         },
         "taskRef": {
-          "description": "TaskRef is a reference to a task definition, which must be in the same namespace as the this test.\n\nN2H(jlux98): in the future this might use v1.TaskRef and be able to resolve remote tasks.",
+          "description": "TaskRef is a reference to a task definition, which must be in the same namespace as the this test.",
           "$ref": "#/definitions/v1alpha1.SimpleTaskRef"
         }
       }

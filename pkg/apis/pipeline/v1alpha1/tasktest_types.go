@@ -42,10 +42,10 @@ type TaskTestList struct {
 
 // TaskTestSpec defines the desired state of TaskTest.
 type TaskTestSpec struct {
+	// N2H(jlux98): in the future this might use v1.TaskRef and be able to resolve remote tasks.
+
 	// TaskRef is a reference to a task definition, which must be in the same
 	// namespace as the this test.
-	//
-	// N2H(jlux98): in the future this might use v1.TaskRef and be able to resolve remote tasks.
 	TaskRef *SimpleTaskRef `json:"taskRef,omitempty"`
 
 	// Inputs represents the test data for executing the test case.
@@ -148,9 +148,10 @@ type StepEnv struct {
 	Env []corev1.EnvVar `json:"env,omitempty" patchMergeKey:"name" patchStrategy:"merge" protobuf:"bytes,7,rep,name=env"`
 }
 
+// N2H(jlux98): it might be useful to be able to populate a workspace with files from a git repo, as the git repo volume type is deprecated and can't be used with CopyFrom anymore.
+
 // InitialWorkspaceContents describes the desired contents of a workspace
 // declared in the Task under Test before starting the test.
-// N2H(jlux98): it might be useful to be able to populate a workspace with files from a git repo, as the git repo volume type is deprecated and can't be used with CopyFrom anymore.
 type InitialWorkspaceContents struct {
 	// Name is the name of the workspace as declared by the Task under test.
 	Name string `json:"name"`
@@ -187,15 +188,15 @@ type InputFileSystemObject struct {
 	// +optional
 	Content string `json:"content,omitempty"`
 
+	// LIMITATION: The volume to be copied from must be declared either in
+	// the Spec of the Task under Test or the Spec of any TaskTestRun executing
+	// the test
+
 	// CopyFrom holds the name of a volume and a path within that volume. During
 	// setup the file system object at the specified path in CopyFrom is
 	// recursively copied to the path specified in this InputFileSystemObject.
 	// If CopyFrom is populated then Type or Content may not be populated, as
 	// well.
-	//
-	// LIMITATION: The volume to be copied from must be declared either in
-	// the Spec of the Task under Test or the Spec of any TaskTestRun executing
-	// the test
 	//
 	// +optional
 	CopyFrom *CopyFromRef `json:"copyFrom,omitempty"`
@@ -222,6 +223,9 @@ const (
 	InputTextFileType  InputFileSystemObjectType = "TextFile"  // a text file of any encoding
 )
 
+// +listType=atomic
+type StepEnvs []StepEnv
+
 // ExpectedOutcomes defines the outcomes that should be observed after
 // executing the Task under test.
 type ExpectedOutcomes struct {
@@ -229,25 +233,12 @@ type ExpectedOutcomes struct {
 	// values the Task is expected to fill these Results with given the input
 	// data.
 	//
-	// Limitation: Tekton only emits results if a TaskRun succeeded, so if the
-	// TaskRun is expected to fail then no expected results can occur.
-	//
 	// +listType=atomic
 	// +optional
 	Results []v1.TaskResult `json:"results,omitempty"`
 
 	// List of environment variables with expected values to be checked for in
 	// all of the Task's Steps.
-	//
-	// Limitation: Currently these values are gathered from the container
-	// running the test using commands appended to the end of its script and
-	// exported using Tekton Results. Since failure will result in the script
-	// exiting before being able to observe the environment and Tekton only
-	// emits results for successful TaskRuns, if the TaskRun fails then no
-	// environment variable expectations can be checked.
-	//
-	// N2H(jlux98): figure out a way to observe environment even if the script exits early
-	// N2H(jlux98): figure out a way to emit observed environment even if the container fails
 	//
 	// +optional
 	// +patchMergeKey=name
@@ -260,19 +251,8 @@ type ExpectedOutcomes struct {
 	// Expected values defined here will take precedence over expectations
 	// defined in 'env'.
 	//
-	// Limitation: Currently these values are gathered from the container
-	// running the test using commands appended to the end of its script and
-	// exported using Tekton Results. Since failure will result in the script
-	// exiting before being able to observe the environment and Tekton only
-	// emits results for successful TaskRuns, if the TaskRun fails then no
-	// environment variable expectations can be checked.
-	//
-	// N2H(jlux98): figure out a way to observe environment even if the script exits early
-	// N2H(jlux98): figure out a way to emit observed environment even if the container fails
-	//
-	// +listType=atomic
 	// +optional
-	StepEnvs []StepEnv `json:"stepEnvs,omitempty"`
+	StepEnvs StepEnvs `json:"stepEnvs,omitempty"`
 
 	// SuccessStatus reports, whether the TaskRuns initiated by this test are
 	// expected to succeed. This is useful for testing cases in which the Task
@@ -289,13 +269,6 @@ type ExpectedOutcomes struct {
 
 	// FileSystemContents is a list step names, each one paired with a list of
 	// expected file system objects.
-	//
-	// Limitation: Currently these values are exported from the Pod running the
-	// test using Tekton Results. Since Tekton only emits results for successful
-	// TaskRuns, if the TaskRun fails then the observed file system objects will
-	// not be exported.
-	//
-	// N2H(jlux98): figure out a way to emit observed file system object even if the container fails
 	//
 	// +listType=map
 	// +listMapKey=stepName
@@ -339,10 +312,10 @@ type FileSystemObject struct {
 	// +optional
 	Type FileSystemObjectType `json:"type,omitempty"`
 
+	// N2H(jlux98): it might be useful to be able to populate the contents field using values from a ConfigMap or Secret.
+
 	// The content of the file system object. Setting this value is only
 	// acceptable, if the field Type is set to 'TextFile'.
-	//
-	// N2H(jlux98): it might be useful to be able to populate the contents field using values from a ConfigMap or Secret.
 	//
 	// +optional
 	Content string `json:"content,omitempty"`

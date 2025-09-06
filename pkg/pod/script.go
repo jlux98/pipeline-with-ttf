@@ -23,8 +23,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
@@ -190,23 +188,6 @@ func placeScriptInContainer(script, scriptFile string, c *corev1.Container, init
 		args = append(args, c.Args...)
 		c.Args = args
 	} else {
-		// TODO(jlux98) add logic to only enable this when this is a step script and the TaskRun this container belongs to is controlled by a TaskTestRun that has expected values specified for the environment
-		if diff := cmp.Diff(expectedValues, &v1alpha1.TaskTestSpec{}); diff != "" && expectedValues != nil {
-			if expectedValues.Env != nil {
-				script += fmt.Sprintf(`
-	
-envPath="%s/%s"
-
-echo "In order to verify the correct functioning of this step the current state of all environment variables will now be dumped to $envPath"
-
-echo '{"step": "%s", "environment": {' >> "$envPath"
-echo "$(printenv)" | while read -r line; do
-echo '"'"$line"'",' >> "$envPath"
-done
-echo '}},' >> "$envPath"
-`, pipeline.DefaultResultPath, v1alpha1.ResultNameEnvironmentDump, c.Name)
-			}
-		}
 		// Only encode the script for linux scripts
 		// The decode-script subcommand of the entrypoint does not work under windows
 		script = encodeScript(script)

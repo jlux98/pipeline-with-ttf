@@ -229,12 +229,13 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 		entrypointInitContainer(b.Images.EntrypointImage, steps, securityContextConfig, windows),
 	}
 
-	expectedValues := &v1alpha1.ExpectedOutcomes{}
+	var expectedValues *v1alpha1.ExpectedOutcomes = nil
 	// Convert any steps with Script to command+args.
 	// If any are found, append an init container to initialize scripts.
 	if alphaAPIEnabled {
 		if v1alpha1.IsControlledByTaskTestRun(taskRun.ObjectMeta) {
 			expectedValuesJSON := taskRun.Annotations[v1alpha1.AnnotationKeyExpectedValuesJSON]
+			expectedValues = &v1alpha1.ExpectedOutcomes{}
 			err := json.Unmarshal([]byte(expectedValuesJSON), expectedValues)
 			if err != nil {
 				logging.FromContext(ctx).Errorf(`There was an arror while unmarshalling the expected values from the TaskRun's annotations: %w`, err)
@@ -277,7 +278,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 	readyImmediately := isPodReadyImmediately(*featureFlags, taskSpec.Sidecars)
 
 	if alphaAPIEnabled {
-		if (expectedValues != &v1alpha1.ExpectedOutcomes{}) {
+		if expectedValues != nil {
 			if expectedValues.Env != nil {
 				taskSpec.Results = append(taskSpec.Results, v1.TaskResult{
 					Name: v1alpha1.ResultNameEnvironmentDump,

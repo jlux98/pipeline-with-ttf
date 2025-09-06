@@ -114,6 +114,8 @@ spec:
     image: alpine
     name: date-step
     script: |
+      #! /bin/env sh
+
       echo "Hello world!"
       date +%Y-%m-%d | tee $(results.current-date.path)
   - computeResources: {}
@@ -325,13 +327,13 @@ metadata:
 spec:
   taskSpec:
     results:
-    - description: |
+    - name: current-time
+      description: |
         The current time in the format hh:mm:ss
-      name: current-time
       type: string
-    - description: |
+    - name: current-date
+      description: |
         The current date in the format dd:mm:yy
-      name: current-date
       type: string
     params:
     - name: args
@@ -373,12 +375,26 @@ spec:
       image: alpine
       name: date-step
       script: |
+        #! /bin/env sh
+
+        envPath="/tekton/results/Testing|Environment"
+        echo "The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step"
+        trap 'echo "{\"step\": \"date-step\", \"environment\": {
+        $(printenv)
+        }}," >> "$envPath"' EXIT
+
         echo "Hello world!"
         date +%%Y-%%m-%%d | tee $(results.current-date.path)
     - computeResources: {}
       image: alpine
       name: time-step
       script: |
+        envPath="/tekton/results/Testing|Environment"
+        echo "The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step"
+        trap 'echo "{\"step\": \"time-step\", \"environment\": {
+        $(printenv)
+        }}," >> "$envPath"' EXIT
+
         echo "Hello world!"
         date \+%%H:%%M:%%S | tee $(results.current-time.path)
   params:
@@ -419,12 +435,12 @@ status:
     type: string
     value: |
       {"step": "date-step", "environment": {
-      "HOME=/root",
+      HOME=/root
       }},
       {"step": "time-step", "environment": {
-        "FHOME=/froot",
-        "HOME=/root",
-      }}
+      FHOME=/froot
+      HOME=/root
+      }},
   - name: Testing|FileSystemContent
     type: string
     value: '[{"stepName":"/tekton/run/0/status","objects":[{"path":"/tekton/results/current-date","type":"TextFile","content":"bar"}]},{"stepName":"/tekton/run/1/status","objects":[{"path":"/tekton/results/current-time","type":"TextFile","content":"bar"}]}]'
@@ -447,6 +463,8 @@ status:
       image: alpine
       name: date-step
       script: |
+        #! /bin/env sh
+
         echo "Hello world!"
         date +%%Y-%%m-%%d | tee /tekton/results/current-date
     - computeResources: {}

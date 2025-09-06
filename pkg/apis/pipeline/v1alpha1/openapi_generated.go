@@ -496,7 +496,7 @@ func schema_pkg_apis_pipeline_v1alpha1_ExpectedOutcomes(ref common.ReferenceCall
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "Results is a list of Results declared in the Task under test and the values the Task is expected to fill these Results with given the input data.\n\nLimitation: Tekton only emits results if a TaskRun succeeded, so if the TaskRun is expected to fail then no expected results can occur.",
+							Description: "Results is a list of Results declared in the Task under test and the values the Task is expected to fill these Results with given the input data.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -517,7 +517,7 @@ func schema_pkg_apis_pipeline_v1alpha1_ExpectedOutcomes(ref common.ReferenceCall
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "List of environment variables with expected values to be checked for in all of the Task's Steps.\n\nLimitation: Currently these values are gathered from the container running the test using commands appended to the end of its script and exported using Tekton Results. Since failure will result in the script exiting before being able to observe the environment and Tekton only emits results for successful TaskRuns, if the TaskRun fails then no environment variable expectations can be checked.\n\nN2H(jlux98): figure out a way to observe environment even if the script exits early N2H(jlux98): figure out a way to emit observed environment even if the container fails",
+							Description: "List of environment variables with expected values to be checked for in all of the Task's Steps.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -530,13 +530,8 @@ func schema_pkg_apis_pipeline_v1alpha1_ExpectedOutcomes(ref common.ReferenceCall
 						},
 					},
 					"stepEnvs": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
-							Description: "List of Step environments, where expected values for environment variables can be individually defined for all of the Task's Steps. Expected values defined here will take precedence over expectations defined in 'env'.\n\nLimitation: Currently these values are gathered from the container running the test using commands appended to the end of its script and exported using Tekton Results. Since failure will result in the script exiting before being able to observe the environment and Tekton only emits results for successful TaskRuns, if the TaskRun fails then no environment variable expectations can be checked.\n\nN2H(jlux98): figure out a way to observe environment even if the script exits early N2H(jlux98): figure out a way to emit observed environment even if the container fails",
+							Description: "List of Step environments, where expected values for environment variables can be individually defined for all of the Task's Steps. Expected values defined here will take precedence over expectations defined in 'env'.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -572,7 +567,7 @@ func schema_pkg_apis_pipeline_v1alpha1_ExpectedOutcomes(ref common.ReferenceCall
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "FileSystemContents is a list step names, each one paired with a list of expected file system objects.\n\nLimitation: Currently these values are exported from the Pod running the test using Tekton Results. Since Tekton only emits results for successful TaskRuns, if the TaskRun fails then the observed file system objects will not be exported.\n\nN2H(jlux98): figure out a way to emit observed file system object even if the container fails",
+							Description: "FileSystemContents is a list step names, each one paired with a list of expected file system objects.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -662,7 +657,7 @@ func schema_pkg_apis_pipeline_v1alpha1_FileSystemObject(ref common.ReferenceCall
 					},
 					"content": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The content of the file system object. Setting this value is only acceptable, if the field Type is set to 'TextFile'.\n\nN2H(jlux98): it might be useful to be able to populate the contents field using values from a ConfigMap or Secret.",
+							Description: "The content of the file system object. Setting this value is only acceptable, if the field Type is set to 'TextFile'.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -678,7 +673,7 @@ func schema_pkg_apis_pipeline_v1alpha1_InitialWorkspaceContents(ref common.Refer
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "InitialWorkspaceContents describes the desired contents of a workspace declared in the Task under Test before starting the test. N2H(jlux98): it might be useful to be able to populate a workspace with files from a git repo, as the git repo volume type is deprecated and can't be used with CopyFrom anymore.",
+				Description: "InitialWorkspaceContents describes the desired contents of a workspace declared in the Task under Test before starting the test.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"name": {
@@ -752,7 +747,7 @@ func schema_pkg_apis_pipeline_v1alpha1_InputFileSystemObject(ref common.Referenc
 					},
 					"copyFrom": {
 						SchemaProps: spec.SchemaProps{
-							Description: "CopyFrom holds the name of a volume and a path within that volume. During setup the file system object at the specified path in CopyFrom is recursively copied to the path specified in this InputFileSystemObject. If CopyFrom is populated then Type or Content may not be populated, as well.\n\nLIMITATION: The volume to be copied from must be declared either in the Spec of the Task under Test or the Spec of any TaskTestRun executing the test",
+							Description: "CopyFrom holds the name of a volume and a path within that volume. During setup the file system object at the specified path in CopyFrom is recursively copied to the path specified in this InputFileSystemObject. If CopyFrom is populated then Type or Content may not be populated, as well.",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.CopyFromRef"),
 						},
 					},
@@ -1835,14 +1830,6 @@ func schema_pkg_apis_pipeline_v1alpha1_SuiteTaskTestRun(ref common.ReferenceCall
 						},
 					},
 					"volumes": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-map-keys": []interface{}{
-									"name",
-								},
-								"x-kubernetes-list-type": "map",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Volumes is a list of volumes that gets patched down to the TaskSpec of the TaskTestRuns being provisioned by this TaskTestSuiteRun. The intent is to allow the injection of data into test runs, e.g. via CopyFrom objects, without having to change the spec of the Task under test.",
 							Type:        []string{"array"},
@@ -2288,8 +2275,7 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunSpec(ref common.ReferenceCallb
 					},
 					"taskTestSpec": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TaskTestSpec is a task test definition. Either this or TaskTestRef must be set, if neither or both are set then validation of this TaskTestRun fails.",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSpec"),
+							Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSpec"),
 						},
 					},
 					"workspaces": {
@@ -2358,14 +2344,6 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunSpec(ref common.ReferenceCallb
 						},
 					},
 					"volumes": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-map-keys": []interface{}{
-									"name",
-								},
-								"x-kubernetes-list-type": "map",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Volumes is a list of volumes that gets patched down to the TaskSpec of the TaskRun being provisioned by this TaskTestRun. The intent is to allow the injection of data into test runs, e.g. via CopyFrom objects, without having to change the spec of the Task under test.",
 							Type:        []string{"array"},
@@ -2601,14 +2579,6 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunTemplate(ref common.ReferenceC
 						},
 					},
 					"volumes": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-map-keys": []interface{}{
-									"name",
-								},
-								"x-kubernetes-list-type": "map",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Volumes is a list of volumes that gets patched down to the TaskSpec of the TaskTestRuns being provisioned by this TaskTestSuiteRun. The intent is to allow the injection of data into test runs, e.g. via CopyFrom objects, without having to change the spec of the Task under test.",
 							Type:        []string{"array"},
@@ -2651,7 +2621,7 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestSpec(ref common.ReferenceCallback
 				Properties: map[string]spec.Schema{
 					"taskRef": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TaskRef is a reference to a task definition, which must be in the same namespace as the this test.\n\nN2H(jlux98): in the future this might use v1.TaskRef and be able to resolve remote tasks.",
+							Description: "TaskRef is a reference to a task definition, which must be in the same namespace as the this test.",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SimpleTaskRef"),
 						},
 					},

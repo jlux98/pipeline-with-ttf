@@ -142,6 +142,9 @@ type TaskTestRunSpec struct {
 	// validation of this TaskTestRun fails.
 	//
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
+
 	TaskTestSpec *TaskTestSpec `json:"taskTestSpec,omitempty"`
 
 	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
@@ -188,11 +191,15 @@ type TaskTestRunSpec struct {
 	// via CopyFrom objects, without having to change the spec of the
 	// Task under test.
 	//
-	// +listType=map
-	// +listMapKey=name
 	// +optional
-	Volumes []corev1.Volume `json:"volumes,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
+	Volumes Volumes `json:"volumes,omitempty"`
 }
+
+// +listType=map
+// +listMapKey=name
+type Volumes []corev1.Volume
 
 type TaskTestRef struct {
 	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
@@ -237,6 +244,8 @@ type TaskTestRunStatusFields struct {
 	// TODO(jlux98) decide, whether to also populate this field when TaskTests are defined inline
 	//
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	TaskTestSpec *TaskTestSpec `json:"taskTestSpec,omitempty"`
 
 	// TaskTestName is the name of the referenced TaskTest if no inline TaskTest
@@ -251,6 +260,9 @@ type TaskTestRunStatusFields struct {
 
 	// TaskRunStatus is the status of the TaskRun responsible for executing this
 	// test's Tasks.
+	//
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	TaskRunStatus *v1.TaskRunStatus `json:"taskRunStatus,omitempty"`
 
 	// StartTime is the time the build is actually started.

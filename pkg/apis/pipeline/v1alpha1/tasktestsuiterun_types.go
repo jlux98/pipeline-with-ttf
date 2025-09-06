@@ -87,6 +87,8 @@ type TaskTestSuiteRunSpec struct {
 	// validation of this TaskTestSuiteRun fails.
 	//
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	TaskTestSuiteSpec *TaskTestSuiteSpec `json:"taskTestSuiteSpec,omitempty"`
 
 	// ExecutionMode specifies, whether the tests in this run will be executed
@@ -179,10 +181,10 @@ type TaskTestRunTemplate struct {
 	// via CopyFrom objects, without having to change the spec of the
 	// Task under test.
 	//
-	// +listType=map
-	// +listMapKey=name
 	// +optional
-	Volumes []corev1.Volume `json:"volumes,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
+	Volumes Volumes `json:"volumes,omitempty"`
 
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
@@ -243,6 +245,8 @@ type TaskTestSuiteRunStatusFields struct {
 
 	// TaskTestRunStatuses is the list containing the status fields of the
 	// TaskTestRuns responsible for executing this suite's TasksTests.
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	TaskTestRunStatuses map[string]*TaskTestRunStatus `json:"taskTestRunStatuses"`
 
 	// CompletionTime is the time the test completed.
