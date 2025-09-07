@@ -69,10 +69,11 @@ var cancelTaskRunPatchBytes, timeoutTaskRunPatchBytes []byte
 
 const printEnvTrap = `envPath="%s/%s"
 echo "The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step"
-trap 'echo "{\"step\": \"%s\", \"environment\": {
-$(printenv)
+trap 'echo "{\"stepName\": \"%s\", \"environment\": {
+$(printenv | grep '%s')
 }}," >> "$envPath"' EXIT
 `
+const StepNamePrepareWorkspace = "prepare-workspace"
 
 // ReconcileKind implements tasktestrun.Interface.
 func (c *Reconciler) ReconcileKind(ctx context.Context, ttr *v1alpha1.TaskTestRun) reconciler.Event {
@@ -617,7 +618,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 
 	taskRun, err = c.PipelineClientSet.TektonV1().TaskRuns(taskRunNamespace).Create(ctx, taskRun, metav1.CreateOptions{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("tried creating TaskRun from this payload\n%v\ngot err: %w", taskRun, err)
 	}
 
 	logger.Infof(`TaskRun successfully created: %v`, *taskRun)
@@ -634,7 +635,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 func (r *Reconciler) generateWorkspacePreparationStep(initialWorkspaceContents []v1alpha1.InitialWorkspaceContents, task *v1.Task) (*v1.Step, error) {
 	preparationStep := &v1.Step{
 		Image:   r.Images.ShellImage,
-		Name:    "prepare-workspace",
+		Name:    StepNamePrepareWorkspace,
 		Command: []string{"sh", "-c"},
 		Args:    []string{""},
 	}
@@ -748,14 +749,25 @@ func (c *Reconciler) checkExpectationsForEnv(ctx context.Context, ttrs *v1alpha1
 	if ttrs.Outcomes.StepEnvs == nil {
 		ttrs.Outcomes.StepEnvs = &[]v1alpha1.ObservedStepEnv{}
 	}
+
+	unvisitedSteps := []v1.Step{}
+	unvisitedSteps = append(unvisitedSteps, ttrs.TaskRunStatus.TaskSpec.Steps...)
+	if unvisitedSteps[0].Name == StepNamePrepareWorkspace {
+		unvisitedSteps = slices.Delete(unvisitedSteps, 0, 1)
+	}
+
 	for _, step := range stepEnvironments {
+		logging.FromContext(ctx).Infof("visiting step %s", step.StepName)
+		unvisitedSteps = slices.DeleteFunc(unvisitedSteps, func(s v1.Step) bool {
+			return step.StepName == s.Name
+		})
 		vars := []v1alpha1.ObservedEnvVar{}
 		varsToCheck := ttrs.TaskTestSpec.Expects.Env
 		if ttrs.TaskTestSpec.Expects.StepEnvs != nil {
-		}
-		for _, stepEnv := range ttrs.TaskTestSpec.Expects.StepEnvs {
-			if stepEnv.StepName == step.Step {
-				varsToCheck = append(varsToCheck, stepEnv.Env...)
+			for _, stepEnv := range ttrs.TaskTestSpec.Expects.StepEnvs {
+				if stepEnv.StepName == step.StepName {
+					varsToCheck = append(varsToCheck, stepEnv.Env...)
+				}
 			}
 		}
 
@@ -771,12 +783,12 @@ func (c *Reconciler) checkExpectationsForEnv(ctx context.Context, ttrs *v1alpha1
 				if diffs == nil {
 					diffs = ptr.To("")
 				}
-				*diffs += fmt.Sprintf(`envVar %s in step %s: `, expectedEnvVar.Name, step.Step) + observation.Diff
+				*diffs += fmt.Sprintf(`envVar %s in step %s: `, expectedEnvVar.Name, step.StepName) + observation.Diff
 			}
 			vars = append(vars, observation)
 		}
 		ttrs.Outcomes.StepEnvs = ptr.To(append(*ttrs.Outcomes.StepEnvs, v1alpha1.ObservedStepEnv{
-			StepName: step.Step,
+			StepName: step.StepName,
 			Env:      vars,
 		}))
 		// sorting to make this predicatable for testing
@@ -787,6 +799,20 @@ func (c *Reconciler) checkExpectationsForEnv(ctx context.Context, ttrs *v1alpha1
 		slices.SortFunc(*ttrs.Outcomes.StepEnvs, func(a, b v1alpha1.ObservedStepEnv) int {
 			return strings.Compare(a.StepName, b.StepName)
 		})
+	}
+
+	if len(unvisitedSteps) > 0 {
+		unvisitedStepNames := []string{}
+		for _, step := range unvisitedSteps {
+			unvisitedStepNames = append(unvisitedStepNames, step.Name)
+		}
+		errorMessage := ""
+		if len(unvisitedStepNames) == 1 {
+			errorMessage = fmt.Sprintf("step %s did not have its environment checked", unvisitedStepNames[0])
+		} else {
+			errorMessage = fmt.Sprintf("steps %s did not have their environment checked", strings.Join(unvisitedStepNames, ", "))
+		}
+		return errors.New(errorMessage)
 	}
 	return nil
 }
@@ -919,11 +945,21 @@ func (c *Reconciler) validateAndUpdateExpectationsForTaskRunCreation(ctx context
 				expectedStepEnvs = slices.Delete(expectedStepEnvs, envIdx, envIdx+1)
 				logger.Infof("StepEnvs after during step %s: %s", step.Name, expectedStepEnvs)
 			}
-			if ttr.Spec.TaskTestSpec.Expects.Env != nil || envIdx >= 0 {
+			if (ttr.Spec.TaskTestSpec.Expects.Env != nil || envIdx >= 0) && task.Spec.Steps[i].Script != "" {
+				variables := []string{}
+				if ttr.Spec.TaskTestSpec.Expects.Env != nil {
+					for _, variable := range ttr.Spec.TaskTestSpec.Expects.Env {
+						variables = append(variables, "^"+variable.Name+"=")
+					}
+				}
+				if envIdx >= 0 {
+					for _, variable := range ttr.Status.TaskTestSpec.Expects.StepEnvs[envIdx].Env {
+						variables = append(variables, "^"+variable.Name+"=")
+					}
+				}
+				scriptInterjection := fmt.Sprintf(printEnvTrap, pipeline.DefaultResultPath, v1alpha1.ResultNameEnvironmentDump, step.Name, strings.Join(variables, `\|`))
 				if !strings.HasPrefix(step.Script, "#!") {
-					task.Spec.Steps[i].Script = fmt.Sprintf(
-						printEnvTrap, pipeline.DefaultResultPath, v1alpha1.ResultNameEnvironmentDump,
-						step.Name) + "\n" + declaredSteps[i].Script
+					task.Spec.Steps[i].Script = scriptInterjection + "\n" + declaredSteps[i].Script
 				} else {
 					splitScript := strings.Split(declaredSteps[i].Script, "\n")
 					firstLine := splitScript[0]
@@ -933,9 +969,7 @@ func (c *Reconciler) validateAndUpdateExpectationsForTaskRunCreation(ctx context
 						if !strings.HasPrefix(restOfScript, "\n") {
 							restOfScript = "\n" + restOfScript
 						}
-						task.Spec.Steps[i].Script = firstLine + "\n\n" + fmt.Sprintf(
-							printEnvTrap, pipeline.DefaultResultPath,
-							v1alpha1.ResultNameEnvironmentDump, step.Name) + restOfScript
+						task.Spec.Steps[i].Script = firstLine + "\n\n" + scriptInterjection + restOfScript
 					} else {
 						return fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed,
 							apis.ErrInvalidValue(step.Name, fmt.Sprintf(

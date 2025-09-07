@@ -1764,7 +1764,7 @@ func schema_pkg_apis_pipeline_v1alpha1_StepEnvironment(ref common.ReferenceCallb
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"step": {
+					"stepName": {
 						SchemaProps: spec.SchemaProps{
 							Default: "",
 							Type:    []string{"string"},
@@ -1787,7 +1787,7 @@ func schema_pkg_apis_pipeline_v1alpha1_StepEnvironment(ref common.ReferenceCallb
 						},
 					},
 				},
-				Required: []string{"step", "environment"},
+				Required: []string{"stepName", "environment"},
 			},
 		},
 	}

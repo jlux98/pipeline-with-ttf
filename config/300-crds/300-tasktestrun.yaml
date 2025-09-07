@@ -965,9 +965,6 @@ spec:
                   description: TaskTestSpec is a copy of the Spec of the referenced TaskTest.
                   x-kubernetes-preserve-unknown-fields: true
       additionalPrinterColumns:
-        - name: Age
-          type: date
-          jsonPath: .metadata.creationTimestamp
         - name: Succeeded
           type: string
           jsonPath: ".status.conditions[?(@.type==\"Succeeded\")].status"

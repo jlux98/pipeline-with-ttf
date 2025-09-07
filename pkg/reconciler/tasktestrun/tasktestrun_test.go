@@ -379,8 +379,8 @@ spec:
 
         envPath="/tekton/results/Testing|Environment"
         echo "The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step"
-        trap 'echo "{\"step\": \"date-step\", \"environment\": {
-        $(printenv)
+        trap 'echo "{\"stepName\": \"date-step\", \"environment\": {
+        $(printenv | grep '^HOME=')
         }}," >> "$envPath"' EXIT
 
         echo "Hello world!"
@@ -391,8 +391,8 @@ spec:
       script: |
         envPath="/tekton/results/Testing|Environment"
         echo "The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step"
-        trap 'echo "{\"step\": \"time-step\", \"environment\": {
-        $(printenv)
+        trap 'echo "{\"stepName\": \"time-step\", \"environment\": {
+        $(printenv | grep '^HOME=\|^FHOME=')
         }}," >> "$envPath"' EXIT
 
         echo "Hello world!"
@@ -434,10 +434,10 @@ status:
   - name: Testing|Environment
     type: string
     value: |
-      {"step": "date-step", "environment": {
+      {"stepName": "date-step", "environment": {
       HOME=/root
       }},
-      {"step": "time-step", "environment": {
+      {"stepName": "time-step", "environment": {
       FHOME=/froot
       HOME=/root
       }},

@@ -551,14 +551,14 @@ func IsControlledByTaskTestRun(meta metav1.ObjectMeta) bool {
 type StepEnvironmentList []StepEnvironment
 
 type StepEnvironment struct {
-	Step        string            `json:"step"`
+	StepName    string            `json:"stepName"`
 	Environment map[string]string `json:"environment"`
 }
 
 func (sel StepEnvironmentList) ToMap() map[string]map[string]string {
 	result := map[string]map[string]string{}
 	for idx := range sel {
-		result[sel[idx].Step] = sel[idx].Environment
+		result[sel[idx].StepName] = sel[idx].Environment
 	}
 	return result
 }

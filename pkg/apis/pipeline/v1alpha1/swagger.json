@@ -942,7 +942,7 @@
     "v1alpha1.StepEnvironment": {
       "type": "object",
       "required": [
-        "step",
+        "stepName",
         "environment"
       ],
       "properties": {
@@ -953,7 +953,7 @@
             "default": ""
           }
         },
-        "step": {
+        "stepName": {
           "type": "string",
           "default": ""
         }
