@@ -197,11 +197,9 @@ status:
     successStatus:
       want: false
       got: true
-      wantDiffersFromGot: true
     successReason:
       want: BOOM
       got: Succeeded
-      wantDiffersFromGot: true
   startTime: "2025-08-15T15:17:55Z"
   completionTime: "2025-08-15T15:17:59Z"
 `

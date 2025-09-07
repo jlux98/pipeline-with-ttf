@@ -860,13 +860,6 @@ func schema_pkg_apis_pipeline_v1alpha1_ObservedEnvVar(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
-					"diff": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Diff describes, how Want and Got differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 				},
 				Required: []string{"name", "want", "got"},
 			},
@@ -904,13 +897,6 @@ func schema_pkg_apis_pipeline_v1alpha1_ObservedFileSystemObject(ref common.Refer
 							Format:      "",
 						},
 					},
-					"diffType": {
-						SchemaProps: spec.SchemaProps{
-							Description: "DiffType describes, how WantType and GotType differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 					"wantContent": {
 						SchemaProps: spec.SchemaProps{
 							Description: "WantContent describes the type of the file system object the test expected to find at Path",
@@ -921,13 +907,6 @@ func schema_pkg_apis_pipeline_v1alpha1_ObservedFileSystemObject(ref common.Refer
 					"gotContent": {
 						SchemaProps: spec.SchemaProps{
 							Description: "GotType describes the type of the file system object the test found at Path",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"diffContent": {
-						SchemaProps: spec.SchemaProps{
-							Description: "DiffType describes, how WantContent and GotContent differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -1052,13 +1031,6 @@ func schema_pkg_apis_pipeline_v1alpha1_ObservedResults(ref common.ReferenceCallb
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue"),
 						},
 					},
-					"diff": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Diff describes, how Want and Got differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 				},
 				Required: []string{"name", "want", "got"},
 			},
@@ -1177,13 +1149,6 @@ func schema_pkg_apis_pipeline_v1alpha1_ObservedSuccessReason(ref common.Referenc
 							Format:      "",
 						},
 					},
-					"wantDiffersFromGot": {
-						SchemaProps: spec.SchemaProps{
-							Description: "WantDiffersFromGot describes, whether Want and Got have the same value.",
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
 				},
 				Required: []string{"want", "got"},
 			},
@@ -1209,13 +1174,6 @@ func schema_pkg_apis_pipeline_v1alpha1_ObservedSuccessStatus(ref common.Referenc
 						SchemaProps: spec.SchemaProps{
 							Description: "Got reports, whether the task under test actually succeeded",
 							Default:     false,
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
-					"wantDiffersFromGot": {
-						SchemaProps: spec.SchemaProps{
-							Description: "WantDiffersFromGot describes, whether Want and Got have the same value.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},

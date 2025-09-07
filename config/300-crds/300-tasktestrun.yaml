@@ -793,18 +793,6 @@ spec:
                                 - path
                                 - wantType
                               properties:
-                                diffContent:
-                                  description: |-
-                                    DiffType describes, how WantContent and GotContent differ, using the typical
-                                    notation for go tests (prefacing lines from want with a - and lines from
-                                    got with a +)
-                                  type: string
-                                diffType:
-                                  description: |-
-                                    DiffType describes, how WantType and GotType differ, using the typical
-                                    notation for go tests (prefacing lines from want with a - and lines from
-                                    got with a +)
-                                  type: string
                                 gotContent:
                                   description: GotType describes the type of the file system object the test found at Path
                                   type: string
@@ -836,12 +824,6 @@ spec:
                           - name
                           - want
                         properties:
-                          diff:
-                            description: |-
-                              Diff describes, how Want and Got differ, using the typical
-                              notation for go tests (prefacing lines from want with a - and lines from
-                              got with a +)
-                            type: string
                           got:
                             description: Got describes the value this Result was found to have
                             x-kubernetes-preserve-unknown-fields: true
@@ -879,12 +861,6 @@ spec:
                                 - name
                                 - want
                               properties:
-                                diff:
-                                  description: |-
-                                    Diff describes, how Want and Got differ, using the typical
-                                    notation for go tests (prefacing lines from want with a - and lines from
-                                    got with a +)
-                                  type: string
                                 got:
                                   description: Got is the value that environment variable was found to have
                                   type: string
@@ -919,9 +895,6 @@ spec:
                             Want describes, what Reason the test expected to find for the success
                             status of the task under test
                           type: string
-                        wantDiffersFromGot:
-                          description: WantDiffersFromGot describes, whether Want and Got have the same value.
-                          type: boolean
                     successStatus:
                       type: object
                       required:
@@ -933,9 +906,6 @@ spec:
                           type: boolean
                         want:
                           description: Want describes, whether the test exects the task under test to succeed
-                          type: boolean
-                        wantDiffersFromGot:
-                          description: WantDiffersFromGot describes, whether Want and Got have the same value.
                           type: boolean
                 retriesStatus:
                   description: |-

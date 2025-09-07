@@ -398,9 +398,8 @@ func (c *Reconciler) checkActualOutcomesAgainstExpectations(ctx context.Context,
 				Want: *ttrs.TaskTestSpec.Expects.SuccessStatus,
 				Got:  trs.GetCondition(apis.ConditionSucceeded).IsTrue(),
 			}
-			ttrs.Outcomes.SuccessStatus.WantDiffersFromGot = ttrs.Outcomes.SuccessStatus.Want != ttrs.Outcomes.SuccessStatus.Got
 
-			if ttrs.Outcomes.SuccessStatus.WantDiffersFromGot {
+			if ttrs.Outcomes.SuccessStatus.Want != ttrs.Outcomes.SuccessStatus.Got {
 				expectationsMet = false
 				diffs += "observed success status did not match expectation\n"
 			}
@@ -412,9 +411,8 @@ func (c *Reconciler) checkActualOutcomesAgainstExpectations(ctx context.Context,
 				Want: *ttrs.TaskTestSpec.Expects.SuccessReason,
 				Got:  v1.TaskRunReason(trs.Conditions[0].Reason),
 			}
-			ttrs.Outcomes.SuccessReason.WantDiffersFromGot = ttrs.Outcomes.SuccessReason.Want != ttrs.Outcomes.SuccessReason.Got
 
-			if ttrs.Outcomes.SuccessReason.WantDiffersFromGot {
+			if ttrs.Outcomes.SuccessReason.Want != ttrs.Outcomes.SuccessReason.Got {
 				expectationsMet = false
 				diffs += "observed success reason did not match expectation\n"
 			}
@@ -705,16 +703,14 @@ func checkExpectationsForResults(ttrs *v1alpha1.TaskTestRunStatus, gotResults []
 		} else {
 			gotValue = &(gotResults[j].Value)
 		}
-		diff := cmp.Diff(expectedResult.Value, gotValue)
 		ttrs.Outcomes.Results = ptr.To(append(*ttrs.Outcomes.Results, v1alpha1.ObservedResults{
 			Name: expectedResult.Name,
 			Want: expectedResult.Value,
 			Got:  gotValue,
-			Diff: diff,
 		}))
-		if diff != "" {
+		if !cmp.Equal(expectedResult.Value, gotValue) {
 			*expectationsMet = false
-			*diffs += fmt.Sprintf(`Result %s: `, expectedResult.Name) + diff
+			*diffs += fmt.Sprintf("Result %q: want %q, got %q\n", expectedResult.Name, expectedResult.Value.StringVal, gotValue.StringVal)
 		}
 	}
 
@@ -777,13 +773,12 @@ func (c *Reconciler) checkExpectationsForEnv(ctx context.Context, ttrs *v1alpha1
 				Want: expectedEnvVar.Value,
 				Got:  step.Environment[expectedEnvVar.Name],
 			}
-			observation.Diff = cmp.Diff(observation.Want, observation.Got)
-			if observation.Diff != "" {
+			if !cmp.Equal(observation.Want, observation.Got) {
 				*expectationsMet = false
 				if diffs == nil {
 					diffs = ptr.To("")
 				}
-				*diffs += fmt.Sprintf(`envVar %s in step %s: `, expectedEnvVar.Name, step.StepName) + observation.Diff
+				*diffs += fmt.Sprintf("envVar %q in step %q: want %q, got %q\n", expectedEnvVar.Name, step.StepName, observation.Want, observation.Got)
 			}
 			vars = append(vars, observation)
 		}
@@ -854,10 +849,9 @@ func checkExpectationsForFileSystemObjects(ctx context.Context, ttrs *v1alpha1.T
 				GotContent:  fileSystemObservationsMap[step.StepName][object.Path].Content,
 			}
 
-			observation.DiffType = cmp.Diff(observation.WantType, observation.GotType)
-			if observation.DiffType != "" {
+			if !cmp.Equal(observation.WantType, observation.GotType) {
 				*expectationsMet = false
-				*diffs += fmt.Sprintf(`file system object %q type in step %s: `, observation.Path, step.StepName) + observation.DiffType
+				*diffs += fmt.Sprintf("file system object %q type in step %q: want %q, got %q\n", observation.Path, step.StepName, observation.WantType, observation.GotType)
 			}
 
 			// we can assume, that the empty string here means,
@@ -865,11 +859,10 @@ func checkExpectationsForFileSystemObjects(ctx context.Context, ttrs *v1alpha1.T
 			// wanted to check, if a file was empty, they would
 			// use the EmptyFile type instead.
 			if observation.WantContent != "" {
-				observation.DiffContent = cmp.Diff(observation.WantContent, observation.GotContent)
-				if observation.DiffContent != "" {
+				if !cmp.Equal(observation.WantContent, observation.GotContent) {
 					*expectationsMet = false
 
-					*diffs += fmt.Sprintf(`file system object %q content in step %s: `, observation.Path, step.StepName) + observation.DiffContent
+					*diffs += fmt.Sprintf("file system object %q content in step %q: want %q, got %q\n", observation.Path, step.StepName, observation.WantContent, observation.GotContent)
 				}
 			}
 
@@ -916,7 +909,6 @@ func init() {
 }
 
 func (c *Reconciler) validateAndUpdateExpectationsForTaskRunCreation(ctx context.Context, ttr *v1alpha1.TaskTestRun, task *v1.Task) error {
-	logger := logging.FromContext(ctx)
 	expected := ttr.Status.TaskTestSpec.Expects
 	if expected.Results != nil {
 		declaredResults := task.Spec.Results
@@ -941,9 +933,7 @@ func (c *Reconciler) validateAndUpdateExpectationsForTaskRunCreation(ctx context
 				return step.Name == stepEnv.StepName
 			})
 			if envIdx >= 0 {
-				logger.Infof("StepEnvs before during step %s: %s", step.Name, expectedStepEnvs)
 				expectedStepEnvs = slices.Delete(expectedStepEnvs, envIdx, envIdx+1)
-				logger.Infof("StepEnvs after during step %s: %s", step.Name, expectedStepEnvs)
 			}
 			if (ttr.Spec.TaskTestSpec.Expects.Env != nil || envIdx >= 0) && task.Spec.Steps[i].Script != "" {
 				variables := []string{}
@@ -975,7 +965,7 @@ func (c *Reconciler) validateAndUpdateExpectationsForTaskRunCreation(ctx context
 							apis.ErrInvalidValue(step.Name, fmt.Sprintf(
 								"status.taskTestSpec.expected.stepEnvs[%d].stepName", i),
 								fmt.Sprintf(`Step %q has a Shebang that calls for an unsupported`+
-									`interpreter: %s`, step.Name, firstLine)))
+									`interpreter: %q`, step.Name, firstLine)))
 					}
 				}
 			}

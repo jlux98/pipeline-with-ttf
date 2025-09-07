@@ -419,10 +419,6 @@
         "got"
       ],
       "properties": {
-        "diff": {
-          "description": "Diff describes, how Want and Got differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
-          "type": "string"
-        },
         "got": {
           "description": "Got is the value that environment variable was found to have",
           "type": "string",
@@ -448,14 +444,6 @@
         "gotType"
       ],
       "properties": {
-        "diffContent": {
-          "description": "DiffType describes, how WantContent and GotContent differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
-          "type": "string"
-        },
-        "diffType": {
-          "description": "DiffType describes, how WantType and GotType differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
-          "type": "string"
-        },
         "gotContent": {
           "description": "GotType describes the type of the file system object the test found at Path",
           "type": "string"
@@ -534,10 +522,6 @@
         "got"
       ],
       "properties": {
-        "diff": {
-          "description": "Diff describes, how Want and Got differ, using the typical notation for go tests (prefacing lines from want with a - and lines from got with a +)",
-          "type": "string"
-        },
         "got": {
           "description": "Got describes the value this Result was found to have",
           "$ref": "#/definitions/v1.ParamValue"
@@ -617,10 +601,6 @@
           "description": "Want describes, what Reason the test expected to find for the success status of the task under test",
           "type": "string",
           "default": ""
-        },
-        "wantDiffersFromGot": {
-          "description": "WantDiffersFromGot describes, whether Want and Got have the same value.",
-          "type": "boolean"
         }
       }
     },
@@ -640,10 +620,6 @@
           "description": "Want describes, whether the test exects the task under test to succeed",
           "type": "boolean",
           "default": false
-        },
-        "wantDiffersFromGot": {
-          "description": "WantDiffersFromGot describes, whether Want and Got have the same value.",
-          "type": "boolean"
         }
       }
     },

@@ -726,25 +726,6 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 		TaskTestRuns: slices.Collect(maps.Values(taskTestRunMap)),
 	}
 
-	// declare some diffs that will be used in multiple places
-	diffCurrentDate := cmp.Diff(&v1.ResultValue{
-		Type:      "string",
-		StringVal: "2015-08-15",
-	}, &v1.ResultValue{
-		Type:      "string",
-		StringVal: "2025-08-15",
-	})
-	diffCurrentTime := cmp.Diff(&v1.ResultValue{
-		Type:      "string",
-		StringVal: "05:17:59",
-	}, &v1.ResultValue{
-		Type:      "string",
-		StringVal: "15:17:59",
-	})
-	diffEnv := cmp.Diff("/groot", "/root")
-	diffType := cmp.Diff(v1alpha1.DirectoryType, v1alpha1.TextFileType)
-	diffContent := cmp.Diff("foo", "bar")
-
 	type tc struct {
 		ttr                   *v1alpha1.TaskTestRun
 		wantTtrStatus         *v1alpha1.TaskTestRunStatus
@@ -955,12 +936,10 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 								Name: "current-date",
 								Want: &v1.ResultValue{Type: "string", StringVal: "2015-08-15"},
 								Got:  &v1.ResultValue{Type: "string", StringVal: "2025-08-15"},
-								Diff: diffCurrentDate,
 							}, {
 								Name: "current-time",
 								Want: &v1.ResultValue{Type: "string", StringVal: "05:17:59"},
 								Got:  &v1.ResultValue{Type: "string", StringVal: "15:17:59"},
-								Diff: diffCurrentTime,
 							}},
 							StepEnvs: &[]v1alpha1.ObservedStepEnv{{
 								StepName: "date-step",
@@ -968,7 +947,6 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 									Name: "HOME",
 									Want: "/groot",
 									Got:  "/root",
-									Diff: diffEnv,
 								}},
 							}, {
 								StepName: "time-step",
@@ -980,7 +958,6 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 									Name: "HOME",
 									Want: "/groot",
 									Got:  "/root",
-									Diff: diffEnv,
 								}},
 							}},
 							FileSystemObjects: &[]v1alpha1.ObservedStepFileSystemContent{{
@@ -989,7 +966,6 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 									Path:       "/tekton/results/current-date",
 									WantType:   v1alpha1.DirectoryType,
 									GotType:    v1alpha1.TextFileType,
-									DiffType:   diffType,
 									GotContent: "bar",
 								}},
 							}, {
@@ -1000,27 +976,25 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 									GotType:     v1alpha1.TextFileType,
 									WantContent: "foo",
 									GotContent:  "bar",
-									DiffContent: diffContent,
 								}},
 							}},
 							SuccessStatus: &v1alpha1.ObservedSuccessStatus{
-								Want:               false,
-								Got:                true,
-								WantDiffersFromGot: true,
+								Want: false,
+								Got:  true,
 							},
 							SuccessReason: &v1alpha1.ObservedSuccessReason{
-								Want:               "Failed",
-								Got:                "Succeeded",
-								WantDiffersFromGot: true,
+								Want: "Failed",
+								Got:  "Succeeded",
 							},
-							Diffs: "observed success status did not match expectation\n" +
-								"observed success reason did not match expectation\n" +
-								"Result current-date: " + diffCurrentDate +
-								"Result current-time: " + diffCurrentTime +
-								"envVar HOME in step date-step: " + diffEnv +
-								"envVar HOME in step time-step: " + diffEnv +
-								"file system object \"/tekton/results/current-date\" type in step date-step: " + diffType +
-								"file system object \"/tekton/results/current-time\" content in step time-step: " + diffContent,
+							Diffs: `observed success status did not match expectation
+observed success reason did not match expectation
+Result "current-date": want "2015-08-15", got "2025-08-15"
+Result "current-time": want "05:17:59", got "15:17:59"
+envVar "HOME" in step "date-step": want "/groot", got "/root"
+envVar "HOME" in step "time-step": want "/groot", got "/root"
+file system object "/tekton/results/current-date" type in step "date-step": want "Directory", got "TextFile"
+file system object "/tekton/results/current-time" content in step "time-step": want "foo", got "bar"
+`,
 						},
 					}
 					ttr.Status.TaskTestSpec = ttr.Spec.TaskTestSpec

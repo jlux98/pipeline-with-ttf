@@ -332,13 +332,6 @@ type ObservedFileSystemObject struct {
 	// GotType describes the type of the file system object the test found at Path
 	GotType FileSystemObjectType `json:"gotType"`
 
-	// DiffType describes, how WantType and GotType differ, using the typical
-	// notation for go tests (prefacing lines from want with a - and lines from
-	// got with a +)
-	//
-	// +optional
-	DiffType string `json:"diffType,omitempty"`
-
 	// WantContent describes the type of the file system object the test
 	// expected to find at Path
 	//
@@ -349,13 +342,6 @@ type ObservedFileSystemObject struct {
 	//
 	// +optional
 	GotContent string `json:"gotContent,omitempty"`
-
-	// DiffType describes, how WantContent and GotContent differ, using the typical
-	// notation for go tests (prefacing lines from want with a - and lines from
-	// got with a +)
-	//
-	// +optional
-	DiffContent string `json:"diffContent,omitempty"`
 }
 
 type ObservedResults struct {
@@ -374,13 +360,6 @@ type ObservedResults struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	Got *v1.ResultValue `json:"got"`
-
-	// Diff describes, how Want and Got differ, using the typical
-	// notation for go tests (prefacing lines from want with a - and lines from
-	// got with a +)
-	//
-	// +optional
-	Diff string `json:"diff,omitempty"`
 }
 
 type ObservedEnvVar struct {
@@ -392,13 +371,6 @@ type ObservedEnvVar struct {
 
 	// Got is the value that environment variable was found to have
 	Got string `json:"got"`
-
-	// Diff describes, how Want and Got differ, using the typical
-	// notation for go tests (prefacing lines from want with a - and lines from
-	// got with a +)
-	//
-	// +optional
-	Diff string `json:"diff,omitempty"`
 }
 
 type ObservedStepEnv struct {
@@ -419,11 +391,6 @@ type ObservedSuccessStatus struct {
 
 	// Got reports, whether the task under test actually succeeded
 	Got bool `json:"got"`
-
-	// WantDiffersFromGot describes, whether Want and Got have the same value.
-	//
-	// +optional
-	WantDiffersFromGot bool `json:"wantDiffersFromGot,omitempty"`
 }
 
 type ObservedSuccessReason struct {
@@ -434,11 +401,6 @@ type ObservedSuccessReason struct {
 	// Got reports, what Reason was given for the success status of the task
 	// under test
 	Got v1.TaskRunReason `json:"got"`
-
-	// WantDiffersFromGot describes, whether Want and Got have the same value.
-	//
-	// +optional
-	WantDiffersFromGot bool `json:"wantDiffersFromGot,omitempty"`
 }
 
 // HasStarted function check whether TaskTestRun has valid start time set in its status
