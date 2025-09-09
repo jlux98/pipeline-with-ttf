@@ -24,7 +24,6 @@ import (
 	"strings"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -80,10 +79,6 @@ var (
 //   - setSecurityContext: whether the init container should include a security context that will
 //     allow it to run in a namespace with "restricted" pod security admission
 func convertScripts(shellImageLinux string, shellImageWin string, steps []v1.Step, sidecars []v1.Sidecar, debugConfig *v1.TaskRunDebug, securityContext SecurityContextConfig) (*corev1.Container, []corev1.Container, []corev1.Container) {
-	return convertScriptsWithExpectedValues(shellImageLinux, shellImageWin, steps, sidecars, debugConfig, securityContext, nil)
-}
-
-func convertScriptsWithExpectedValues(shellImageLinux string, shellImageWin string, steps []v1.Step, sidecars []v1.Sidecar, debugConfig *v1.TaskRunDebug, securityContext SecurityContextConfig, expectedValues *v1alpha1.ExpectedOutcomes) (*corev1.Container, []corev1.Container, []corev1.Container) {
 	// Place scripts is an init container used for creating scripts in the
 	// /tekton/scripts directory which would be later used by the step containers
 	// as a Command
@@ -117,7 +112,7 @@ func convertScriptsWithExpectedValues(shellImageLinux string, shellImageWin stri
 		placeScriptsInit.VolumeMounts = append(placeScriptsInit.VolumeMounts, debugScriptsVolumeMount)
 	}
 
-	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, debugConfig, "script", expectedValues)
+	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, debugConfig, "script")
 	sidecarContainers := convertListOfSidecars(sidecars, &placeScriptsInit, "sidecar-script")
 
 	if hasScripts(steps, sidecars, debugConfig) {
@@ -133,7 +128,7 @@ func convertListOfSidecars(sidecars []v1.Sidecar, initContainer *corev1.Containe
 	for i, s := range sidecars {
 		c := s.ToK8sContainer()
 		if s.Script != "" {
-			placeScriptInContainer(s.Script, getScriptFile(scriptsDir, fmt.Sprintf("%s-%d", namePrefix, i)), c, initContainer, nil)
+			placeScriptInContainer(s.Script, getScriptFile(scriptsDir, fmt.Sprintf("%s-%d", namePrefix, i)), c, initContainer)
 		}
 		containers = append(containers, *c)
 	}
@@ -142,12 +137,12 @@ func convertListOfSidecars(sidecars []v1.Sidecar, initContainer *corev1.Containe
 
 // convertListOfSteps iterates through the list of steps, generates the script file name and heredoc termination string,
 // adds an entry to the init container args, sets up the step container to run the script, and sets the volume mounts.
-func convertListOfSteps(steps []v1.Step, initContainer *corev1.Container, debugConfig *v1.TaskRunDebug, namePrefix string, taskTestSpec *v1alpha1.ExpectedOutcomes) []corev1.Container {
+func convertListOfSteps(steps []v1.Step, initContainer *corev1.Container, debugConfig *v1.TaskRunDebug, namePrefix string) []corev1.Container {
 	containers := []corev1.Container{}
 	for i, s := range steps {
 		c := steps[i].ToK8sContainer()
 		if s.Script != "" {
-			placeScriptInContainer(s.Script, getScriptFile(scriptsDir, fmt.Sprintf("%s-%d", namePrefix, i)), c, initContainer, taskTestSpec)
+			placeScriptInContainer(s.Script, getScriptFile(scriptsDir, fmt.Sprintf("%s-%d", namePrefix, i)), c, initContainer)
 		}
 		containers = append(containers, *c)
 	}
@@ -162,7 +157,7 @@ func getScriptFile(scriptsDir, scriptName string) string {
 // placeScriptInContainer given a piece of script to be executed, placeScriptInContainer firstly modifies initContainer
 // so that it capsules the target script into scriptFile, then it modifies the container so that it can execute the scriptFile
 // in runtime.
-func placeScriptInContainer(script, scriptFile string, c *corev1.Container, initContainer *corev1.Container, expectedValues *v1alpha1.ExpectedOutcomes) {
+func placeScriptInContainer(script, scriptFile string, c *corev1.Container, initContainer *corev1.Container) {
 	if script == "" {
 		return
 	}

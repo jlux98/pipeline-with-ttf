@@ -425,11 +425,7 @@ func (c *Reconciler) checkActualOutcomesAgainstExpectations(ctx context.Context,
 			p, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
 			if err != nil {
 				err = fmt.Errorf("Error getting pod %q for retrieving the results of failed task run %q: %w", tr.Status.PodName, tr.Name, err)
-				if resultErr == nil {
-					resultErr = err
-				} else {
-					resultErr = fmt.Errorf("%w\n%w", resultErr, err)
-				}
+				resultErr = err
 			}
 			tempTR := tr.DeepCopy()
 			tempTR.Status.SetCondition(&apis.Condition{
@@ -935,38 +931,51 @@ func (c *Reconciler) validateAndUpdateExpectationsForTaskRunCreation(ctx context
 			if envIdx >= 0 {
 				expectedStepEnvs = slices.Delete(expectedStepEnvs, envIdx, envIdx+1)
 			}
-			if (ttr.Spec.TaskTestSpec.Expects.Env != nil || envIdx >= 0) && task.Spec.Steps[i].Script != "" {
-				variables := []string{}
-				if ttr.Spec.TaskTestSpec.Expects.Env != nil {
-					for _, variable := range ttr.Spec.TaskTestSpec.Expects.Env {
-						variables = append(variables, "^"+variable.Name+"=")
-					}
-				}
-				if envIdx >= 0 {
-					for _, variable := range ttr.Status.TaskTestSpec.Expects.StepEnvs[envIdx].Env {
-						variables = append(variables, "^"+variable.Name+"=")
-					}
-				}
-				scriptInterjection := fmt.Sprintf(printEnvTrap, pipeline.DefaultResultPath, v1alpha1.ResultNameEnvironmentDump, step.Name, strings.Join(variables, `\|`))
-				if !strings.HasPrefix(step.Script, "#!") {
-					task.Spec.Steps[i].Script = scriptInterjection + "\n" + declaredSteps[i].Script
-				} else {
-					splitScript := strings.Split(declaredSteps[i].Script, "\n")
-					firstLine := splitScript[0]
-					restOfScript := strings.Join(splitScript[1:], "\n")
-					pattern := regexp.MustCompile(`^#!.*?\b(ba)?sh$`)
-					if pattern.MatchString(firstLine) {
-						if !strings.HasPrefix(restOfScript, "\n") {
-							restOfScript = "\n" + restOfScript
+			if ttr.Spec.TaskTestSpec.Expects.Env != nil || envIdx >= 0 {
+				if task.Spec.Steps[i].Script != "" {
+					variables := []string{}
+					if ttr.Spec.TaskTestSpec.Expects.Env != nil {
+						for _, variable := range ttr.Spec.TaskTestSpec.Expects.Env {
+							variables = append(variables, "^"+variable.Name+"=")
 						}
-						task.Spec.Steps[i].Script = firstLine + "\n\n" + scriptInterjection + restOfScript
-					} else {
-						return fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed,
-							apis.ErrInvalidValue(step.Name, fmt.Sprintf(
-								"status.taskTestSpec.expected.stepEnvs[%d].stepName", i),
-								fmt.Sprintf(`Step %q has a Shebang that calls for an unsupported`+
-									`interpreter: %q`, step.Name, firstLine)))
 					}
+					if envIdx >= 0 {
+						for _, variable := range ttr.Status.TaskTestSpec.Expects.StepEnvs[envIdx].Env {
+							variables = append(variables, "^"+variable.Name+"=")
+						}
+					}
+					scriptInterjection := fmt.Sprintf(printEnvTrap, pipeline.DefaultResultPath, v1alpha1.ResultNameEnvironmentDump, step.Name, strings.Join(variables, `\|`))
+					if !strings.HasPrefix(step.Script, "#!") {
+						task.Spec.Steps[i].Script = scriptInterjection + "\n" + declaredSteps[i].Script
+					} else {
+						splitScript := strings.Split(declaredSteps[i].Script, "\n")
+						firstLine := splitScript[0]
+						restOfScript := strings.Join(splitScript[1:], "\n")
+						pattern := regexp.MustCompile(`^#!.*?\b(ba)?sh$`)
+						if pattern.MatchString(firstLine) {
+							if !strings.HasPrefix(restOfScript, "\n") {
+								restOfScript = "\n" + restOfScript
+							}
+							task.Spec.Steps[i].Script = firstLine + "\n\n" + scriptInterjection + restOfScript
+						} else {
+							return fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed,
+								apis.ErrInvalidValue(step.Name, fmt.Sprintf(
+									"status.taskTestSpec.expected.stepEnvs[%d].stepName", i),
+									fmt.Sprintf(`Step %q has a Shebang that calls for an unsupported`+
+										`interpreter: %q`, step.Name, firstLine)))
+						}
+					}
+				} else if len(task.Spec.Steps[i].Command) > 0 {
+					if envIdx >= 0 {
+						err := apis.ErrDisallowedFields(fmt.Sprintf(
+							"status.taskTestSpec.expected.stepEnvs[%d].stepName", envIdx),
+						)
+						err.Details = `may not set step env expectation for a step using the "command" field`
+						return fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed, err)
+					}
+					err := apis.ErrDisallowedFields("status.taskTestSpec.expected.envs")
+					err.Details = `may not set task wide env expectation for a task with a step using the "command" field`
+					return fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed, err)
 				}
 			}
 		}
