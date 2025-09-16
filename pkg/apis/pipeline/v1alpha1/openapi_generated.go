@@ -40,6 +40,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.InputFileSystemObject":         schema_pkg_apis_pipeline_v1alpha1_InputFileSystemObject(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.KeyRef":                        schema_pkg_apis_pipeline_v1alpha1_KeyRef(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.NamedTaskTestSpec":             schema_pkg_apis_pipeline_v1alpha1_NamedTaskTestSpec(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedCompletionWithin":      schema_pkg_apis_pipeline_v1alpha1_ObservedCompletionWithin(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedEnvVar":                schema_pkg_apis_pipeline_v1alpha1_ObservedEnvVar(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedFileSystemObject":      schema_pkg_apis_pipeline_v1alpha1_ObservedFileSystemObject(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedOutcomes":              schema_pkg_apis_pipeline_v1alpha1_ObservedOutcomes(ref),
@@ -543,6 +544,12 @@ func schema_pkg_apis_pipeline_v1alpha1_ExpectedOutcomes(ref common.ReferenceCall
 							},
 						},
 					},
+					"completionWithin": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CompletionWithin expresses, that a test is only successful, if it completes within that duration. Since the aim is to measure the performance of the test as consistently as possible, this value is not checked against the difference of the start time and completion time of the task run but against the sum of the differences of the startedAt and finishedAt timestamps of the individual steps, as this cuts out Kubernetes overhead like pod scheduling time.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
 					"successStatus": {
 						SchemaProps: spec.SchemaProps{
 							Description: "SuccessStatus reports, whether the TaskRuns initiated by this test are expected to succeed. This is useful for testing cases in which the Task is supposed to fail because of a faulty input.",
@@ -583,7 +590,7 @@ func schema_pkg_apis_pipeline_v1alpha1_ExpectedOutcomes(ref common.ReferenceCall
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ExpectedStepFileSystemContent", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepEnv", "k8s.io/api/core/v1.EnvVar"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ExpectedStepFileSystemContent", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepEnv", "k8s.io/api/core/v1.EnvVar", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 
@@ -830,6 +837,31 @@ func schema_pkg_apis_pipeline_v1alpha1_NamedTaskTestSpec(ref common.ReferenceCal
 	}
 }
 
+func schema_pkg_apis_pipeline_v1alpha1_ObservedCompletionWithin(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"want": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
+					"got": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
+				},
+				Required: []string{"want", "got"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+	}
+}
+
 func schema_pkg_apis_pipeline_v1alpha1_ObservedEnvVar(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -924,6 +956,12 @@ func schema_pkg_apis_pipeline_v1alpha1_ObservedOutcomes(ref common.ReferenceCall
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
+					"completionWithin": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CompletionWithin",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedCompletionWithin"),
+						},
+					},
 					"fileSystemObjects": {
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"array"},
@@ -1001,7 +1039,7 @@ func schema_pkg_apis_pipeline_v1alpha1_ObservedOutcomes(ref common.ReferenceCall
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedResults", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedStepEnv", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedStepFileSystemContent", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessReason", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessStatus"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedCompletionWithin", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedResults", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedStepEnv", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedStepFileSystemContent", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessReason", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessStatus"},
 	}
 }
 

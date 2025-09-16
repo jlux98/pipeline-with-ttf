@@ -1,0 +1,28 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: caching-task
+  namespace: default
+spec:
+  workspaces:
+    - name: cache-workspace
+  results:
+    - name: computation-result
+      description: |
+        The result of the computation
+      type: string
+  steps:
+    - name: compute-step
+      image: alpine
+      script: |
+        set -x
+
+        if [[ ! -f $(workspaces.cache-workspace.path)/cacheDir/cacheFile ]]; then
+            echo "computing result"
+            sleep 15
+            mkdir $(workspaces.cache-workspace.path)/cacheDir
+            echo -n "42" > $(workspaces.cache-workspace.path)/cacheDir/cacheFile
+        else
+            echo "reading result from cache"
+        fi
+            cat $(workspaces.cache-workspace.path)/cacheDir/cacheFile > $(results.computation-result.path)

@@ -285,6 +285,11 @@ type TaskTestRunStatusFields struct {
 }
 
 type ObservedOutcomes struct {
+	// CompletionWithin
+	//
+	// +optional
+	CompletionWithin *ObservedCompletionWithin `json:"completionWithin,omitempty"`
+
 	// +optional
 	FileSystemObjects *[]ObservedStepFileSystemContent `json:"fileSystemObjects,omitempty"`
 
@@ -401,6 +406,11 @@ type ObservedSuccessReason struct {
 	// Got reports, what Reason was given for the success status of the task
 	// under test
 	Got v1.TaskRunReason `json:"got"`
+}
+
+type ObservedCompletionWithin struct {
+	Want metav1.Duration `json:"want"`
+	Got  metav1.Duration `json:"got"`
 }
 
 // HasStarted function check whether TaskTestRun has valid start time set in its status

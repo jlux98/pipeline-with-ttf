@@ -1,0 +1,32 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskTestSuiteRun
+metadata:
+  generateName: sample-ttsr-caching-
+spec:
+  executionMode: Sequential
+  defaultRunSpecTemplate:
+    workspaces:
+      - name: cache-workspace
+        # persistentVolumeClaim:
+        #   claimName: cache-volume-claim
+        emptyDir: {}
+  taskTestSuiteSpec:
+    taskTests:
+      - name: task-0
+        taskTestSpec:
+          taskRef:
+            name: caching-task
+          expects:
+            results:
+              - name: computation-result
+                value: "42"
+            completionWithin: 20s
+      - name: task-1
+        taskTestSpec:
+          taskRef:
+            name: caching-task
+          expects:
+            results:
+              - name: computation-result
+                value: "42"
+            completionWithin: 5s

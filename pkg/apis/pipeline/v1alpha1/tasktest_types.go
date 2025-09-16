@@ -254,6 +254,18 @@ type ExpectedOutcomes struct {
 	// +optional
 	StepEnvs StepEnvs `json:"stepEnvs,omitempty"`
 
+	// CompletionWithin expresses, that a test is only successful, if it
+	// completes within that duration. Since the aim is to measure the
+	// performance of the test as consistently as possible, this value
+	// is not checked against the difference of the start time and
+	// completion time of the task run but against the sum of the
+	// differences of the startedAt and finishedAt timestamps of the
+	// individual steps, as this cuts out Kubernetes overhead like pod
+	// scheduling time.
+	//
+	// +optional
+	CompletionWithin *metav1.Duration `json:"completionWithin,omitempty"`
+
 	// SuccessStatus reports, whether the TaskRuns initiated by this test are
 	// expected to succeed. This is useful for testing cases in which the Task
 	// is supposed to fail because of a faulty input.

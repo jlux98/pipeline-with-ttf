@@ -603,6 +603,7 @@ func (c *Reconciler) createTaskTestRun(ctx context.Context, ttsr *v1alpha1.TaskT
 	}
 
 	taskTestRun.Spec.Retries = suiteTest.Retries
+	taskTestRun.Spec.Timeout = suiteTest.Timeout
 	taskTestRun.Spec.AllTriesMustSucceed = suiteTest.AllTriesMustSucceed
 
 	taskTestRun.Status.InitializeConditions()

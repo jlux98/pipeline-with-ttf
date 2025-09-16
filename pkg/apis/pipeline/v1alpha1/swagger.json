@@ -219,6 +219,10 @@
       "description": "ExpectedOutcomes defines the outcomes that should be observed after executing the Task under test.",
       "type": "object",
       "properties": {
+        "completionWithin": {
+          "description": "CompletionWithin expresses, that a test is only successful, if it completes within that duration. Since the aim is to measure the performance of the test as consistently as possible, this value is not checked against the difference of the start time and completion time of the task run but against the sum of the differences of the startedAt and finishedAt timestamps of the individual steps, as this cuts out Kubernetes overhead like pod scheduling time.",
+          "$ref": "#/definitions/v1.Duration"
+        },
         "env": {
           "description": "List of environment variables with expected values to be checked for in all of the Task's Steps.",
           "type": "array",
@@ -411,6 +415,21 @@
         }
       }
     },
+    "v1alpha1.ObservedCompletionWithin": {
+      "type": "object",
+      "required": [
+        "want",
+        "got"
+      ],
+      "properties": {
+        "got": {
+          "$ref": "#/definitions/v1.Duration"
+        },
+        "want": {
+          "$ref": "#/definitions/v1.Duration"
+        }
+      }
+    },
     "v1alpha1.ObservedEnvVar": {
       "type": "object",
       "required": [
@@ -472,6 +491,10 @@
     "v1alpha1.ObservedOutcomes": {
       "type": "object",
       "properties": {
+        "completionWithin": {
+          "description": "CompletionWithin",
+          "$ref": "#/definitions/v1alpha1.ObservedCompletionWithin"
+        },
         "diffs": {
           "type": "string"
         },

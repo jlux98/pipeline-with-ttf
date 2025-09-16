@@ -14,6 +14,13 @@ spec:
         taskTestSpec:
           taskRef:
             name: hello-task
+          inputs:
+            workspaceContents:
+              - name: time-workspace
+                objects:
+                  - path: test/time
+                    type: TextFile
+                    content: "12:34:56"
           expects:
             results:
               - name: current-date
@@ -35,6 +42,13 @@ spec:
         taskTestSpec:
           taskRef:
             name: hello-task
+          inputs:
+            workspaceContents:
+              - name: time-workspace
+                objects:
+                  - path: test/time
+                    type: TextFile
+                    content: "12:34:56"
           expects:
             results:
               - name: current-date

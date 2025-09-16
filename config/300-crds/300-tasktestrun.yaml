@@ -771,6 +771,17 @@ spec:
                 outcomes:
                   type: object
                   properties:
+                    completionWithin:
+                      description: CompletionWithin
+                      type: object
+                      required:
+                        - got
+                        - want
+                      properties:
+                        got:
+                          type: string
+                        want:
+                          type: string
                     diffs:
                       type: string
                     fileSystemObjects:

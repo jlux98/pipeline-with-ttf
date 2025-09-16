@@ -121,7 +121,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, ttr *v1alpha1.TaskTestRu
 		return c.finishReconcileUpdateEmitEvents(ctx, ttr, before, err)
 	}
 
-	// Check if the TaskRun has timed out; if it is, this will set its status
+	// Check if the TaskTestRun has timed out; if it is, this will set its status
 	// accordingly.
 	if ttr.HasTimedOut(ctx, c.Clock) {
 		message := fmt.Sprintf("TaskTestRun %q failed to finish within %q", ttr.Name, ttr.GetTimeout(ctx))
@@ -420,6 +420,24 @@ func (c *Reconciler) checkActualOutcomesAgainstExpectations(ctx context.Context,
 			if ttrs.Outcomes.SuccessReason.Want != ttrs.Outcomes.SuccessReason.Got {
 				expectationsMet = false
 				diffs += "observed success reason did not match expectation\n"
+			}
+		}
+
+		if ttrs.TaskTestSpec.Expects.CompletionWithin != nil {
+			stepDuration := metav1.Duration{}
+
+			for _, step := range tr.Status.Steps {
+				stepDuration.Duration += step.Terminated.FinishedAt.Sub(step.Terminated.StartedAt.Time)
+			}
+
+			ttrs.Outcomes.CompletionWithin = &v1alpha1.ObservedCompletionWithin{
+				Want: *ttrs.TaskTestSpec.Expects.CompletionWithin,
+				Got:  stepDuration,
+			}
+
+			if ttrs.Outcomes.CompletionWithin.Want.Duration < ttrs.Outcomes.CompletionWithin.Got.Duration {
+				expectationsMet = false
+				diffs += "taskRun did not complete in expected time\n"
 			}
 		}
 
