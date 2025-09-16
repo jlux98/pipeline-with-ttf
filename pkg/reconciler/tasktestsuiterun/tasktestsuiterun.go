@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -191,7 +192,7 @@ func (c *Reconciler) cancelTaskTestRun(ctx context.Context, ttsr *v1alpha1.TaskT
 		patch = cancelTaskTestRunPatchBytes
 	case v1alpha1.TaskTestSuiteRunReasonTimedOut:
 		patch = timeoutTaskTestRunPatchBytes
-	case v1alpha1.TaskTestSuiteRunReasonSuccessful, v1alpha1.TaskTestSuiteRunUnexpectatedOutcomes:
+	case v1alpha1.TaskTestSuiteRunReasonSuccessful, v1alpha1.TaskTestSuiteRunReasonUnexpectatedOutcomes, v1alpha1.TaskTestSuiteRunReasonValidationFailed:
 		panic(fmt.Sprintf("unsupported v1alpha1.TaskTestRunReason: %#v", reason))
 	default:
 		panic(fmt.Sprintf("unexpected v1alpha1.TaskTestRunReason: %#v", reason))
@@ -367,20 +368,25 @@ func (c *Reconciler) reconcile(
 			ttsr.Status.CompletionTime = &metav1.Time{Time: c.Clock.Now()}
 		}
 
-		allTaskTestRunsSucceeded, unsuccessful, resultErr := aggregateSuccessStatusOfTaskTestRuns(
-			ctx, ttsr,
-		)
-
+		tasksWithValidationErrors, tasksWithUnexpectedOutcomes, resultErr := aggregateSuccessStatusOfTaskTestRuns(ctx, ttsr)
+		if resultErr != nil {
+			return resultErr
+		}
 		// set status and emit event
 		beforeCondition := ttsr.Status.GetCondition(apis.ConditionSucceeded)
-		if allTaskTestRunsSucceeded {
-			ttsr.Status.MarkSuccessful()
+		if len(tasksWithValidationErrors) > 0 {
+			err := fmt.Errorf("all TaskTestRuns completed executing and not all were successful:\n- %s", strings.Join(tasksWithValidationErrors, "\n- "))
+			ttsr.Status.MarkResourceFailed(v1alpha1.TaskTestSuiteRunReasonValidationFailed, err)
 		} else {
-			err := fmt.Errorf("all TaskTestRuns completed executing and not all were successful: %s", unsuccessful)
-			ttsr.Status.MarkResourceFailed(v1alpha1.TaskTestSuiteRunUnexpectatedOutcomes, err)
+			if len(tasksWithUnexpectedOutcomes) > 0 {
+				err := fmt.Errorf("all TaskTestRuns completed executing and not all were successful:\n- %s", strings.Join(tasksWithUnexpectedOutcomes, "\n- "))
+				ttsr.Status.MarkResourceFailed(v1alpha1.TaskTestSuiteRunReasonUnexpectatedOutcomes, err)
+			} else {
+				ttsr.Status.MarkSuccessful()
+			}
 		}
 		events.Emit(ctx, beforeCondition, ttsr.Status.GetCondition(apis.ConditionSucceeded), ttsr)
-		return resultErr
+		return nil
 	}
 	return nil
 }
@@ -499,12 +505,9 @@ func (c *Reconciler) reconcileSuiteTest(ctx context.Context, ttsr *v1alpha1.Task
 // 	return err
 // }
 
-func aggregateSuccessStatusOfTaskTestRuns(
-	ctx context.Context,
-	ttsr *v1alpha1.TaskTestSuiteRun,
-) (bool, string, error) {
-	allTaskTestRunsSucceeded := true
-	unsuccessful := ""
+func aggregateSuccessStatusOfTaskTestRuns(ctx context.Context, ttsr *v1alpha1.TaskTestSuiteRun) ([]string, []string, error) {
+	tasksWithUnexpectedOutcomes := []string{}
+	tasksWithValidationErrors := []string{}
 	logger := logging.FromContext(ctx)
 
 	for i, suiteTest := range ttsr.Status.TaskTestSuiteSpec.TaskTests {
@@ -514,26 +517,26 @@ func aggregateSuccessStatusOfTaskTestRuns(
 		)
 		if condition.IsFalse() {
 			message := fmt.Sprintf("taskTestRun %q failed", trName)
-			if ttsr.Status.TaskTestSuiteSpec.TaskTests[i].OnError != "Continue" {
-				message += " so the whole TaskTestSuiteRun fails"
-				conditionJSON, err := json.Marshal(condition)
-				if err != nil {
-					return false, "", err
-				}
-				allTaskTestRunsSucceeded = false
-				unsuccessful += fmt.Sprintf("%s: %s\n", trName, conditionJSON)
+			conditionJSON, err := json.Marshal(condition)
+			if err != nil {
+				return nil, nil, err
+			}
+			if condition.Reason == v1alpha1.TaskTestRunReasonFailedValidation.String() {
+				message += " due to a validation error, so the whole TaskTestSuiteRun fails"
+				tasksWithValidationErrors = append(tasksWithValidationErrors, fmt.Sprintf("%s: %s\n", trName, conditionJSON))
 			} else {
-				taskTestJSON, err := json.MarshalIndent(ttsr, "", "  ")
-				if err != nil {
-					return false, "", err
+				if ttsr.Status.TaskTestSuiteSpec.TaskTests[i].OnError != "Continue" {
+					message += " due to unexpected outcomes, so the whole TaskTestSuiteRun fails"
+					tasksWithUnexpectedOutcomes = append(tasksWithUnexpectedOutcomes, fmt.Sprintf("%s: %s\n", trName, conditionJSON))
+				} else {
+					message += " but onError was set to continue, so the show will go on."
 				}
-				message += " but onError was set to continue, so the show will go on. Proof:\n" + string(taskTestJSON)
 			}
 			logger.Error(message)
 		}
 	}
 
-	return allTaskTestRunsSucceeded, unsuccessful, nil
+	return tasksWithValidationErrors, tasksWithUnexpectedOutcomes, nil
 }
 
 func (c *Reconciler) dereferenceTaskTestSuiteRef(

@@ -337,10 +337,11 @@ func (r TaskTestSuiteRunReason) String() string {
 }
 
 const (
-	TaskTestSuiteRunReasonSuccessful     TaskTestSuiteRunReason = "Succeeded"
-	TaskTestSuiteRunReasonCancelled      TaskTestSuiteRunReason = "TaskTestSuiteRunCancelled"
-	TaskTestSuiteRunReasonTimedOut       TaskTestSuiteRunReason = "TaskTestSuiteRunTimedOut"
-	TaskTestSuiteRunUnexpectatedOutcomes TaskTestSuiteRunReason = "TaskTestSuiteRunUnexpectedOutcomes"
+	TaskTestSuiteRunReasonSuccessful           TaskTestSuiteRunReason = "Succeeded"
+	TaskTestSuiteRunReasonCancelled            TaskTestSuiteRunReason = "TaskTestSuiteRunCancelled"
+	TaskTestSuiteRunReasonTimedOut             TaskTestSuiteRunReason = "TaskTestSuiteRunTimedOut"
+	TaskTestSuiteRunReasonUnexpectatedOutcomes TaskTestSuiteRunReason = "TaskTestSuiteRunUnexpectedOutcomes"
+	TaskTestSuiteRunReasonValidationFailed     TaskTestSuiteRunReason = "TaskTestSuiteRunValidationFailed"
 )
 
 // MarkResourceFailed sets the ConditionSucceeded condition to ConditionFalse

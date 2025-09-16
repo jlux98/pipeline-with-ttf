@@ -383,7 +383,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 						Type:   "Succeeded",
 						Status: "False",
 						Reason: "TaskTestSuiteRunUnexpectedOutcomes",
-						Message: "all TaskTestRuns completed executing and not all were successful: " +
+						Message: "all TaskTestRuns completed executing and not all were successful:\n- " +
 							ttsr.Status.TaskTestSuiteSpec.TaskTests[1].GetTaskTestRunName(
 								ttsr.Name,
 							) + ": " +
@@ -415,7 +415,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 						Type:   "Succeeded",
 						Status: "False",
 						Reason: "TaskTestSuiteRunUnexpectedOutcomes",
-						Message: "all TaskTestRuns completed executing and not all were successful: " +
+						Message: "all TaskTestRuns completed executing and not all were successful:\n- " +
 							ttsr.Status.TaskTestSuiteSpec.TaskTests[1].GetTaskTestRunName(
 								ttsr.Name,
 							) + ": " +
