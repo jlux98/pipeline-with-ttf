@@ -314,22 +314,27 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 			ttr.Status.CompletionTime = &metav1.Time{Time: c.Clock.Now()}
 		}
 
-		resultErr, expectationsMet, diffs := c.checkActualOutcomesAgainstExpectations(ctx, &ttr.Status, taskRun)
-
-		// set status and emit event
 		beforeCondition := ttr.Status.GetCondition(apis.ConditionSucceeded)
-		if resultErr != nil {
-			resultErr = fmt.Errorf("error occurred while checking expectations: %w", resultErr)
-			ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunReasonFailedValidation, errors.New("error occurred while checking expectations"))
-		} else {
-			if expectationsMet {
-				ttr.Status.MarkSuccessful()
+		var resultErr error
+
+		if !beforeCondition.IsFalse() {
+			resultErr, expectationsMet, diffs := c.checkActualOutcomesAgainstExpectations(ctx, &ttr.Status, taskRun)
+
+			// set status and emit event
+			if resultErr != nil {
+				resultErr = fmt.Errorf("error occurred while checking expectations: %w", resultErr)
+				ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunReasonFailedValidation, fmt.Errorf("error occurred while checking expectations: %w", resultErr))
 			} else {
-				err := errors.New("not all expectations were met")
-				ttr.Status.Outcomes.Diffs = diffs
-				ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunUnexpectatedOutcomes, err)
+				if expectationsMet {
+					ttr.Status.MarkSuccessful()
+				} else {
+					err := errors.New("not all expectations were met")
+					ttr.Status.Outcomes.Diffs = diffs
+					ttr.Status.MarkResourceFailed(v1alpha1.TaskTestRunUnexpectatedOutcomes, err)
+				}
 			}
 		}
+
 		events.Emit(ctx, beforeCondition, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
 		return resultErr
 	}

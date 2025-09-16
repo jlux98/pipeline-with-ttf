@@ -19,10 +19,8 @@ spec:
     - computeResources: {}
       image: alpine
       name: date-step
-      command:
-        - sh
-        - -c
-      args: ["echo -n $(date +%Y-%m-%d) > $(results.current-date.path)"]
+      script: |
+        echo -n $(date +%Y-%m-%d) > $(results.current-date.path)
     - computeResources: {}
       image: alpine
       name: time-step
@@ -30,7 +28,6 @@ spec:
         set -x
 
         cat $(workspaces.time-workspace.path)/test/time > $(results.current-time.path)
-        exit 1
   # echo -n $(date +%H:%M:%S) > $(results.current-time.path)
   # - computeResources: {}
   #   image: alpine

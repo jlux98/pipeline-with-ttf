@@ -4,10 +4,10 @@ metadata:
   generateName: sample-ttsr-
 spec:
   executionMode: Sequential
-  # defaultRunSpecTemplate:
-  #   workspaces:
-  #     - name: time-workspace
-  #       emptyDir: {}
+  defaultRunSpecTemplate:
+    workspaces:
+      - name: time-workspace
+        emptyDir: {}
   taskTestSuiteSpec:
     taskTests:
       - name: task-0
@@ -17,7 +17,7 @@ spec:
           expects:
             results:
               - name: current-date
-                value: "2025-09-03"
+                value: "2025-09-16"
             env:
             - name: HOME
               value: /root
@@ -26,7 +26,7 @@ spec:
               objects:
               - path: /tekton/results/current-date
                 type: "TextFile"
-                content: "2025-09-03"
+                content: "2025-09-16"
             - stepName: time-step
               objects:
               - path: /tekton/results/current-date
@@ -38,7 +38,7 @@ spec:
           expects:
             results:
               - name: current-date
-                value: "2025-09-03"
+                value: "2025-09-16"
             env:
             - name: HOME
               value: /root
@@ -47,7 +47,7 @@ spec:
               objects:
               - path: /tekton/results/current-date
                 type: "TextFile"
-                content: "2025-09-03"
+                content: "2025-09-16"
             - stepName: time-step
               objects:
               - path: /tekton/results/current-date
