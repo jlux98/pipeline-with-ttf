@@ -415,6 +415,29 @@
         }
       }
     },
+    "v1alpha1.NamedVolumeClaimTemplate": {
+      "type": "object",
+      "required": [
+        "name",
+        "spec"
+      ],
+      "properties": {
+        "metadata": {
+          "description": "May contain labels and annotations that will be copied into the PVC when creating it. No other fields are allowed and will be rejected during validation.",
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "name": {
+          "type": "string",
+          "default": ""
+        },
+        "spec": {
+          "description": "The specification for the PersistentVolumeClaim. The entire content is copied unchanged into the PVC that gets created from this template. The same fields as in a PersistentVolumeClaim are also valid here.",
+          "default": {},
+          "$ref": "#/definitions/v1.PersistentVolumeClaimSpec"
+        }
+      }
+    },
     "v1alpha1.ObservedCompletionWithin": {
       "type": "object",
       "required": [
@@ -767,6 +790,18 @@
         }
       }
     },
+    "v1alpha1.SharedVolumeRef": {
+      "type": "object",
+      "required": [
+        "volumeName"
+      ],
+      "properties": {
+        "volumeName": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
     "v1alpha1.SimpleTaskRef": {
       "type": "object",
       "required": [
@@ -989,7 +1024,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.WorkspaceBinding"
+            "$ref": "#/definitions/v1alpha1.SuiteWorkspaceBinding"
           },
           "x-kubernetes-list-map-keys": [
             "name"
@@ -1052,6 +1087,55 @@
         "timeout": {
           "description": "Time after which one retry attempt times out. Defaults to 1 hour. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
           "$ref": "#/definitions/v1.Duration"
+        }
+      }
+    },
+    "v1alpha1.SuiteWorkspaceBinding": {
+      "type": "object",
+      "required": [
+        "name",
+        "sharedVolume"
+      ],
+      "properties": {
+        "configMap": {
+          "description": "ConfigMap represents a configMap that should populate this workspace.",
+          "$ref": "#/definitions/v1.ConfigMapVolumeSource"
+        },
+        "csi": {
+          "description": "CSI (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.",
+          "$ref": "#/definitions/v1.CSIVolumeSource"
+        },
+        "emptyDir": {
+          "description": "EmptyDir represents a temporary directory that shares a Task's lifetime. More info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir Either this OR PersistentVolumeClaim can be used.",
+          "$ref": "#/definitions/v1.EmptyDirVolumeSource"
+        },
+        "name": {
+          "description": "Name is the name of the workspace populated by the volume.",
+          "type": "string",
+          "default": ""
+        },
+        "persistentVolumeClaim": {
+          "description": "PersistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. Either this OR EmptyDir can be used.",
+          "$ref": "#/definitions/v1.PersistentVolumeClaimVolumeSource"
+        },
+        "projected": {
+          "description": "Projected represents a projected volume that should populate this workspace.",
+          "$ref": "#/definitions/v1.ProjectedVolumeSource"
+        },
+        "secret": {
+          "description": "Secret represents a secret that should populate this workspace.",
+          "$ref": "#/definitions/v1.SecretVolumeSource"
+        },
+        "sharedVolume": {
+          "$ref": "#/definitions/v1alpha1.SharedVolumeRef"
+        },
+        "subPath": {
+          "description": "SubPath is optionally a directory on the volume which should be used for this binding (i.e. the volume will be mounted at this sub directory).",
+          "type": "string"
+        },
+        "volumeClaimTemplate": {
+          "description": "VolumeClaimTemplate is a template for a claim that will be created in the same namespace. The PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun. See PersistentVolumeClaim (API version: v1)",
+          "$ref": "#/definitions/v1.PersistentVolumeClaim"
         }
       }
     },
@@ -1408,7 +1492,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.WorkspaceBinding"
+            "$ref": "#/definitions/v1alpha1.SuiteWorkspaceBinding"
           },
           "x-kubernetes-list-map-keys": [
             "name"
@@ -1557,7 +1641,8 @@
       "description": "TaskTestSuiteRunSpec",
       "type": "object",
       "required": [
-        "executionMode"
+        "executionMode",
+        "sharedVolumes"
       ],
       "properties": {
         "defaultRunSpecTemplate": {
@@ -1580,6 +1665,14 @@
             "name"
           ],
           "x-kubernetes-list-type": "map"
+        },
+        "sharedVolumes": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.NamedVolumeClaimTemplate"
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "status": {
           "description": "Used for cancelling a TaskTestSuiteRun",
@@ -1641,6 +1734,14 @@
           "type": "integer",
           "format": "int64"
         },
+        "sharedVolumes": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.WorkspaceBinding"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
         "startTime": {
           "description": "StartTime is the time the build is actually started.",
           "$ref": "#/definitions/v1.Time"
@@ -1676,6 +1777,14 @@
         "currentSuiteTest": {
           "description": "CurrentSuiteTest contains the name of the suite test currently being executed, if execution mode is set to Sequential. If execution mode is set to Parallel, then this field will stay empty.",
           "type": "string"
+        },
+        "sharedVolumes": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.WorkspaceBinding"
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "startTime": {
           "description": "StartTime is the time the build is actually started.",

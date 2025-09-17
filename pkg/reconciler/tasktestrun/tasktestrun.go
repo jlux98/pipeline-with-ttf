@@ -317,7 +317,7 @@ func (c *Reconciler) reconcile(ctx context.Context, ttr *v1alpha1.TaskTestRun, r
 		beforeCondition := ttr.Status.GetCondition(apis.ConditionSucceeded)
 		var resultErr error
 
-		if !beforeCondition.IsFalse() {
+		if !beforeCondition.IsFalse() && taskRun.Status.PodName != "" {
 			resultErr, expectationsMet, diffs := c.checkActualOutcomesAgainstExpectations(ctx, &ttr.Status, taskRun)
 
 			// set status and emit event

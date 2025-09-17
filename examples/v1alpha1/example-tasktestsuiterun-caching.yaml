@@ -4,12 +4,22 @@ metadata:
   generateName: sample-ttsr-caching-
 spec:
   executionMode: Sequential
+  sharedVolumes:
+  - name: shared-cache
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Mi
   defaultRunSpecTemplate:
     workspaces:
       - name: cache-workspace
         # persistentVolumeClaim:
         #   claimName: cache-volume-claim
-        emptyDir: {}
+        # emptyDir: {}
+        sharedVolume:
+          volumeName: "shared-cache"
   taskTestSuiteSpec:
     taskTests:
       - name: task-0

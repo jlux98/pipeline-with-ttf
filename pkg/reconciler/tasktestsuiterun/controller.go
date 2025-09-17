@@ -10,6 +10,7 @@ import (
 	tasktestruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/tasktestrun"
 	tasktestsuiteruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/tasktestsuiterun"
 	"github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1alpha1/tasktestsuiterun"
+	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/clock"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
@@ -39,6 +40,7 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 			PipelineClientSet:      pipelineclient.Get(ctx),
 			Images:                 opts.Images,
 			Clock:                  clock,
+			pvcHandler:             volumeclaim.NewPVCHandler(kubeclient.Get(ctx), logger),
 		}
 		logger = logger.Named("tasktestsuiterun-reconciler")
 		impl := tasktestsuiterun.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {

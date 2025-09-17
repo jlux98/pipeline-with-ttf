@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"slices"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	tasktestsuiterunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1alpha1/tasktestsuiterun"
@@ -20,7 +22,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
+	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"gomodules.xyz/jsonpatch/v2"
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -30,6 +34,7 @@ import (
 	"k8s.io/utils/clock"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/reconciler"
 )
@@ -47,13 +52,13 @@ type Reconciler struct {
 	TaskTestRunLister      alphalisters.TaskTestRunLister
 	TaskTestSuiteRunLister alphalisters.TaskTestSuiteRunLister
 	cloudEventClient       cloudevent.CEClient
+	pvcHandler             volumeclaim.PvcHandler
 	// spireClient              spire.ControllerAPIClient
 	// limitrangeLister         corev1Listers.LimitRangeLister
 	// podLister                corev1Listers.PodLister
 	// verificationPolicyLister alphalisters.VerificationPolicyLister
 	// entrypointCache          podconvert.EntrypointCache
 	// metrics                  *taskrunmetrics.Recorder
-	// pvcHandler               volumeclaim.PvcHandler
 	// resolutionRequester      resolution.Requester
 	// tracerProvider           trace.TracerProvider
 }
@@ -343,6 +348,30 @@ func (c *Reconciler) reconcile(
 	rtr *resources.ResolvedTask,
 ) error {
 	logger := logging.FromContext(ctx)
+
+	if len(ttsr.Spec.SharedVolumes) > 0 {
+		for _, volume := range ttsr.Spec.SharedVolumes {
+			binding := v1.WorkspaceBinding{
+				Name: volume.Name,
+				VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: volume.Name,
+					},
+					Spec: volume.Spec,
+				},
+			}
+			if err := c.pvcHandler.CreatePVCFromVolumeClaimTemplate(ctx, binding, *kmeta.NewControllerRef(ttsr), ttsr.Namespace); err != nil {
+				logger.Errorf("Failed to create PVC for TaskRun %s: %v", ttsr.Name, err)
+				ttsr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
+					fmt.Errorf("failed to create PVC for TaskRun %s workspaces correctly: %w",
+						fmt.Sprintf("%s/%s", ttsr.Namespace, ttsr.Name), err))
+				return controller.NewPermanentError(err)
+			}
+		}
+
+		ttsr.Status.SharedVolumes = applyVolumeClaimTemplates(ttsr.Spec.SharedVolumes, *kmeta.NewControllerRef(ttsr))
+	}
+
 	var err error
 	allTaskTestRunsFinished := true
 
@@ -589,7 +618,23 @@ func (c *Reconciler) createTaskTestRun(ctx context.Context, ttsr *v1alpha1.TaskT
 	taskTestRun.Spec.TaskTestSpec = suiteTest.TaskTestSpec
 
 	if ttsr.Spec.DefaultRunSpecTemplate != nil {
-		taskTestRun.Spec.Workspaces = append(taskTestRun.Spec.Workspaces, ttsr.Spec.DefaultRunSpecTemplate.Workspaces...)
+		convertedWorkspaces := []v1.WorkspaceBinding{}
+		for i, ws := range ttsr.Spec.DefaultRunSpecTemplate.Workspaces {
+			if ws.SharedVolume != nil {
+				idx := slices.IndexFunc(ttsr.Status.SharedVolumes, func(wb v1.WorkspaceBinding) bool {
+					return wb.Name == ws.SharedVolume.VolumeName
+				})
+				if idx < 0 {
+					return nil, apis.ErrInvalidValue(ws.SharedVolume.VolumeName, fmt.Sprintf("spec.defaultRunSpecTemplate[%d].name", i), fmt.Sprintf("TaskTestSuiteRun %q does not have a Shared Volume named %q", ttsr.Name, ws.SharedVolume.VolumeName))
+				}
+				binding := ttsr.Status.SharedVolumes[idx].DeepCopy()
+				binding.Name = ws.Name
+				convertedWorkspaces = append(convertedWorkspaces, *binding)
+			} else {
+				convertedWorkspaces = append(convertedWorkspaces, ws.ToWorkspaceBinding())
+			}
+		}
+		taskTestRun.Spec.Workspaces = append(taskTestRun.Spec.Workspaces, convertedWorkspaces...)
 		taskTestRun.Spec.Volumes = append(taskTestRun.Spec.Volumes, ttsr.Spec.DefaultRunSpecTemplate.Volumes...)
 	}
 
@@ -598,7 +643,23 @@ func (c *Reconciler) createTaskTestRun(ctx context.Context, ttsr *v1alpha1.TaskT
 		ttsr.Spec.RunSpecMap.GenerateMap(ttsr.Spec.RunSpecs)
 	}
 	if ttsr.Spec.RunSpecs != nil && ttsr.Spec.RunSpecMap[suiteTest.Name] != nil {
-		taskTestRun.Spec.Workspaces = append(taskTestRun.Spec.Workspaces, ttsr.Spec.RunSpecMap[suiteTest.Name].Workspaces...)
+		convertedWorkspaces := []v1.WorkspaceBinding{}
+		for i, ws := range ttsr.Spec.RunSpecMap[suiteTest.Name].Workspaces {
+			if ws.SharedVolume != nil {
+				idx := slices.IndexFunc(ttsr.Status.SharedVolumes, func(wb v1.WorkspaceBinding) bool {
+					return wb.Name == ws.SharedVolume.VolumeName
+				})
+				if idx < 0 {
+					return nil, apis.ErrInvalidValue(ws.SharedVolume.VolumeName, fmt.Sprintf("spec.runSpecs[%s].workspaces[%d].name", suiteTest.Name, i), fmt.Sprintf("TaskTestSuiteRun %q does not have a Shared Volume named %q", ttsr.Name, ws.SharedVolume.VolumeName))
+				}
+				binding := ttsr.Status.SharedVolumes[idx].DeepCopy()
+				binding.Name = ws.Name
+				convertedWorkspaces = append(convertedWorkspaces, *binding)
+			} else {
+				convertedWorkspaces = append(convertedWorkspaces, ws.ToWorkspaceBinding())
+			}
+		}
+		taskTestRun.Spec.Workspaces = append(taskTestRun.Spec.Workspaces, convertedWorkspaces...)
 		taskTestRun.Spec.Volumes = append(taskTestRun.Spec.Volumes, ttsr.Spec.RunSpecMap[suiteTest.Name].Volumes...)
 	}
 
@@ -654,4 +715,30 @@ func init() {
 	if err != nil {
 		log.Fatalf("failed to marshal TaskRun cancel patch bytes: %v", err)
 	}
+}
+
+// applyVolumeClaimTemplates and return WorkspaceBindings were templates is translated to PersistentVolumeClaims
+func applyVolumeClaimTemplates(sharedVolumes []v1alpha1.NamedVolumeClaimTemplate, owner metav1.OwnerReference) []v1.WorkspaceBinding {
+	taskRunWorkspaceBindings := make([]v1.WorkspaceBinding, 0, len(sharedVolumes))
+	for _, volume := range sharedVolumes {
+		templateBinding := v1.WorkspaceBinding{
+			Name: volume.Name,
+			VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: volume.Name,
+				},
+				Spec: volume.Spec,
+			},
+		}
+
+		// apply template
+		b := v1.WorkspaceBinding{
+			Name: volume.Name,
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: volumeclaim.GeneratePVCNameFromWorkspaceBinding(volume.Name, templateBinding, owner),
+			},
+		}
+		taskRunWorkspaceBindings = append(taskRunWorkspaceBindings, b)
+	}
+	return taskRunWorkspaceBindings
 }

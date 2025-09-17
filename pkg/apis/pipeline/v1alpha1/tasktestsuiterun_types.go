@@ -128,6 +128,9 @@ type TaskTestSuiteRunSpec struct {
 	// +listMapKey=name
 	RunSpecMap TaskTestRunTemplateMap `json:"-"`
 
+	// +listType=atomic
+	SharedVolumes []NamedVolumeClaimTemplate `json:"sharedVolumes"`
+
 	// Used for cancelling a TaskTestSuiteRun
 	//
 	// +optional
@@ -146,6 +149,11 @@ type TaskTestSuiteRunSpec struct {
 }
 
 type TaskTestRunTemplateMap map[string]*TaskTestRunTemplate
+
+type NamedVolumeClaimTemplate struct {
+	Name                                 string `json:"name"`
+	corev1.PersistentVolumeClaimTemplate `json:",inline"`
+}
 
 func (m *TaskTestRunTemplateMap) GenerateMap(items []SuiteTaskTestRun) {
 	res := make(TaskTestRunTemplateMap)
@@ -173,7 +181,7 @@ type TaskTestRunTemplate struct {
 	// +listType=map
 	// +listMapKey=name
 	// +optional
-	Workspaces []v1.WorkspaceBinding `json:"workspaces,omitempty"`
+	Workspaces []SuiteWorkspaceBinding `json:"workspaces,omitempty"`
 
 	// Volumes is a list of volumes that gets patched down to the
 	// TaskSpec of the TaskTestRuns being provisioned by this TaskTestSuiteRun.
@@ -193,6 +201,29 @@ type TaskTestRunTemplate struct {
 	//
 	// +optional
 	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
+}
+
+type SuiteWorkspaceBinding struct {
+	v1.WorkspaceBinding `json:",inline"`
+	SharedVolume        *SharedVolumeRef `json:"sharedVolume"`
+}
+
+type SharedVolumeRef struct {
+	VolumeName string `json:"volumeName"`
+}
+
+func (swb SuiteWorkspaceBinding) ToWorkspaceBinding() v1.WorkspaceBinding {
+	return v1.WorkspaceBinding{
+		Name:                  swb.Name,
+		SubPath:               swb.SubPath,
+		VolumeClaimTemplate:   swb.VolumeClaimTemplate,
+		PersistentVolumeClaim: swb.PersistentVolumeClaim,
+		EmptyDir:              swb.EmptyDir,
+		ConfigMap:             swb.ConfigMap,
+		Secret:                swb.Secret,
+		Projected:             swb.Projected,
+		CSI:                   swb.CSI,
+	}
 }
 
 type SuiteTaskTestRun struct {
@@ -253,6 +284,9 @@ type TaskTestSuiteRunStatusFields struct {
 	//
 	// +optional
 	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
+
+	// +listType=atomic
+	SharedVolumes []v1.WorkspaceBinding `json:"sharedVolumes,omitempty"`
 }
 
 type NamedTaskTestSpec struct {
