@@ -62,13 +62,16 @@ func (ifo *InputFileSystemObject) Validate() *apis.FieldError {
 		err.Details = `the field "type" may not be set if the field "copyFrom" is populated`
 		errs = errs.Also(err)
 	}
+	if ifo.CopyFrom == nil && ifo.Type == InputFileSystemObjectType("") {
+		errs = errs.Also(apis.ErrMissingOneOf("copyFrom", "type"))
+	}
 	if i := slices.Index(DisallowedInputFileSystemPathEndings, rune(ifo.Path[len(ifo.Path)-1])); i >= 0 {
 		errs = errs.Also(apis.ErrInvalidValue(ifo.Path, "path", "input path may not end on '"+string(DisallowedInputFileSystemPathEndings[i])+"'"))
 	}
 	if strings.Contains(ifo.Path, "\000") {
 		errs = errs.Also(apis.ErrInvalidValue(ifo.Path, "path", "illegal character \000 detected"))
 	}
-	if !slices.Contains(AllowedInputFileSystemObjectTypes, ifo.Type) {
+	if ifo.Type != "" && !slices.Contains(AllowedInputFileSystemObjectTypes, ifo.Type) {
 		errs = errs.Also(apis.ErrInvalidValue(ifo.Type, "type"))
 	}
 	if ifo.Type != InputTextFileType && ifo.Content != "" {

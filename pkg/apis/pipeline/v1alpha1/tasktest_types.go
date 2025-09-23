@@ -195,8 +195,7 @@ type InputFileSystemObject struct {
 	// CopyFrom holds the name of a volume and a path within that volume. During
 	// setup the file system object at the specified path in CopyFrom is
 	// recursively copied to the path specified in this InputFileSystemObject.
-	// If CopyFrom is populated then Type or Content may not be populated, as
-	// well.
+	// If CopyFrom is populated then Type or Content may not also be populated.
 	//
 	// +optional
 	CopyFrom *CopyFromRef `json:"copyFrom,omitempty"`
