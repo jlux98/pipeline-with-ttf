@@ -505,13 +505,15 @@ spec:
         - path: /test/dir
           type: Directory
         - path: /test/copy
-          copyFrom:
-            volumeName: copy-volume
-            path: /data
+          content:
+            copyFrom:
+              volumeName: copy-volume
+              path: /data
         - path: /test/copy-2
-          copyFrom:
-            volumeName: copy-volume-2
-            path: /data
+          content:
+            copyFrom:
+              volumeName: copy-volume-2
+              path: /data
     expects:
       successStatus: true
       successReason: Succeeded

@@ -38,6 +38,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.FileSystemObject":              schema_pkg_apis_pipeline_v1alpha1_FileSystemObject(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.InitialWorkspaceContents":      schema_pkg_apis_pipeline_v1alpha1_InitialWorkspaceContents(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.InputFileSystemObject":         schema_pkg_apis_pipeline_v1alpha1_InputFileSystemObject(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.InputFileSystemObjectContent":  schema_pkg_apis_pipeline_v1alpha1_InputFileSystemObjectContent(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.KeyRef":                        schema_pkg_apis_pipeline_v1alpha1_KeyRef(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.NamedTaskTestSpec":             schema_pkg_apis_pipeline_v1alpha1_NamedTaskTestSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.NamedVolumeClaimTemplate":      schema_pkg_apis_pipeline_v1alpha1_NamedVolumeClaimTemplate(ref),
@@ -750,19 +751,39 @@ func schema_pkg_apis_pipeline_v1alpha1_InputFileSystemObject(ref common.Referenc
 					},
 					"content": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The content of the file system object. Setting this value is only acceptable, if the field Type is set to 'TextFile'.",
+							Description: "The content of the file system object.",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.InputFileSystemObjectContent"),
+						},
+					},
+				},
+				Required: []string{"path", "type"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.InputFileSystemObjectContent"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1alpha1_InputFileSystemObjectContent(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"stringContent": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StringContent is the data that will be written in the file system object this content object belongs to. Setting this value is only acceptable, if the field Type in the file system object is set to 'TextFile'.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"copyFrom": {
 						SchemaProps: spec.SchemaProps{
-							Description: "CopyFrom holds the name of a volume and a path within that volume. During setup the file system object at the specified path in CopyFrom is recursively copied to the path specified in this InputFileSystemObject. If CopyFrom is populated then Type or Content may not be populated, as well.",
+							Description: "CopyFrom holds the name of a volume and a path within that volume. During setup the file system object at the specified path in CopyFrom is recursively copied to the path specified in this InputFileSystemObject. Setting this value is only acceptable, if the field Type in the file system object is set to 'Directory'.",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.CopyFromRef"),
 						},
 					},
 				},
-				Required: []string{"path", "type"},
 			},
 		},
 		Dependencies: []string{

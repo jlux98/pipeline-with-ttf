@@ -592,13 +592,13 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 							fmt.Sprintf(`task %q has no Workspace named %q`, task.Name, workspace.Name)))
 				}
 				for j, object := range workspace.Objects {
-					if object.CopyFrom != nil && !slices.ContainsFunc(task.Spec.Volumes, func(vol corev1.Volume) bool {
-						return vol.Name == object.CopyFrom.VolumeName
+					if object.Content != nil && object.Content.CopyFrom != nil && !slices.ContainsFunc(task.Spec.Volumes, func(vol corev1.Volume) bool {
+						return vol.Name == object.Content.CopyFrom.VolumeName
 					}) {
 						return nil, fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed,
-							apis.ErrInvalidValue(object.CopyFrom.VolumeName, fmt.Sprintf(
+							apis.ErrInvalidValue(object.Content.CopyFrom.VolumeName, fmt.Sprintf(
 								"status.taskTestSpec.inputs.workspaceContents[%d].objects[%d].volumeName", i, j),
-								fmt.Sprintf(`task %q has no volume named %q`, task.Name, object.CopyFrom.VolumeName)))
+								fmt.Sprintf(`task %q has no volume named %q`, task.Name, object.Content.CopyFrom.VolumeName)))
 					}
 				}
 			}
@@ -663,21 +663,21 @@ func (r *Reconciler) generateWorkspacePreparationStep(initialWorkspaceContents [
 			if !filepath.IsAbs(objectPath) {
 				objectPath = string(filepath.Separator) + objectPath
 			}
-			if object.CopyFrom != nil {
+			if object.Content != nil && object.Content.CopyFrom != nil {
 				var mountPath string
-				copyPath := filepath.Clean(object.CopyFrom.Path)
+				copyPath := filepath.Clean(object.Content.CopyFrom.Path)
 
 				if !filepath.IsAbs(copyPath) {
 					copyPath = string(filepath.Separator) + copyPath
 				}
 				if vmIdx := slices.IndexFunc(preparationStep.VolumeMounts, func(vm corev1.VolumeMount) bool {
-					return vm.Name == object.CopyFrom.VolumeName
+					return vm.Name == object.Content.CopyFrom.VolumeName
 				}); vmIdx >= 0 {
 					mountPath = preparationStep.VolumeMounts[vmIdx].MountPath
 				} else {
-					mountPath = "/ttf/copyfrom/" + object.CopyFrom.VolumeName
+					mountPath = "/ttf/copyfrom/" + object.Content.CopyFrom.VolumeName
 					preparationStep.VolumeMounts = append(preparationStep.VolumeMounts, corev1.VolumeMount{
-						Name:      object.CopyFrom.VolumeName,
+						Name:      object.Content.CopyFrom.VolumeName,
 						ReadOnly:  true,
 						MountPath: mountPath,
 					})
@@ -689,7 +689,7 @@ func (r *Reconciler) generateWorkspacePreparationStep(initialWorkspaceContents [
 					preparationStep.Args[0] += fmt.Sprintf(`mkdir -p $(workspaces.%s.path)%s`+"\n", ws.Name, objectPath)
 				case v1alpha1.InputTextFileType:
 					preparationStep.Args[0] += fmt.Sprintf(`mkdir -p $(workspaces.%s.path)%s`+"\n", ws.Name, filepath.Dir(objectPath))
-					preparationStep.Args[0] += fmt.Sprintf(`printf "%%s" "%s" > $(workspaces.%s.path)%s`+"\n", object.Content, ws.Name, objectPath)
+					preparationStep.Args[0] += fmt.Sprintf(`printf "%%s" "%s" > $(workspaces.%s.path)%s`+"\n", object.Content.StringContent, ws.Name, objectPath)
 				default:
 					return nil, fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed, apis.ErrInvalidValue(
 						object.Type, fmt.Sprintf("status.taskTestSpec.input.workspaceContents[%d].objects[%d]", i, j), fmt.Sprintf(`unknown type %q, allowed types are "TextFile" and "Directory"`, object.Type)))

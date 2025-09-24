@@ -769,33 +769,38 @@ spec:
                                           - type
                                         properties:
                                           content:
-                                            description: |-
-                                              The content of the file system object. Setting this value is only
-                                              acceptable, if the field Type is set to 'TextFile'.
-                                            type: string
-                                          copyFrom:
-                                            description: |-
-                                              CopyFrom holds the name of a volume and a path within that volume. During
-                                              setup the file system object at the specified path in CopyFrom is
-                                              recursively copied to the path specified in this InputFileSystemObject.
-                                              If CopyFrom is populated then Type or Content may not be populated, as
-                                              well.
+                                            description: The content of the file system object.
                                             type: object
-                                            required:
-                                              - path
-                                              - volumeName
                                             properties:
-                                              path:
+                                              copyFrom:
                                                 description: |-
-                                                  Path is the path of the file system object to copy into the
-                                                  workspace for the TaskTest. Relative paths are interpreted from
-                                                  the root of the volume, while for absolute paths the leading
-                                                  slash denotes the root of the volume.
-                                                type: string
-                                              volumeName:
+                                                  CopyFrom holds the name of a volume and a path within that volume. During
+                                                  setup the file system object at the specified path in CopyFrom is
+                                                  recursively copied to the path specified in this InputFileSystemObject.
+                                                  Setting this value is only acceptable, if the field Type in the file
+                                                  system object is set to 'Directory'.
+                                                type: object
+                                                required:
+                                                  - path
+                                                  - volumeName
+                                                properties:
+                                                  path:
+                                                    description: |-
+                                                      Path is the path of the file system object to copy into the
+                                                      workspace for the TaskTest. Relative paths are interpreted from
+                                                      the root of the volume, while for absolute paths the leading
+                                                      slash denotes the root of the volume.
+                                                    type: string
+                                                  volumeName:
+                                                    description: |-
+                                                      VolumeName is the name of the volume to copy from. It must be in
+                                                      the same namespace as this TaskTest.
+                                                    type: string
+                                              stringContent:
                                                 description: |-
-                                                  VolumeName is the name of the volume to copy from. It must be in
-                                                  the same namespace as this TaskTest.
+                                                  StringContent is the data that will be written in the file system object
+                                                  this content object belongs to. Setting this value is only acceptable, if
+                                                  the field Type in the file system object is set to 'TextFile'.
                                                 type: string
                                           path:
                                             description: |-

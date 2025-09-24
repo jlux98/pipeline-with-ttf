@@ -153,13 +153,17 @@ func TestTaskTest_Invalid(t *testing.T) {
 									{
 										Path: "/object/path",
 										Type: "TextFile",
-										Content: `
-							content
-							`,
+										Content: &v1alpha1.InputFileSystemObjectContent{
+											StringContent: `
+											content
+											`,
+										},
 									}, {
-										Path:    "/object/path",
-										Type:    "TextFile",
-										Content: `not  content`,
+										Path: "/object/path",
+										Type: "TextFile",
+										Content: &v1alpha1.InputFileSystemObjectContent{
+											StringContent: `not  content`,
+										},
 									}}},
 							},
 						},
@@ -177,56 +181,10 @@ func TestTaskTest_Invalid(t *testing.T) {
 							WorkspaceContents: []v1alpha1.InitialWorkspaceContents{{
 								Name: "workspace",
 								Objects: []v1alpha1.InputFileSystemObject{{
-									Path:    "/path/to/object",
-									Type:    "Directory",
-									Content: "content",
-								}},
-							}},
-						},
-					},
-				},
-				want: &apis.FieldError{
-					Message: "must not set the field(s)",
-					Paths:   []string{"spec.inputs.workspaceContents[0].objects[0].content"},
-					Details: `the field "content" may only be set if the field "type" is set to TextFile`,
-				},
-			},
-		}, {
-			name: "input workspace object copyFrom and type both empty",
-			tc: testCase{
-				taskTest: &v1alpha1.TaskTest{
-					ObjectMeta: metav1.ObjectMeta{Name: "taskname"},
-					Spec: v1alpha1.TaskTestSpec{
-						Inputs: &v1alpha1.TaskTestInputs{
-							WorkspaceContents: []v1alpha1.InitialWorkspaceContents{{
-								Name: "workspace",
-								Objects: []v1alpha1.InputFileSystemObject{{
-									Path: "/path/to/object",
-								}},
-							}},
-						},
-					},
-				},
-				want: &apis.FieldError{
-					Message: "expected exactly one, got neither",
-					Paths:   []string{"spec.inputs.workspaceContents[0].objects[0].copyFrom", "spec.inputs.workspaceContents[0].objects[0].type"},
-				},
-			},
-		}, {
-			name: "input workspace object copyFrom but type not empty",
-			tc: testCase{
-				taskTest: &v1alpha1.TaskTest{
-					ObjectMeta: metav1.ObjectMeta{Name: "taskname"},
-					Spec: v1alpha1.TaskTestSpec{
-						Inputs: &v1alpha1.TaskTestInputs{
-							WorkspaceContents: []v1alpha1.InitialWorkspaceContents{{
-								Name: "workspace",
-								Objects: []v1alpha1.InputFileSystemObject{{
 									Path: "/path/to/object",
 									Type: "Directory",
-									CopyFrom: &v1alpha1.CopyFromRef{
-										VolumeName: "test-volume",
-										Path:       "/path/to/source",
+									Content: &v1alpha1.InputFileSystemObjectContent{
+										StringContent: "content",
 									},
 								}},
 							}},
@@ -235,8 +193,55 @@ func TestTaskTest_Invalid(t *testing.T) {
 				},
 				want: &apis.FieldError{
 					Message: "must not set the field(s)",
-					Paths:   []string{"spec.inputs.workspaceContents[0].objects[0].type"},
-					Details: `the field "type" may not be set if the field "copyFrom" is populated`,
+					Paths:   []string{"spec.inputs.workspaceContents[0].objects[0].content"},
+					Details: `the field "content" may only be set if the field "type" is set to "TextFile"`,
+				},
+			},
+		}, {
+			name: "input workspace type missing",
+			tc: testCase{
+				taskTest: &v1alpha1.TaskTest{
+					ObjectMeta: metav1.ObjectMeta{Name: "taskname"},
+					Spec: v1alpha1.TaskTestSpec{
+						Inputs: &v1alpha1.TaskTestInputs{
+							WorkspaceContents: []v1alpha1.InitialWorkspaceContents{{
+								Name: "workspace",
+								Objects: []v1alpha1.InputFileSystemObject{{
+									Path: "/path/to/object",
+								}},
+							}},
+						},
+					},
+				},
+				want: apis.ErrMissingField("spec.inputs.workspaceContents[0].objects[0].type"),
+			},
+		}, {
+			name: "input workspace object copyFrom but type not directory",
+			tc: testCase{
+				taskTest: &v1alpha1.TaskTest{
+					ObjectMeta: metav1.ObjectMeta{Name: "taskname"},
+					Spec: v1alpha1.TaskTestSpec{
+						Inputs: &v1alpha1.TaskTestInputs{
+							WorkspaceContents: []v1alpha1.InitialWorkspaceContents{{
+								Name: "workspace",
+								Objects: []v1alpha1.InputFileSystemObject{{
+									Path: "/path/to/object",
+									Type: "TextFile",
+									Content: &v1alpha1.InputFileSystemObjectContent{
+										CopyFrom: &v1alpha1.CopyFromRef{
+											VolumeName: "test-volume",
+											Path:       "/path/to/source",
+										},
+									},
+								}},
+							}},
+						},
+					},
+				},
+				want: &apis.FieldError{
+					Message: "must not set the field(s)",
+					Paths:   []string{"spec.inputs.workspaceContents[0].objects[0].content.copyFrom"},
+					Details: `the field "copyFrom" may only be set if the field "type" is set to "Directory"`,
 				},
 			},
 		}, {
@@ -500,22 +505,28 @@ func TestTaskTest_Valid(t *testing.T) {
 								{
 									Path: "/object/path0",
 									Type: "TextFile",
-									Content: `
+									Content: &v1alpha1.InputFileSystemObjectContent{
+										StringContent: `
 							content
 							`,
+									},
 								}, {
-									Path:    "/object/path1",
-									Type:    "TextFile",
-									Content: `not  content`,
+									Path: "/object/path1",
+									Type: "TextFile",
+									Content: &v1alpha1.InputFileSystemObjectContent{
+										StringContent: `not  content`,
+									},
 								}}},
 							{
 								Name: "name1",
 								Objects: []v1alpha1.InputFileSystemObject{{
 									Path: "/object/path0",
 									Type: "TextFile",
-									Content: `
+									Content: &v1alpha1.InputFileSystemObjectContent{
+										StringContent: `
 							content
 							`,
+									},
 								}}},
 						},
 					},

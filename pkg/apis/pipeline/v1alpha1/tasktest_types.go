@@ -1,6 +1,9 @@
 package v1alpha1
 
 import (
+	"encoding/json"
+	"fmt"
+
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -182,11 +185,19 @@ type InputFileSystemObject struct {
 	// Type is the type of this file system object.
 	Type InputFileSystemObjectType `json:"type"`
 
-	// The content of the file system object. Setting this value is only
-	// acceptable, if the field Type is set to 'TextFile'.
+	// The content of the file system object.
 	//
 	// +optional
-	Content string `json:"content,omitempty"`
+	Content *InputFileSystemObjectContent `json:"content,omitempty"`
+}
+
+type InputFileSystemObjectContent struct {
+	// StringContent is the data that will be written in the file system object
+	// this content object belongs to. Setting this value is only acceptable, if
+	// the field Type in the file system object is set to 'TextFile'.
+	//
+	// +optional
+	StringContent string `json:"stringContent,omitempty"`
 
 	// LIMITATION: The volume to be copied from must be declared either in
 	// the Spec of the Task under Test or the Spec of any TaskTestRun executing
@@ -195,7 +206,8 @@ type InputFileSystemObject struct {
 	// CopyFrom holds the name of a volume and a path within that volume. During
 	// setup the file system object at the specified path in CopyFrom is
 	// recursively copied to the path specified in this InputFileSystemObject.
-	// If CopyFrom is populated then Type or Content may not also be populated.
+	// Setting this value is only acceptable, if the field Type in the file
+	// system object is set to 'Directory'.
 	//
 	// +optional
 	CopyFrom *CopyFromRef `json:"copyFrom,omitempty"`
@@ -211,6 +223,42 @@ type CopyFromRef struct {
 	// the root of the volume, while for absolute paths the leading
 	// slash denotes the root of the volume.
 	Path string `json:"path"`
+}
+
+var _ json.Marshaler = (*InputFileSystemObjectContent)(nil)
+var _ json.Unmarshaler = (*InputFileSystemObjectContent)(nil)
+
+func (c *InputFileSystemObjectContent) MarshalJSON() ([]byte, error) {
+	if c.StringContent != "" {
+		return json.Marshal(c.StringContent)
+	}
+	if c.CopyFrom != nil {
+		return json.Marshal(map[string]*CopyFromRef{
+			"copyFrom": c.CopyFrom,
+		})
+	}
+	// nothing set -> null
+	return []byte("null"), nil
+}
+
+func (c *InputFileSystemObjectContent) UnmarshalJSON(data []byte) error {
+	// Try string first
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		c.StringContent = s
+		return nil
+	}
+
+	// Try object with copyFrom
+	var tmp struct {
+		CopyFrom *CopyFromRef `json:"copyFrom"`
+	}
+	if err := json.Unmarshal(data, &tmp); err == nil && tmp.CopyFrom != nil {
+		c.CopyFrom = tmp.CopyFrom
+		return nil
+	}
+
+	return fmt.Errorf("invalid content value: %s", string(data))
 }
 
 // InputFileSystemObjectType is an enum containing file system object types

@@ -57,13 +57,20 @@ func (wc *InitialWorkspaceContents) Validate() *apis.FieldError {
 
 func (ifo *InputFileSystemObject) Validate() *apis.FieldError {
 	var errs *apis.FieldError
-	if ifo.CopyFrom != nil && ifo.Type != InputFileSystemObjectType("") {
-		err := apis.ErrDisallowedFields("type")
-		err.Details = `the field "type" may not be set if the field "copyFrom" is populated`
-		errs = errs.Also(err)
+	if ifo.Type == InputFileSystemObjectType("") {
+		errs = errs.Also(apis.ErrMissingField("type"))
 	}
-	if ifo.CopyFrom == nil && ifo.Type == InputFileSystemObjectType("") {
-		errs = errs.Also(apis.ErrMissingOneOf("copyFrom", "type"))
+	if ifo.Content != nil {
+		if ifo.Content.CopyFrom != nil && ifo.Type != InputFileSystemObjectType(DirectoryType) {
+			err := apis.ErrDisallowedFields("content.copyFrom")
+			err.Details = fmt.Sprintf(`the field "copyFrom" may only be set if the field "type" is set to %q`, DirectoryType)
+			errs = errs.Also(err)
+		}
+		if ifo.Content.StringContent != "" && ifo.Type != InputTextFileType {
+			err := apis.ErrDisallowedFields("content")
+			err.Details = fmt.Sprintf(`the field "content" may only be set if the field "type" is set to %q`, InputTextFileType)
+			errs = errs.Also(err)
+		}
 	}
 	if i := slices.Index(DisallowedInputFileSystemPathEndings, rune(ifo.Path[len(ifo.Path)-1])); i >= 0 {
 		errs = errs.Also(apis.ErrInvalidValue(ifo.Path, "path", "input path may not end on '"+string(DisallowedInputFileSystemPathEndings[i])+"'"))
@@ -73,11 +80,6 @@ func (ifo *InputFileSystemObject) Validate() *apis.FieldError {
 	}
 	if ifo.Type != "" && !slices.Contains(AllowedInputFileSystemObjectTypes, ifo.Type) {
 		errs = errs.Also(apis.ErrInvalidValue(ifo.Type, "type"))
-	}
-	if ifo.Type != InputTextFileType && ifo.Content != "" {
-		err := apis.ErrDisallowedFields("content")
-		err.Details = fmt.Sprintf(`the field "content" may only be set if the field "type" is set to %s`, InputTextFileType)
-		errs = errs.Also(err)
 	}
 	return errs
 }
