@@ -364,10 +364,14 @@ spec:
       args:
       - |
           mkdir -p $(workspaces.hello-workspace.path)/test
+          touch $(workspaces.hello-workspace.path)/test/foo
           printf "%%s" "bar" > $(workspaces.hello-workspace.path)/test/foo
           mkdir -p $(workspaces.hello-workspace.path)/test/dir
+          mkdir -p $(workspaces.hello-workspace.path)/test/copy
           cp -R /ttf/copyfrom/copy-volume/data $(workspaces.hello-workspace.path)/test/copy
-          cp -R /ttf/copyfrom/copy-volume-2/data $(workspaces.hello-workspace.path)/test/copy-2
+          mkdir -p $(workspaces.hello-workspace.path)/test
+          touch $(workspaces.hello-workspace.path)/test/copy-2
+          cat /ttf/copyfrom/copy-volume-2/data > $(workspaces.hello-workspace.path)/test/copy-2
     - computeResources: {}
       env:
       - name: ANOTHER_FOO
@@ -505,11 +509,13 @@ spec:
         - path: /test/dir
           type: Directory
         - path: /test/copy
+          type: Directory
           content:
             copyFrom:
               volumeName: copy-volume
               path: /data
         - path: /test/copy-2
+          type: TextFile
           content:
             copyFrom:
               volumeName: copy-volume-2

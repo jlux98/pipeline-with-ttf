@@ -663,37 +663,61 @@ func (r *Reconciler) generateWorkspacePreparationStep(initialWorkspaceContents [
 			if !filepath.IsAbs(objectPath) {
 				objectPath = string(filepath.Separator) + objectPath
 			}
-			if object.Content != nil && object.Content.CopyFrom != nil {
-				var mountPath string
-				copyPath := filepath.Clean(object.Content.CopyFrom.Path)
+			switch object.Type {
+			case v1alpha1.InputDirectoryType:
+				preparationStep.Args[0] += fmt.Sprintf(`mkdir -p $(workspaces.%s.path)%s`+"\n", ws.Name, objectPath)
+				if object.Content != nil && object.Content.CopyFrom != nil {
+					var mountPath string
+					copyPath := filepath.Clean(object.Content.CopyFrom.Path)
 
-				if !filepath.IsAbs(copyPath) {
-					copyPath = string(filepath.Separator) + copyPath
+					if !filepath.IsAbs(copyPath) {
+						copyPath = string(filepath.Separator) + copyPath
+					}
+					if vmIdx := slices.IndexFunc(preparationStep.VolumeMounts, func(vm corev1.VolumeMount) bool {
+						return vm.Name == object.Content.CopyFrom.VolumeName
+					}); vmIdx >= 0 {
+						mountPath = preparationStep.VolumeMounts[vmIdx].MountPath
+					} else {
+						mountPath = "/ttf/copyfrom/" + object.Content.CopyFrom.VolumeName
+						preparationStep.VolumeMounts = append(preparationStep.VolumeMounts, corev1.VolumeMount{
+							Name:      object.Content.CopyFrom.VolumeName,
+							ReadOnly:  true,
+							MountPath: mountPath,
+						})
+					}
+					preparationStep.Args[0] += fmt.Sprintf(`cp -R %s%s $(workspaces.%s.path)%s`+"\n", mountPath, copyPath, ws.Name, objectPath)
 				}
-				if vmIdx := slices.IndexFunc(preparationStep.VolumeMounts, func(vm corev1.VolumeMount) bool {
-					return vm.Name == object.Content.CopyFrom.VolumeName
-				}); vmIdx >= 0 {
-					mountPath = preparationStep.VolumeMounts[vmIdx].MountPath
-				} else {
-					mountPath = "/ttf/copyfrom/" + object.Content.CopyFrom.VolumeName
-					preparationStep.VolumeMounts = append(preparationStep.VolumeMounts, corev1.VolumeMount{
-						Name:      object.Content.CopyFrom.VolumeName,
-						ReadOnly:  true,
-						MountPath: mountPath,
-					})
+			case v1alpha1.InputTextFileType:
+				preparationStep.Args[0] += fmt.Sprintf(`mkdir -p $(workspaces.%s.path)%s`+"\n", ws.Name, filepath.Dir(objectPath))
+				preparationStep.Args[0] += fmt.Sprintf(`touch $(workspaces.%s.path)%s`+"\n", ws.Name, objectPath)
+				if object.Content != nil {
+					if object.Content.CopyFrom != nil {
+						var mountPath string
+						copyPath := filepath.Clean(object.Content.CopyFrom.Path)
+
+						if !filepath.IsAbs(copyPath) {
+							copyPath = string(filepath.Separator) + copyPath
+						}
+						if vmIdx := slices.IndexFunc(preparationStep.VolumeMounts, func(vm corev1.VolumeMount) bool {
+							return vm.Name == object.Content.CopyFrom.VolumeName
+						}); vmIdx >= 0 {
+							mountPath = preparationStep.VolumeMounts[vmIdx].MountPath
+						} else {
+							mountPath = "/ttf/copyfrom/" + object.Content.CopyFrom.VolumeName
+							preparationStep.VolumeMounts = append(preparationStep.VolumeMounts, corev1.VolumeMount{
+								Name:      object.Content.CopyFrom.VolumeName,
+								ReadOnly:  true,
+								MountPath: mountPath,
+							})
+						}
+						preparationStep.Args[0] += fmt.Sprintf(`cat %s%s > $(workspaces.%s.path)%s`+"\n", mountPath, copyPath, ws.Name, objectPath)
+					} else {
+						preparationStep.Args[0] += fmt.Sprintf(`printf "%%s" "%s" > $(workspaces.%s.path)%s`+"\n", object.Content.StringContent, ws.Name, objectPath)
+					}
 				}
-				preparationStep.Args[0] += fmt.Sprintf(`cp -R %s%s $(workspaces.%s.path)%s`+"\n", mountPath, copyPath, ws.Name, objectPath)
-			} else {
-				switch object.Type {
-				case v1alpha1.InputDirectoryType:
-					preparationStep.Args[0] += fmt.Sprintf(`mkdir -p $(workspaces.%s.path)%s`+"\n", ws.Name, objectPath)
-				case v1alpha1.InputTextFileType:
-					preparationStep.Args[0] += fmt.Sprintf(`mkdir -p $(workspaces.%s.path)%s`+"\n", ws.Name, filepath.Dir(objectPath))
-					preparationStep.Args[0] += fmt.Sprintf(`printf "%%s" "%s" > $(workspaces.%s.path)%s`+"\n", object.Content.StringContent, ws.Name, objectPath)
-				default:
-					return nil, fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed, apis.ErrInvalidValue(
-						object.Type, fmt.Sprintf("status.taskTestSpec.input.workspaceContents[%d].objects[%d]", i, j), fmt.Sprintf(`unknown type %q, allowed types are "TextFile" and "Directory"`, object.Type)))
-				}
+			default:
+				return nil, fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed, apis.ErrInvalidValue(
+					object.Type, fmt.Sprintf("status.taskTestSpec.input.workspaceContents[%d].objects[%d]", i, j), fmt.Sprintf(`unknown type %q, allowed types are "TextFile" and "Directory"`, object.Type)))
 			}
 		}
 	}
