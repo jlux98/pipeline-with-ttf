@@ -171,22 +171,20 @@ spec:
     env:
     - name: HOME
       value: "/root"
-    stepEnvs:
-    - stepName: time-step
-      env:
-      - name: FHOME
-        value: "/froot"
-    fileSystemContents:
-    - stepName: date-step
-      objects:
+    stepExpectations:
+    - name: date-step
+      fileSystemObjects:
       - path: /tekton/results/current-date
         type: TextFile
         content: bar
-    - stepName: time-step
-      objects:
+    - name: time-step
+      fileSystemObjects:
       - path: /tekton/results/current-time
         type: TextFile
         content: bar
+      env:
+      - name: FHOME
+        value: "/froot"
 `
 
 // // Invalid TaskTestRun manifests
@@ -314,8 +312,8 @@ metadata:
   name: %s # TaskTestsRun name
   namespace: foo
   annotations:
-    #                    {"results":[{"name":"current-date","type":"string","value":"2025-08-15"},{"name":"current-time","type":"string","value":"15:17:59"}],"env":[{"name":"HOME","value":"/root"}],"successStatus":true,"successReason":"Succeeded","fileSystemContents":[{"stepName":"date-step","objects":[{"path":"/tekton/results/current-date","type":"TextFile","content":"bar"}]},{"stepName":"time-step","objects":[{"path":"/tekton/results/current-time","type":"TextFile","content":"bar"}]}]}
-    ExpectedValuesJSON: '{"results":[{"name":"current-date","type":"string","value":"2025-08-15"},{"name":"current-time","type":"string","value":"15:17:59"}],"env":[{"name":"HOME","value":"/root"}],"stepEnvs":[{"stepName":"time-step","env":[{"name":"FHOME","value":"/froot"}]}],"successStatus":true,"successReason":"Succeeded","fileSystemContents":[{"stepName":"date-step","objects":[{"path":"/tekton/results/current-date","type":"TextFile","content":"bar"}]},{"stepName":"time-step","objects":[{"path":"/tekton/results/current-time","type":"TextFile","content":"bar"}]}]}'
+  # ExpectedValuesJSON: '{"results":[{"name":"current-date","type":"string","value":"2025-08-15"},{"name":"current-time","type":"string","value":"15:17:59"}],"env":[{"name":"HOME","value":"/root"}],"stepExpectations":[{"name":"date-step","fileSystemObjects":[{"path":"/tekton/results/current-date","type":"TextFile","content":"bar"}]},{"name":"time-step","fileSystemObjects":[{"path":"/tekton/results/current-time","type":"TextFile","content":"bar"}],"env":[{"name":"FHOME","value":"/froot"}]}],"successStatus":true,"successReason":"Succeeded"'
+    ExpectedValuesJSON: '{"results":[{"name":"current-date","type":"string","value":"2025-08-15"},{"name":"current-time","type":"string","value":"15:17:59"}],"env":[{"name":"HOME","value":"/root"}],"stepExpectations":[{"name":"date-step","fileSystemObjects":[{"path":"/tekton/results/current-date","type":"TextFile","content":"bar"}]},{"name":"time-step","fileSystemObjects":[{"path":"/tekton/results/current-time","type":"TextFile","content":"bar"}],"env":[{"name":"FHOME","value":"/froot"}]}],"successStatus":true,"successReason":"Succeeded"}'
   labels:
     tekton.dev/taskTestRun: %s # TaskTestsRun name
   ownerReferences:
@@ -533,19 +531,17 @@ spec:
       env:
       - name: HOME
         value: "/root"
-      fileSystemContents:
-      - stepName: date-step
-        objects:
+      stepExpectations:
+      - name: date-step
+        fileSystemObjects:
         - path: /tekton/results/current-date
           type: TextFile
           content: bar
-      - stepName: time-step
-        objects:
+      - name: time-step
+        fileSystemObjects:
         - path: /tekton/results/current-time
           type: TextFile
           content: bar
-      stepEnvs:
-      - stepName: time-step
         env:
         - name: FHOME
           value: "/froot"
@@ -590,18 +586,16 @@ spec:
       env:
       - name: HOME
         value: "/groot"
-      fileSystemContents:
-      - stepName: date-step
-        objects:
+      stepExpectations:
+      - name: date-step
+        fileSystemObjects:
         - path: /tekton/results/current-date
           type: Directory
-      - stepName: time-step
-        objects:
+      - name: time-step
+        fileSystemObjects:
         - path: /tekton/results/current-time
           type: TextFile
           content: foo
-      stepEnvs:
-      - stepName: time-step
         env:
         - name: FHOME
           value: "/froot"
@@ -669,18 +663,18 @@ status:
 
 func TestReconciler_ValidateReconcileKind(t *testing.T) {
 	const (
-		tcStartNewRunDecTest                             = "start-new-run-inline-test"
-		tcCheckRunningDecTest                            = "check-running-inline-test"
+		tcStartNewRunDecTest                             = "start-new-run-dec-test"
+		tcCheckRunningDecTest                            = "check-running-dec-test"
 		tcCancelRunningDecTest                           = "cancel-running-dec-test"
 		tcCancelTimeoutDecTest                           = "cancel-timeout-dec-test"
-		tcCheckCompletedSuccessfulDecTest                = "check-completed-successful-inline-test"
+		tcCheckCompletedSuccessfulDecTest                = "check-completed-successful-dec-test"
 		tcCheckCompletedSuccessfulRefTest                = "check-completed-successful-referenced-test"
-		tcCheckCompletedSuccessDecTestRetriesMustSucceed = "check-completed-successful-inline-test-with-retries"
-		tcCheckCompletedFailedDecTestNoRetries           = "check-completed-failed-inline-test-no-retries"
-		tcCheckCompletedFailedDecTestRetries             = "check-completed-failed-inline-test-with-retries"
+		tcCheckCompletedSuccessDecTestRetriesMustSucceed = "check-completed-successful-dec-test-with-retries"
+		tcCheckCompletedFailedDecTestNoRetries           = "check-completed-failed-dec-test-no-retries"
+		tcCheckCompletedFailedDecTestRetries             = "check-completed-failed-dec-test-with-retries"
 		tcCheckCompletedFailedDecTestRetriesMustSucceed  = "check-completed-failed-dec-test-retries-must-succeed"
-		tcStartRetryFailedDecTest                        = "start-retry-failed-inline-test"
-		tcStartRetrySuccessfulDecTest                    = "start-retry-successful-inline-test"
+		tcStartRetryFailedDecTest                        = "start-retry-failed-dec-test"
+		tcStartRetrySuccessfulDecTest                    = "start-retry-successful-dec-test"
 	)
 
 	// fill maps
@@ -998,10 +992,10 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 observed success reason did not match expectation
 Result "current-date": want "2015-08-15", got "2025-08-15"
 Result "current-time": want "05:17:59", got "15:17:59"
-envVar "HOME" in step "date-step": want "/groot", got "/root"
-envVar "HOME" in step "time-step": want "/groot", got "/root"
 file system object "/tekton/results/current-date" type in step "date-step": want "Directory", got "TextFile"
 file system object "/tekton/results/current-time" content in step "time-step": want "foo", got "bar"
+envVar "HOME" in step "date-step": want "/groot", got "/root"
+envVar "HOME" in step "time-step": want "/groot", got "/root"
 `,
 						},
 					}

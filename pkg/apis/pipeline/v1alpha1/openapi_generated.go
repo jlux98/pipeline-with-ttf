@@ -42,8 +42,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.KeyRef":                        schema_pkg_apis_pipeline_v1alpha1_KeyRef(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.NamedTaskTestSpec":             schema_pkg_apis_pipeline_v1alpha1_NamedTaskTestSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.NamedVolumeClaimTemplate":      schema_pkg_apis_pipeline_v1alpha1_NamedVolumeClaimTemplate(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedCompletionWithin":      schema_pkg_apis_pipeline_v1alpha1_ObservedCompletionWithin(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedEnvVar":                schema_pkg_apis_pipeline_v1alpha1_ObservedEnvVar(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedExecutionTime":         schema_pkg_apis_pipeline_v1alpha1_ObservedExecutionTime(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedFileSystemObject":      schema_pkg_apis_pipeline_v1alpha1_ObservedFileSystemObject(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedOutcomes":              schema_pkg_apis_pipeline_v1alpha1_ObservedOutcomes(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedResults":               schema_pkg_apis_pipeline_v1alpha1_ObservedResults(ref),
@@ -62,6 +62,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepActionSpec":                schema_pkg_apis_pipeline_v1alpha1_StepActionSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepEnv":                       schema_pkg_apis_pipeline_v1alpha1_StepEnv(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepEnvironment":               schema_pkg_apis_pipeline_v1alpha1_StepEnvironment(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepExpectation":               schema_pkg_apis_pipeline_v1alpha1_StepExpectation(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskTestRun":              schema_pkg_apis_pipeline_v1alpha1_SuiteTaskTestRun(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTaskTestRunStatus":        schema_pkg_apis_pipeline_v1alpha1_SuiteTaskTestRunStatus(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SuiteTest":                     schema_pkg_apis_pipeline_v1alpha1_SuiteTest(ref),
@@ -534,23 +535,28 @@ func schema_pkg_apis_pipeline_v1alpha1_ExpectedOutcomes(ref common.ReferenceCall
 							},
 						},
 					},
-					"stepEnvs": {
+					"stepExpectations": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
 						SchemaProps: spec.SchemaProps{
-							Description: "List of Step environments, where expected values for environment variables can be individually defined for all of the Task's Steps. Expected values defined here will take precedence over expectations defined in 'env'.",
+							Description: "StepExpectations holds expectations for the values of environment variables, file system objects and execution time on a Step basis. In case of a conflict, expectations defined for a specific Step in StepExpectations take precedence over expectations defined on a Task-wide scale.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepEnv"),
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepExpectation"),
 									},
 								},
 							},
 						},
 					},
-					"completionWithin": {
+					"executionTimeBelow": {
 						SchemaProps: spec.SchemaProps{
-							Description: "CompletionWithin expresses, that a test is only successful, if it completes within that duration. Since the aim is to measure the performance of the test as consistently as possible, this value is not checked against the difference of the start time and completion time of the task run but against the sum of the differences of the startedAt and finishedAt timestamps of the individual steps, as this cuts out Kubernetes overhead like pod scheduling time.",
+							Description: "ExecutionTimeBelow expresses, that a test is only successful, if the time it spends executing its Steps is smaller or equal to the duration specified. Since the aim is to measure the performance of the test as consistently as possible, this value is not checked against the difference of the start time and completion time of the task run but against the sum of the differences of the startedAt and finishedAt timestamps of the individual steps, as this cuts out Kubernetes overhead like pod scheduling time.",
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},
@@ -568,33 +574,12 @@ func schema_pkg_apis_pipeline_v1alpha1_ExpectedOutcomes(ref common.ReferenceCall
 							Format:      "",
 						},
 					},
-					"fileSystemContents": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-map-keys": []interface{}{
-									"stepName",
-								},
-								"x-kubernetes-list-type": "map",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Description: "FileSystemContents is a list step names, each one paired with a list of expected file system objects.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ExpectedStepFileSystemContent"),
-									},
-								},
-							},
-						},
-					},
 				},
+				Required: []string{"stepExpectations"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ExpectedStepFileSystemContent", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepEnv", "k8s.io/api/core/v1.EnvVar", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.StepExpectation", "k8s.io/api/core/v1.EnvVar", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 
@@ -897,31 +882,6 @@ func schema_pkg_apis_pipeline_v1alpha1_NamedVolumeClaimTemplate(ref common.Refer
 	}
 }
 
-func schema_pkg_apis_pipeline_v1alpha1_ObservedCompletionWithin(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
-				Properties: map[string]spec.Schema{
-					"want": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
-						},
-					},
-					"got": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
-						},
-					},
-				},
-				Required: []string{"want", "got"},
-			},
-		},
-		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
-	}
-}
-
 func schema_pkg_apis_pipeline_v1alpha1_ObservedEnvVar(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -956,6 +916,31 @@ func schema_pkg_apis_pipeline_v1alpha1_ObservedEnvVar(ref common.ReferenceCallba
 				Required: []string{"name", "want", "got"},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1alpha1_ObservedExecutionTime(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"want": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
+					"got": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
+				},
+				Required: []string{"want", "got"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 
@@ -1016,10 +1001,10 @@ func schema_pkg_apis_pipeline_v1alpha1_ObservedOutcomes(ref common.ReferenceCall
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"completionWithin": {
+					"executionTime": {
 						SchemaProps: spec.SchemaProps{
-							Description: "CompletionWithin",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedCompletionWithin"),
+							Description: "ExecutionTime",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedExecutionTime"),
 						},
 					},
 					"fileSystemObjects": {
@@ -1099,7 +1084,7 @@ func schema_pkg_apis_pipeline_v1alpha1_ObservedOutcomes(ref common.ReferenceCall
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedCompletionWithin", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedResults", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedStepEnv", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedStepFileSystemContent", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessReason", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessStatus"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedExecutionTime", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedResults", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedStepEnv", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedStepFileSystemContent", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessReason", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ObservedSuccessStatus"},
 	}
 }
 
@@ -1866,6 +1851,78 @@ func schema_pkg_apis_pipeline_v1alpha1_StepEnvironment(ref common.ReferenceCallb
 				Required: []string{"stepName", "environment"},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1alpha1_StepExpectation(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the Step for which the expectations defined here apply.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"fileSystemObjects": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"path",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "FileSystemObjects is a list of file system objects, which are expected to be in the container's file system after the step has finished executing (or in the case of Type being set to \"None\" expected to not be there). If field Type is left empty, then it will default to \"AnyObjectType\".",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.FileSystemObject"),
+									},
+								},
+							},
+						},
+					},
+					"env": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type":       "atomic",
+								"x-kubernetes-patch-merge-key": "name",
+								"x-kubernetes-patch-strategy":  "merge",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "List of environment variables with the values they are expected to hold after the step has finished. Expected values defined here will take precedence over expectations defined in the TaskTestSpec's Env field.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.EnvVar"),
+									},
+								},
+							},
+						},
+					},
+					"executionTimeBelow": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ExecutionTimeBelow expresses, that a test is only successful, if the time it spends executing the Step this expectation is set for is smaller or equal to the duration specified here. The execution time is calculated by taking the Step's container's finishedAt timestamp and subtracting the container's startedAt timestamp from it.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.FileSystemObject", "k8s.io/api/core/v1.EnvVar", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 
@@ -3068,7 +3125,8 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunSpec(ref common.Reference
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "SharedVolumes is a list of VolumeClaimTemplates with names,",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{

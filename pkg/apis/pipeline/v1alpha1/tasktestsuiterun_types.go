@@ -128,6 +128,8 @@ type TaskTestSuiteRunSpec struct {
 	// +listMapKey=name
 	RunSpecMap TaskTestRunTemplateMap `json:"-"`
 
+	// SharedVolumes is a list of VolumeClaimTemplates with names
+	//
 	// +listType=atomic
 	SharedVolumes []NamedVolumeClaimTemplate `json:"sharedVolumes"`
 

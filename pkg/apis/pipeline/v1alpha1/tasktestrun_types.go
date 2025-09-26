@@ -285,10 +285,10 @@ type TaskTestRunStatusFields struct {
 }
 
 type ObservedOutcomes struct {
-	// CompletionWithin
+	// ExecutionTime
 	//
 	// +optional
-	CompletionWithin *ObservedCompletionWithin `json:"completionWithin,omitempty"`
+	ExecutionTime *ObservedExecutionTime `json:"executionTime,omitempty"`
 
 	// +optional
 	FileSystemObjects *[]ObservedStepFileSystemContent `json:"fileSystemObjects,omitempty"`
@@ -408,7 +408,7 @@ type ObservedSuccessReason struct {
 	Got v1.TaskRunReason `json:"got"`
 }
 
-type ObservedCompletionWithin struct {
+type ObservedExecutionTime struct {
 	Want metav1.Duration `json:"want"`
 	Got  metav1.Duration `json:"got"`
 }

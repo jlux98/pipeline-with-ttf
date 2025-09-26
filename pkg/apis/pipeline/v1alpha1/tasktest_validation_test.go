@@ -346,34 +346,32 @@ func TestTaskTest_Invalid(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Name: "taskname"},
 					Spec: v1alpha1.TaskTestSpec{
 						Expects: &v1alpha1.ExpectedOutcomes{
-							FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{
-								{
-									StepName: "step0",
-									Objects: []v1alpha1.FileSystemObject{{
-										Path: "/path/to/object",
-										Type: "TextFile",
-									}},
-								}, {
-
-									StepName: "step1",
-									Objects: []v1alpha1.FileSystemObject{
-										{
-											Path: "/path/to/object0",
-											Type: "Directory",
-										}, {
-											Path:    "/path/to/object1",
-											Type:    "Directory",
-											Content: "content",
-										}, {
-											Path: "/path/to/object2",
-											Type: "InvalidFileType",
-										},
-									},
+							StepExpectations: []v1alpha1.StepExpectation{{
+								Name: "step0",
+								FileSystemObjects: []v1alpha1.FileSystemObject{{
+									Path: "/path/to/object",
+									Type: "TextFile",
 								}},
+							}, {
+								Name: "step1",
+								FileSystemObjects: []v1alpha1.FileSystemObject{
+									{
+										Path: "/path/to/object0",
+										Type: "Directory",
+									}, {
+										Path:    "/path/to/object1",
+										Type:    "Directory",
+										Content: "content",
+									}, {
+										Path: "/path/to/object2",
+										Type: "InvalidFileType",
+									},
+								},
+							}},
 						},
 					},
 				},
-				want: apis.ErrInvalidValue("InvalidFileType", "spec.expected.fileSystemContents[1].objects[2].type").Also(apis.ErrDisallowedFields("spec.expected.fileSystemContents[1].objects[1].content")),
+				want: apis.ErrInvalidValue("InvalidFileType", "spec.expected.stepExpectations[1].fileSystemObjects[2].type").Also(apis.ErrDisallowedFields("spec.expected.stepExpectations[1].fileSystemObjects[1].content")),
 			},
 		}, {
 			name: "result name not unique",
@@ -407,9 +405,9 @@ func TestTaskTest_Invalid(t *testing.T) {
 					Spec: v1alpha1.TaskTestSpec{
 						TaskRef: &v1alpha1.SimpleTaskRef{Name: "task"},
 						Expects: &v1alpha1.ExpectedOutcomes{
-							FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
-								StepName: "step",
-								Objects: []v1alpha1.FileSystemObject{{
+							StepExpectations: []v1alpha1.StepExpectation{{
+								Name: "step",
+								FileSystemObjects: []v1alpha1.FileSystemObject{{
 									Path: "/path/to/object",
 									Type: "AnyObjectType",
 								}, {
@@ -420,7 +418,7 @@ func TestTaskTest_Invalid(t *testing.T) {
 						},
 					},
 				},
-				want: apis.ErrMultipleOneOf("spec.expected.fileSystemContents[0].objects[1].path"),
+				want: apis.ErrMultipleOneOf("spec.expected.stepExpectations[0].fileSystemObjects[1].path"),
 			},
 		},
 	}
@@ -548,22 +546,22 @@ func TestTaskTest_Valid(t *testing.T) {
 							Name:  "name1",
 							Value: "value",
 						}},
-						StepEnvs: []v1alpha1.StepEnv{{Env: []corev1.EnvVar{{Name: "name0",
-							ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{Name: "name"},
-								Key:                  "key"},
-							}}, {
-							Name:  "name1",
-							Value: "value",
-						}}}},
-						FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
-							StepName: "step",
-							Objects: []v1alpha1.FileSystemObject{{
+						StepExpectations: []v1alpha1.StepExpectation{{
+							Name: "step",
+							Env: []corev1.EnvVar{{Name: "name0",
+								ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "name"},
+									Key:                  "key"},
+								}}, {
+								Name:  "name1",
+								Value: "value",
+							}},
+							FileSystemObjects: []v1alpha1.FileSystemObject{{
 								Path: "/object/path0",
 								Type: "TextFile",
 								Content: `
-content
-`,
+	content
+	`,
 							}, {
 								Path:    "/object/path1",
 								Type:    "TextFile",
@@ -642,17 +640,18 @@ content
 							Name:  "name",
 							Value: "value",
 						}},
-						StepEnvs: []v1alpha1.StepEnv{{Env: []corev1.EnvVar{{Name: "name",
-							ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{Name: "name"},
-								Key:                  "key"},
-							}}}}},
-						FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
-							StepName: "step",
-							Objects: []v1alpha1.FileSystemObject{{
+						StepExpectations: []v1alpha1.StepExpectation{{
+							Name: "step",
+							Env: []corev1.EnvVar{{Name: "name",
+								ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "name"},
+									Key:                  "key"},
+								}}},
+							FileSystemObjects: []v1alpha1.FileSystemObject{{
 								Path: "/object/path",
 								Type: "Directory",
-							}}}},
+							}},
+						}},
 						Results: []v1.TaskResult{
 							{
 								Name:        "name",

@@ -39,11 +39,13 @@ func (tts *TaskTestSpec) SetDefaults(ctx context.Context) {
 				}
 			}
 		}
-		if tts.Expects.FileSystemContents != nil {
-			for i := range tts.Expects.FileSystemContents {
-				for j := range tts.Expects.FileSystemContents[i].Objects {
-					if tts.Expects.FileSystemContents[i].Objects[j].Type == "" {
-						tts.Expects.FileSystemContents[i].Objects[j].Type = AnyObjectType
+		if tts.Expects.StepExpectations != nil {
+			for i, stepExpectation := range tts.Expects.StepExpectations {
+				if stepExpectation.FileSystemObjects != nil {
+					for j := range stepExpectation.FileSystemObjects {
+						if tts.Expects.StepExpectations[i].FileSystemObjects[j].Type == "" {
+							tts.Expects.StepExpectations[i].FileSystemObjects[j].Type = AnyObjectType
+						}
 					}
 				}
 			}

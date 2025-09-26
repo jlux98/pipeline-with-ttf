@@ -771,8 +771,10 @@ spec:
                 outcomes:
                   type: object
                   properties:
-                    completionWithin:
-                      description: CompletionWithin
+                    diffs:
+                      type: string
+                    executionTime:
+                      description: ExecutionTime
                       type: object
                       required:
                         - got
@@ -782,8 +784,6 @@ spec:
                           type: string
                         want:
                           type: string
-                    diffs:
-                      type: string
                     fileSystemObjects:
                       type: array
                       items:

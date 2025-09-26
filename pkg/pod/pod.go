@@ -275,19 +275,35 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1.TaskRun, taskSpec v1.Ta
 			}
 			logging.FromContext(ctx).Infof(`expected values: %v`, expectedValues)
 
-			if expectedValues.Env != nil {
+			hasExpectedStepEnv := false
+			fileSystemContents := []v1alpha1.ExpectedStepFileSystemContent{}
+			if expectedValues.StepExpectations != nil {
+				for _, se := range expectedValues.StepExpectations {
+					if se.Env != nil {
+						hasExpectedStepEnv = true
+					}
+					if se.FileSystemObjects != nil {
+						fileSystemContents = append(fileSystemContents, v1alpha1.ExpectedStepFileSystemContent{
+							StepName: se.Name,
+							Objects:  se.FileSystemObjects,
+						})
+					}
+				}
+			}
+
+			if hasExpectedStepEnv || expectedValues.Env != nil {
 				taskSpec.Results = append(taskSpec.Results, v1.TaskResult{
 					Name: v1alpha1.ResultNameEnvironmentDump,
 					Type: v1.ResultsTypeString,
 				})
 			}
 
-			if expectedValues.FileSystemContents != nil {
+			if len(fileSystemContents) > 0 {
 				taskSpec.Results = append(taskSpec.Results, v1.TaskResult{
 					Name: v1alpha1.ResultNameFileSystemContents,
 					Type: v1.ResultsTypeString,
 				})
-				stepContainers, err = orderContainersWithFileSystemContents(ctx, commonExtraEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug, !readyImmediately, enableKeepPodOnCancel, expectedValues.FileSystemContents)
+				stepContainers, err = orderContainersWithFileSystemContents(ctx, commonExtraEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug, !readyImmediately, enableKeepPodOnCancel, fileSystemContents)
 			} else {
 				stepContainers, err = orderContainers(ctx, commonExtraEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug, !readyImmediately, enableKeepPodOnCancel)
 			}

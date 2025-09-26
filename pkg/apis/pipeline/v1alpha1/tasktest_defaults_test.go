@@ -35,9 +35,9 @@ func TestTask_SetDefaults(t *testing.T) {
 		in: &v1alpha1.TaskTest{
 			Spec: v1alpha1.TaskTestSpec{
 				Expects: &v1alpha1.ExpectedOutcomes{
-					FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
-						StepName: "MyStep",
-						Objects: []v1alpha1.FileSystemObject{{
+					StepExpectations: []v1alpha1.StepExpectation{{
+						Name: "MyStep",
+						FileSystemObjects: []v1alpha1.FileSystemObject{{
 							Path: "/my/path",
 							Type: "",
 						}},
@@ -48,9 +48,9 @@ func TestTask_SetDefaults(t *testing.T) {
 		want: &v1alpha1.TaskTest{
 			Spec: v1alpha1.TaskTestSpec{
 				Expects: &v1alpha1.ExpectedOutcomes{
-					FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
-						StepName: "MyStep",
-						Objects: []v1alpha1.FileSystemObject{{
+					StepExpectations: []v1alpha1.StepExpectation{{
+						Name: "MyStep",
+						FileSystemObjects: []v1alpha1.FileSystemObject{{
 							Path: "/my/path",
 							Type: "AnyObjectType",
 						}},
@@ -88,9 +88,9 @@ func TestTask_SetDefaults(t *testing.T) {
 		in: &v1alpha1.TaskTest{
 			Spec: v1alpha1.TaskTestSpec{
 				Expects: &v1alpha1.ExpectedOutcomes{
-					FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
-						StepName: "MyStep",
-						Objects: []v1alpha1.FileSystemObject{{
+					StepExpectations: []v1alpha1.StepExpectation{{
+						Name: "MyStep",
+						FileSystemObjects: []v1alpha1.FileSystemObject{{
 							Path: "/my/path",
 							Type: "Directory",
 						}},
@@ -101,9 +101,9 @@ func TestTask_SetDefaults(t *testing.T) {
 		want: &v1alpha1.TaskTest{
 			Spec: v1alpha1.TaskTestSpec{
 				Expects: &v1alpha1.ExpectedOutcomes{
-					FileSystemContents: []v1alpha1.ExpectedStepFileSystemContent{{
-						StepName: "MyStep",
-						Objects: []v1alpha1.FileSystemObject{{
+					StepExpectations: []v1alpha1.StepExpectation{{
+						Name: "MyStep",
+						FileSystemObjects: []v1alpha1.FileSystemObject{{
 							Path: "/my/path",
 							Type: "Directory",
 						}},

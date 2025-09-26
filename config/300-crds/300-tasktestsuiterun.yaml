@@ -1357,6 +1357,7 @@ spec:
                     - name
                   x-kubernetes-list-type: map
                 sharedVolumes:
+                  description: SharedVolumes is a list of VolumeClaimTemplates with names,
                   type: array
                   items:
                     type: object
@@ -2310,18 +2311,9 @@ spec:
                                   If this field is left empty, then the TaskTestRun is deemed successful,
                                   if the TaskRun completes without a failure occurring.
                                 type: object
+                                required:
+                                  - stepExpectations
                                 properties:
-                                  completionWithin:
-                                    description: |-
-                                      CompletionWithin expresses, that a test is only successful, if it
-                                      completes within that duration. Since the aim is to measure the
-                                      performance of the test as consistently as possible, this value
-                                      is not checked against the difference of the start time and
-                                      completion time of the task run but against the sum of the
-                                      differences of the startedAt and finishedAt timestamps of the
-                                      individual steps, as this cuts out Kubernetes overhead like pod
-                                      scheduling time.
-                                    type: string
                                   env:
                                     description: |-
                                       List of environment variables with expected values to be checked for in
@@ -2434,64 +2426,18 @@ spec:
                                                   type: boolean
                                               x-kubernetes-map-type: atomic
                                     x-kubernetes-list-type: atomic
-                                  fileSystemContents:
+                                  executionTimeBelow:
                                     description: |-
-                                      FileSystemContents is a list step names, each one paired with a list of
-                                      expected file system objects.
-                                    type: array
-                                    items:
-                                      description: |-
-                                        ExpectedStepFileSystemContent contains the name of a step as declared in the
-                                        Task under Test and a list of file system objects.
-
-                                        The rules for these file system objects are as follows: If the Type is
-                                        not set it will default to "AnyObjectType". If Type is set to a type other
-                                        than "TextFile", then Content must be left empty. Path value must be an
-                                        absolute path, variable substitution for workspace paths is possible.
-                                      type: object
-                                      required:
-                                        - stepName
-                                      properties:
-                                        objects:
-                                          description: |-
-                                            Objects is a list of File System Objects, which are expected to be
-                                            in the container's file system after the step has finished executing (or
-                                            in the case of Type being set to "None" expected to not be there). If
-                                            this field is left empty, then it will default to "AnyObjectType".
-                                          type: array
-                                          items:
-                                            description: |-
-                                              FileSystemObject describes a file system object by giving a path to the
-                                              object, the type of the object and in case it is a text file the contents of
-                                              that text file. Path value must be an absolute path, variable substitution for workspace paths is possible.
-                                            type: object
-                                            required:
-                                              - path
-                                            properties:
-                                              content:
-                                                description: |-
-                                                  The content of the file system object. Setting this value is only
-                                                  acceptable, if the field Type is set to 'TextFile'.
-                                                type: string
-                                              path:
-                                                description: Path is the path to this file system object
-                                                type: string
-                                              type:
-                                                description: |-
-                                                  Type is the type of this file system object. The values, which are
-                                                  acceptable for this field, are defined in the enum FileSystemObjectType
-                                                type: string
-                                          x-kubernetes-list-map-keys:
-                                            - path
-                                          x-kubernetes-list-type: map
-                                        stepName:
-                                          description: |-
-                                            StepName is the name of the step, whose file system will be checked for
-                                            the objects in FileSystemObject.
-                                          type: string
-                                    x-kubernetes-list-map-keys:
-                                      - stepName
-                                    x-kubernetes-list-type: map
+                                      ExecutionTimeBelow expresses, that a test is only
+                                      successful, if the time it spends executing its Steps is smaller
+                                      or equal to the duration specified. Since the aim is to measure the
+                                      performance of the test as consistently as possible, this value
+                                      is not checked against the difference of the start time and
+                                      completion time of the task run but against the sum of the
+                                      differences of the startedAt and finishedAt timestamps of the
+                                      individual steps, as this cuts out Kubernetes overhead like pod
+                                      scheduling time.
+                                    type: string
                                   results:
                                     description: |-
                                       Results is a list of Results declared in the Task under test and the
@@ -2531,23 +2477,25 @@ spec:
                                           description: Value the expression used to retrieve the value of the result from an underlying Step.
                                           x-kubernetes-preserve-unknown-fields: true
                                     x-kubernetes-list-type: atomic
-                                  stepEnvs:
+                                  stepExpectations:
                                     description: |-
-                                      List of Step environments, where expected values for environment
-                                      variables can be individually defined for all of the Task's Steps.
-                                      Expected values defined here will take precedence over expectations
-                                      defined in 'env'.
+                                      StepExpectations holds expectations for the values of environment
+                                      variables, file system objects and execution time on a Step basis. In
+                                      case of a conflict, expectations defined for a specific Step in
+                                      StepExpectations take precedence over expectations defined on a
+                                      Task-wide scale.
                                     type: array
                                     items:
-                                      description: |-
-                                        StepEnv contains the name of a step as defined the manifest of the Task under
-                                        test and a list of environment variable declarations to be set for this step.
                                       type: object
                                       required:
-                                        - stepName
+                                        - name
                                       properties:
                                         env:
-                                          description: List of environment variables to set for this step.
+                                          description: |-
+                                            List of environment variables with the values they are expected to hold
+                                            after the step has finished.
+                                            Expected values defined here will take precedence over expectations
+                                            defined in the TaskTestSpec's Env field.
                                           type: array
                                           items:
                                             description: EnvVar represents an environment variable present in a Container.
@@ -2656,8 +2604,51 @@ spec:
                                                         type: boolean
                                                     x-kubernetes-map-type: atomic
                                           x-kubernetes-list-type: atomic
-                                        stepName:
-                                          description: StepName is the name of the step for whom these environment variables will be set.
+                                        executionTimeBelow:
+                                          description: |-
+                                            ExecutionTimeBelow expresses, that a test is only successful, if the time
+                                            it spends executing the Step this expectation is set for is smaller or
+                                            equal to the duration specified here.
+                                            The execution time is calculated by taking the Step's container's
+                                            finishedAt timestamp and subtracting the container's startedAt timestamp
+                                            from it.
+                                          type: string
+                                        fileSystemObjects:
+                                          description: |-
+                                            FileSystemObjects is a list of file system objects, which are expected to
+                                            be in the container's file system after the step has finished executing
+                                            (or in the case of Type being set to "None" expected to not be there). If
+                                            field Type is left empty, then it will default to "AnyObjectType".
+                                          type: array
+                                          items:
+                                            description: |-
+                                              FileSystemObject describes a file system object by giving a path to the
+                                              object, the type of the object and in case it is a text file the contents of
+                                              that text file. Path value must be an absolute path, variable substitution for workspace paths is possible.
+                                            type: object
+                                            required:
+                                              - path
+                                            properties:
+                                              content:
+                                                description: |-
+                                                  The content of the file system object. Setting this value is only
+                                                  acceptable, if the field Type is set to 'TextFile'.
+                                                type: string
+                                              path:
+                                                description: Path is the path to this file system object
+                                                type: string
+                                              type:
+                                                description: |-
+                                                  Type is the type of this file system object. The values, which are
+                                                  acceptable for this field, are defined in the enum FileSystemObjectType
+                                                type: string
+                                          x-kubernetes-list-map-keys:
+                                            - path
+                                          x-kubernetes-list-type: map
+                                        name:
+                                          description: |-
+                                            Name is the name of the Step for which the expectations defined here
+                                            apply.
                                           type: string
                                     x-kubernetes-list-type: atomic
                                   successReason:

@@ -423,19 +423,19 @@ func (c *Reconciler) checkActualOutcomesAgainstExpectations(ctx context.Context,
 			}
 		}
 
-		if ttrs.TaskTestSpec.Expects.CompletionWithin != nil {
+		if ttrs.TaskTestSpec.Expects.ExecutionTimeBelow != nil {
 			stepDuration := metav1.Duration{}
 
 			for _, step := range tr.Status.Steps {
 				stepDuration.Duration += step.Terminated.FinishedAt.Sub(step.Terminated.StartedAt.Time)
 			}
 
-			ttrs.Outcomes.CompletionWithin = &v1alpha1.ObservedCompletionWithin{
-				Want: *ttrs.TaskTestSpec.Expects.CompletionWithin,
+			ttrs.Outcomes.ExecutionTime = &v1alpha1.ObservedExecutionTime{
+				Want: *ttrs.TaskTestSpec.Expects.ExecutionTimeBelow,
 				Got:  stepDuration,
 			}
 
-			if ttrs.Outcomes.CompletionWithin.Want.Duration < ttrs.Outcomes.CompletionWithin.Got.Duration {
+			if ttrs.Outcomes.ExecutionTime.Want.Duration < ttrs.Outcomes.ExecutionTime.Got.Duration {
 				expectationsMet = false
 				diffs += "taskRun did not complete in expected time\n"
 			}
@@ -477,22 +477,34 @@ func (c *Reconciler) checkActualOutcomesAgainstExpectations(ctx context.Context,
 			}
 		}
 
-		// check environment variables
-		if ttrs.TaskTestSpec.Expects.Env != nil {
-			if err := c.checkExpectationsForEnv(ctx, ttrs, gotResults, &expectationsMet, &diffs); err != nil {
-				err = fmt.Errorf(`error while checking the expectations for env: %w`, err)
-				if resultErr == nil {
-					resultErr = err
-				} else {
-					resultErr = fmt.Errorf("%w\n%w", resultErr, err)
+		stepEnvs := []v1alpha1.StepEnv{}
+		// check step expectations
+		if ttrs.TaskTestSpec.Expects.StepExpectations != nil {
+			for i, se := range ttrs.TaskTestSpec.Expects.StepExpectations {
+				if se.FileSystemObjects != nil {
+					// check file system contents
+					if err := checkExpectationsForFileSystemObjects(ctx, ttrs, i, gotResults, &expectationsMet, &diffs); err != nil {
+						err = fmt.Errorf(`error while checking the expectations for file system objects: %w`, err)
+						if resultErr == nil {
+							resultErr = err
+						} else {
+							resultErr = fmt.Errorf("%w\n%w", resultErr, err)
+						}
+					}
+				}
+				if se.Env != nil {
+					stepEnvs = append(stepEnvs, v1alpha1.StepEnv{
+						StepName: se.Name,
+						Env:      se.Env,
+					})
 				}
 			}
 		}
 
-		// check file system contents
-		if ttrs.TaskTestSpec.Expects.FileSystemContents != nil {
-			if err := checkExpectationsForFileSystemObjects(ctx, ttrs, gotResults, &expectationsMet, &diffs); err != nil {
-				err = fmt.Errorf(`error while checking the expectations for file system objects: %w`, err)
+		// check environment variables
+		if ttrs.TaskTestSpec.Expects.Env != nil {
+			if err := c.checkExpectationsForEnv(ctx, ttrs, stepEnvs, gotResults, &expectationsMet, &diffs); err != nil {
+				err = fmt.Errorf(`error while checking the expectations for env: %w`, err)
 				if resultErr == nil {
 					resultErr = err
 				} else {
@@ -760,7 +772,7 @@ func checkExpectationsForResults(ttrs *v1alpha1.TaskTestRunStatus, gotResults []
 	return nil
 }
 
-func (c *Reconciler) checkExpectationsForEnv(ctx context.Context, ttrs *v1alpha1.TaskTestRunStatus, gotResults []v1.TaskRunResult, expectationsMet *bool, diffs *string) error {
+func (c *Reconciler) checkExpectationsForEnv(ctx context.Context, ttrs *v1alpha1.TaskTestRunStatus, stepEnvs []v1alpha1.StepEnv, gotResults []v1.TaskRunResult, expectationsMet *bool, diffs *string) error {
 	idx := slices.IndexFunc(gotResults, func(result v1.TaskRunResult) bool {
 		return result.Name == v1alpha1.ResultNameEnvironmentDump
 	})
@@ -802,8 +814,8 @@ func (c *Reconciler) checkExpectationsForEnv(ctx context.Context, ttrs *v1alpha1
 		})
 		vars := []v1alpha1.ObservedEnvVar{}
 		varsToCheck := ttrs.TaskTestSpec.Expects.Env
-		if ttrs.TaskTestSpec.Expects.StepEnvs != nil {
-			for _, stepEnv := range ttrs.TaskTestSpec.Expects.StepEnvs {
+		if len(stepEnvs) > 0 {
+			for _, stepEnv := range stepEnvs {
 				if stepEnv.StepName == step.StepName {
 					varsToCheck = append(varsToCheck, stepEnv.Env...)
 				}
@@ -855,7 +867,7 @@ func (c *Reconciler) checkExpectationsForEnv(ctx context.Context, ttrs *v1alpha1
 	return nil
 }
 
-func checkExpectationsForFileSystemObjects(ctx context.Context, ttrs *v1alpha1.TaskTestRunStatus, gotResults []v1.TaskRunResult, expectationsMet *bool, diffs *string) error {
+func checkExpectationsForFileSystemObjects(ctx context.Context, ttrs *v1alpha1.TaskTestRunStatus, stepIndex int, gotResults []v1.TaskRunResult, expectationsMet *bool, diffs *string) error {
 	logger := logging.FromContext(ctx)
 	idx := slices.IndexFunc(gotResults, func(result v1.TaskRunResult) bool {
 		return result.Name == v1alpha1.ResultNameFileSystemContents
@@ -878,41 +890,40 @@ func checkExpectationsForFileSystemObjects(ctx context.Context, ttrs *v1alpha1.T
 	if ttrs.Outcomes.FileSystemObjects == nil {
 		ttrs.Outcomes.FileSystemObjects = &[]v1alpha1.ObservedStepFileSystemContent{}
 	}
-	for _, step := range ttrs.TaskTestSpec.Expects.FileSystemContents {
-		stepFileSystemContent := v1alpha1.ObservedStepFileSystemContent{
-			StepName: step.StepName,
-			Objects:  []v1alpha1.ObservedFileSystemObject{},
-		}
-		for _, object := range step.Objects {
-			observation := v1alpha1.ObservedFileSystemObject{
-				Path:        object.Path,
-				WantType:    object.Type,
-				GotType:     fileSystemObservationsMap[step.StepName][object.Path].Type,
-				WantContent: object.Content,
-				GotContent:  fileSystemObservationsMap[step.StepName][object.Path].Content,
-			}
-
-			if !cmp.Equal(observation.WantType, observation.GotType) {
-				*expectationsMet = false
-				*diffs += fmt.Sprintf("file system object %q type in step %q: want %q, got %q\n", observation.Path, step.StepName, observation.WantType, observation.GotType)
-			}
-
-			// we can assume, that the empty string here means,
-			// that no content was specified, since if the user
-			// wanted to check, if a file was empty, they would
-			// use the EmptyFile type instead.
-			if observation.WantContent != "" {
-				if !cmp.Equal(observation.WantContent, observation.GotContent) {
-					*expectationsMet = false
-
-					*diffs += fmt.Sprintf("file system object %q content in step %q: want %q, got %q\n", observation.Path, step.StepName, observation.WantContent, observation.GotContent)
-				}
-			}
-
-			stepFileSystemContent.Objects = append(stepFileSystemContent.Objects, observation)
-		}
-		*ttrs.Outcomes.FileSystemObjects = append(*ttrs.Outcomes.FileSystemObjects, stepFileSystemContent)
+	step := ttrs.TaskTestSpec.Expects.StepExpectations[stepIndex]
+	stepFileSystemContent := v1alpha1.ObservedStepFileSystemContent{
+		StepName: step.Name,
+		Objects:  []v1alpha1.ObservedFileSystemObject{},
 	}
+	for _, object := range step.FileSystemObjects {
+		observation := v1alpha1.ObservedFileSystemObject{
+			Path:        object.Path,
+			WantType:    object.Type,
+			GotType:     fileSystemObservationsMap[step.Name][object.Path].Type,
+			WantContent: object.Content,
+			GotContent:  fileSystemObservationsMap[step.Name][object.Path].Content,
+		}
+
+		if !cmp.Equal(observation.WantType, observation.GotType) {
+			*expectationsMet = false
+			*diffs += fmt.Sprintf("file system object %q type in step %q: want %q, got %q\n", observation.Path, step.Name, observation.WantType, observation.GotType)
+		}
+
+		// we can assume, that the empty string here means,
+		// that no content was specified, since if the user
+		// wanted to check, if a file was empty, they would
+		// use the EmptyFile type instead.
+		if observation.WantContent != "" {
+			if !cmp.Equal(observation.WantContent, observation.GotContent) {
+				*expectationsMet = false
+
+				*diffs += fmt.Sprintf("file system object %q content in step %q: want %q, got %q\n", observation.Path, step.Name, observation.WantContent, observation.GotContent)
+			}
+		}
+
+		stepFileSystemContent.Objects = append(stepFileSystemContent.Objects, observation)
+	}
+	*ttrs.Outcomes.FileSystemObjects = append(*ttrs.Outcomes.FileSystemObjects, stepFileSystemContent)
 	return nil
 }
 
@@ -967,9 +978,30 @@ func (c *Reconciler) validateAndUpdateExpectationsForTaskRunCreation(ctx context
 		}
 	}
 
-	if ttr.Status.TaskTestSpec.Expects.StepEnvs != nil || ttr.Status.TaskTestSpec.Expects.Env != nil {
+	stepEnvs := v1alpha1.StepEnvs{}
+
+	for i, se := range ttr.Status.TaskTestSpec.Expects.StepExpectations {
 		declaredSteps := task.Spec.Steps
-		expectedStepEnvs := ttr.Status.TaskTestSpec.Expects.StepEnvs.DeepCopy()
+		if !slices.ContainsFunc(declaredSteps, func(step v1.Step) bool {
+			return step.Name == se.Name
+		}) {
+			return fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed,
+				apis.ErrInvalidValue(se.Name, fmt.Sprintf(
+					"status.taskTestSpec.expected.stepExpectations[%d].name", i),
+					fmt.Sprintf(`task %q has no Step named %q`, task.Name, se.Name)))
+		}
+
+		if se.Env != nil {
+			stepEnvs = append(stepEnvs, v1alpha1.StepEnv{
+				StepName: se.Name,
+				Env:      se.Env,
+			})
+		}
+	}
+
+	if len(stepEnvs) > 0 || ttr.Status.TaskTestSpec.Expects.Env != nil {
+		declaredSteps := task.Spec.Steps
+		expectedStepEnvs := stepEnvs.DeepCopy()
 
 		for i, step := range declaredSteps {
 			envIdx := slices.IndexFunc(expectedStepEnvs, func(stepEnv v1alpha1.StepEnv) bool {
@@ -987,7 +1019,7 @@ func (c *Reconciler) validateAndUpdateExpectationsForTaskRunCreation(ctx context
 						}
 					}
 					if envIdx >= 0 {
-						for _, variable := range ttr.Status.TaskTestSpec.Expects.StepEnvs[envIdx].Env {
+						for _, variable := range stepEnvs[envIdx].Env {
 							variables = append(variables, "^"+variable.Name+"=")
 						}
 					}
@@ -1031,21 +1063,8 @@ func (c *Reconciler) validateAndUpdateExpectationsForTaskRunCreation(ctx context
 			for _, stepEnv := range expectedStepEnvs {
 				return fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed,
 					apis.ErrInvalidValue(stepEnv.StepName, fmt.Sprintf(
-						"status.taskTestSpec.expected.stepEnvs[%d].stepName", slices.IndexFunc(ttr.Status.TaskTestSpec.Expects.StepEnvs, func(se v1alpha1.StepEnv) bool { return se.StepName == stepEnv.StepName })),
+						"status.taskTestSpec.expected.stepEnvs[%d].stepName", slices.IndexFunc(stepEnvs, func(se v1alpha1.StepEnv) bool { return se.StepName == stepEnv.StepName })),
 						fmt.Sprintf(`task %q has no Step named %q`, task.Name, stepEnv.StepName)))
-			}
-		}
-	}
-	if ttr.Status.TaskTestSpec.Expects.FileSystemContents != nil {
-		declaredSteps := task.Spec.Steps
-		for i, stepFileSystem := range ttr.Status.TaskTestSpec.Expects.FileSystemContents {
-			if !slices.ContainsFunc(declaredSteps, func(step v1.Step) bool {
-				return step.Name == stepFileSystem.StepName
-			}) {
-				return fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed,
-					apis.ErrInvalidValue(stepFileSystem.StepName, fmt.Sprintf(
-						"status.taskTestSpec.expected.fileSystemContents[%d].stepName", i),
-						fmt.Sprintf(`task %q has no Step named %q`, task.Name, stepFileSystem.StepName)))
 			}
 		}
 	}

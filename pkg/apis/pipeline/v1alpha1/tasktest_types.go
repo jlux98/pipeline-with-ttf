@@ -293,16 +293,18 @@ type ExpectedOutcomes struct {
 	// +listType=atomic
 	Env []corev1.EnvVar `json:"env,omitempty" patchMergeKey:"name" patchStrategy:"merge" protobuf:"bytes,7,rep,name=env"`
 
-	// List of Step environments, where expected values for environment
-	// variables can be individually defined for all of the Task's Steps.
-	// Expected values defined here will take precedence over expectations
-	// defined in 'env'.
+	// StepExpectations holds expectations for the values of environment
+	// variables, file system objects and execution time on a Step basis. In
+	// case of a conflict, expectations defined for a specific Step in
+	// StepExpectations take precedence over expectations defined on a
+	// Task-wide scale.
 	//
-	// +optional
-	StepEnvs StepEnvs `json:"stepEnvs,omitempty"`
+	// +listType=atomic
+	StepExpectations []StepExpectation `json:"stepExpectations"`
 
-	// CompletionWithin expresses, that a test is only successful, if it
-	// completes within that duration. Since the aim is to measure the
+	// ExecutionTimeBelow expresses, that a test is only
+	// successful, if the time it spends executing its Steps is smaller
+	// or equal to the duration specified. Since the aim is to measure the
 	// performance of the test as consistently as possible, this value
 	// is not checked against the difference of the start time and
 	// completion time of the task run but against the sum of the
@@ -311,7 +313,7 @@ type ExpectedOutcomes struct {
 	// scheduling time.
 	//
 	// +optional
-	CompletionWithin *metav1.Duration `json:"completionWithin,omitempty"`
+	ExecutionTimeBelow *metav1.Duration `json:"executionTimeBelow,omitempty"`
 
 	// SuccessStatus reports, whether the TaskRuns initiated by this test are
 	// expected to succeed. This is useful for testing cases in which the Task
@@ -325,14 +327,43 @@ type ExpectedOutcomes struct {
 	//
 	// +optional
 	SuccessReason *v1.TaskRunReason `json:"successReason,omitempty"`
+}
 
-	// FileSystemContents is a list step names, each one paired with a list of
-	// expected file system objects.
+type StepExpectation struct {
+	// Name is the name of the Step for which the expectations defined here
+	// apply.
+	Name string `json:"name"`
+
+	// FileSystemObjects is a list of file system objects, which are expected to
+	// be in the container's file system after the step has finished executing
+	// (or in the case of Type being set to "None" expected to not be there). If
+	// field Type is left empty, then it will default to "AnyObjectType".
 	//
 	// +listType=map
-	// +listMapKey=stepName
+	// +listMapKey=path
 	// +optional
-	FileSystemContents []ExpectedStepFileSystemContent `json:"fileSystemContents,omitempty"`
+	FileSystemObjects []FileSystemObject `json:"fileSystemObjects,omitempty"`
+
+	// List of environment variables with the values they are expected to hold
+	// after the step has finished.
+	// Expected values defined here will take precedence over expectations
+	// defined in the TaskTestSpec's Env field.
+	//
+	// +optional
+	// +patchMergeKey=name
+	// +patchStrategy=merge
+	// +listType=atomic
+	Env []corev1.EnvVar `json:"env,omitempty" patchMergeKey:"name" patchStrategy:"merge" protobuf:"bytes,7,rep,name=env"`
+
+	// ExecutionTimeBelow expresses, that a test is only successful, if the time
+	// it spends executing the Step this expectation is set for is smaller or
+	// equal to the duration specified here.
+	// The execution time is calculated by taking the Step's container's
+	// finishedAt timestamp and subtracting the container's startedAt timestamp
+	// from it.
+	//
+	// +optional
+	ExecutionTimeBelow *metav1.Duration `json:"executionTimeBelow,omitempty"`
 }
 
 // ExpectedStepFileSystemContent contains the name of a step as declared in the

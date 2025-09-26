@@ -95,20 +95,27 @@ var DisallowedInputFileSystemPathEndings []rune = []rune{
 
 func (e *ExpectedOutcomes) Validate(ctx context.Context) *apis.FieldError {
 	var errs *apis.FieldError
+
 	errs = errs.Also(ValidateIdentifierUniqueness(extractNamesFromTaskResults(e.Results), "name").ViaField("results"))
-	for i := range e.FileSystemContents {
-		errs = errs.Also(e.FileSystemContents[i].Validate(ctx).ViaFieldIndex("fileSystemContents", i))
+	if e.StepExpectations != nil {
+		for i := range e.StepExpectations {
+			errs = errs.Also(e.StepExpectations[i].Validate(ctx).ViaFieldIndex("stepExpectations", i))
+		}
 	}
 
 	return errs
 }
 
-func (fc *ExpectedStepFileSystemContent) Validate(ctx context.Context) *apis.FieldError {
+func (se *StepExpectation) Validate(ctx context.Context) *apis.FieldError {
 	var errs *apis.FieldError
-	errs = errs.Also(ValidateIdentifierUniqueness(extractPathsFromFileSystemObjects(fc.Objects), "path").ViaField("objects"))
-	for i := range fc.Objects {
-		errs = errs.Also(fc.Objects[i].Validate(ctx).ViaFieldIndex("objects", i))
+
+	if se.FileSystemObjects != nil {
+		errs = errs.Also(ValidateIdentifierUniqueness(extractPathsFromFileSystemObjects(se.FileSystemObjects), "path").ViaField("fileSystemObjects"))
+		for i := range se.FileSystemObjects {
+			errs = errs.Also(se.FileSystemObjects[i].Validate(ctx).ViaFieldIndex("fileSystemObjects", i))
+		}
 	}
+
 	return errs
 }
 
