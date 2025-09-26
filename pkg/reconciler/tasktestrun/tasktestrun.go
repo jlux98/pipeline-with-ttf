@@ -502,7 +502,7 @@ func (c *Reconciler) checkActualOutcomesAgainstExpectations(ctx context.Context,
 		}
 
 		// check environment variables
-		if ttrs.TaskTestSpec.Expects.Env != nil {
+		if ttrs.TaskTestSpec.Expects.Env != nil || len(stepEnvs) > 0 {
 			if err := c.checkExpectationsForEnv(ctx, ttrs, stepEnvs, gotResults, &expectationsMet, &diffs); err != nil {
 				err = fmt.Errorf(`error while checking the expectations for env: %w`, err)
 				if resultErr == nil {
@@ -851,7 +851,7 @@ func (c *Reconciler) checkExpectationsForEnv(ctx context.Context, ttrs *v1alpha1
 		})
 	}
 
-	if len(unvisitedSteps) > 0 {
+	if ttrs.TaskTestSpec.Expects.Env != nil && len(unvisitedSteps) > 0 {
 		unvisitedStepNames := []string{}
 		for _, step := range unvisitedSteps {
 			unvisitedStepNames = append(unvisitedStepNames, step.Name)
