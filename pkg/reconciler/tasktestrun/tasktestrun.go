@@ -16,6 +16,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
+	podtypes "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -67,10 +68,10 @@ type Reconciler struct {
 
 var cancelTaskRunPatchBytes, timeoutTaskRunPatchBytes []byte
 
-const printEnvTrap = `envPath="%s/%s"
+const envTrap = `envPath="%s/%s"
 echo "The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step"
 trap 'echo "{\"stepName\": \"%s\", \"environment\": {
-$(printenv | grep '%s')
+$(env | grep '%s')
 }}," >> "$envPath"' EXIT
 `
 const StepNamePrepareWorkspace = "prepare-workspace"
@@ -234,8 +235,7 @@ func (c *Reconciler) prepare(ctx context.Context, ttr *v1alpha1.TaskTestRun) err
 	var observedTaskTestName *string
 	if ttr.Spec.TaskTestSpec != nil {
 		observedTaskTestSpec = ttr.Spec.TaskTestSpec
-	}
-	if ttr.Spec.TaskTestRef != nil {
+	} else if ttr.Spec.TaskTestRef != nil {
 		taskTest, err := c.dereferenceTaskTestRef(ctx, ttr)
 		if err != nil {
 			events.Emit(ctx, nil, ttr.Status.GetCondition(apis.ConditionSucceeded), ttr)
@@ -498,6 +498,21 @@ func (c *Reconciler) checkActualOutcomesAgainstExpectations(ctx context.Context,
 						Env:      se.Env,
 					})
 				}
+				if se.ExecutionTimeBelow != nil {
+					observedExecutionTime := v1alpha1.ObservedExecutionTime{
+						Want: metav1.Duration{Duration: se.ExecutionTimeBelow.Duration},
+						Got: metav1.Duration{
+							Duration: ttrs.TaskRunStatus.Steps[*ttrs.StepIndices[se.Name]].Terminated.FinishedAt.Sub(
+								ttrs.TaskRunStatus.Steps[*ttrs.StepIndices[se.Name]].Terminated.StartedAt.Time,
+							),
+						},
+					}
+
+					if observedExecutionTime.Got.Duration > observedExecutionTime.Want.Duration {
+						expectationsMet = false
+						diffs += fmt.Sprintf("execution time for step %q: want %q, got %q\n", se.Name, observedExecutionTime.Want, observedExecutionTime.Got)
+					}
+				}
 			}
 		}
 
@@ -571,10 +586,10 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 		taskRunSpec.Params = ttr.Status.TaskTestSpec.Inputs.Params
 
 		if ttr.Status.TaskTestSpec.Inputs.Env != nil {
-			if task.Spec.StepTemplate == nil {
-				task.Spec.StepTemplate = &v1.StepTemplate{}
+			if taskRunSpec.PodTemplate == nil {
+				taskRunSpec.PodTemplate = &podtypes.PodTemplate{}
 			}
-			task.Spec.StepTemplate.Env = ttr.Status.TaskTestSpec.Inputs.Env
+			taskRunSpec.PodTemplate.Env = ttr.Status.TaskTestSpec.Inputs.Env
 		}
 
 		if ttr.Status.TaskTestSpec.Inputs.StepEnvs != nil {
@@ -979,12 +994,10 @@ func (c *Reconciler) validateAndUpdateExpectationsForTaskRunCreation(ctx context
 	}
 
 	stepEnvs := v1alpha1.StepEnvs{}
+	ttr.Status.FillStepIndices(task.Spec.Steps)
 
 	for i, se := range ttr.Status.TaskTestSpec.Expects.StepExpectations {
-		declaredSteps := task.Spec.Steps
-		if !slices.ContainsFunc(declaredSteps, func(step v1.Step) bool {
-			return step.Name == se.Name
-		}) {
+		if ttr.Status.StepIndices[se.Name] == nil {
 			return fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed,
 				apis.ErrInvalidValue(se.Name, fmt.Sprintf(
 					"status.taskTestSpec.expected.stepExpectations[%d].name", i),
@@ -1023,7 +1036,7 @@ func (c *Reconciler) validateAndUpdateExpectationsForTaskRunCreation(ctx context
 							variables = append(variables, "^"+variable.Name+"=")
 						}
 					}
-					scriptInterjection := fmt.Sprintf(printEnvTrap, pipeline.DefaultResultPath, v1alpha1.ResultNameEnvironmentDump, step.Name, strings.Join(variables, `\|`))
+					scriptInterjection := fmt.Sprintf(envTrap, pipeline.DefaultResultPath, v1alpha1.ResultNameEnvironmentDump, step.Name, strings.Join(variables, `\|`))
 					if !strings.HasPrefix(step.Script, "#!") {
 						task.Spec.Steps[i].Script = scriptInterjection + "\n" + declaredSteps[i].Script
 					} else {

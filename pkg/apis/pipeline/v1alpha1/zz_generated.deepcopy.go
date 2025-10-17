@@ -1643,13 +1643,13 @@ func (in *TaskTestSuiteRunSpec) DeepCopyInto(out *TaskTestSuiteRunSpec) {
 		*out = new(TaskTestSuiteSpec)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.DefaultRunSpecTemplate != nil {
-		in, out := &in.DefaultRunSpecTemplate, &out.DefaultRunSpecTemplate
+	if in.TaskTestRunTemplate != nil {
+		in, out := &in.TaskTestRunTemplate, &out.TaskTestRunTemplate
 		*out = new(TaskTestRunTemplate)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.RunSpecs != nil {
-		in, out := &in.RunSpecs, &out.RunSpecs
+	if in.TaskTestRunSpecs != nil {
+		in, out := &in.TaskTestRunSpecs, &out.TaskTestRunSpecs
 		*out = make([]SuiteTaskTestRun, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])

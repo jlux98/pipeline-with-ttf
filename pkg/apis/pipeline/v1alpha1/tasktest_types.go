@@ -63,6 +63,10 @@ type TaskTestSpec struct {
 	//
 	// +optional
 	Expects *ExpectedOutcomes `json:"expects,omitempty"`
+
+	// FIXME(jlux98) Implement this field as prerequesite for copying
+	// data from volumes
+	Volumes *Volumes `json:"volumes,omitempty"`
 }
 
 type SimpleTaskRef struct {
@@ -213,6 +217,7 @@ type InputFileSystemObjectContent struct {
 	CopyFrom *CopyFromRef `json:"copyFrom,omitempty"`
 }
 
+// TODO(jlux98) decide if letting the Volume mounting be handled by the controller like this is good enough or if there should be a volumeMount declaration here
 type CopyFromRef struct {
 	// VolumeName is the name of the volume to copy from. It must be in
 	// the same namespace as this TaskTest.

@@ -73,7 +73,7 @@ type TaskTestSuiteRunList struct {
 
 // Spec and its resources start here
 
-// TaskTestSuiteRunSpec
+// TaskTestSuiteRunSpec defines the desired state of TaskTestSuiteRun
 type TaskTestSuiteRunSpec struct {
 	// TaskTestSuiteRef is a reference to a task test suite definition.
 	// Either this or TaskTestSuiteSpec must be set, if neither or both are set then
@@ -91,22 +91,30 @@ type TaskTestSuiteRunSpec struct {
 	// +kubebuilder:validation:Schemaless
 	TaskTestSuiteSpec *TaskTestSuiteSpec `json:"taskTestSuiteSpec,omitempty"`
 
-	// ExecutionMode specifies, whether the tests in this run will be executed
-	// in parallel or sequentially. Valid values for this field are "Parallel"
-	// and "Sequential".
-	//
-	// +kubebuilder:validation:Enum=Parallel;Sequential
-	ExecutionMode TestSuiteExecutionMode `json:"executionMode"`
+	// Params field intentionally omitted
 
-	// DefaultRunSpecTemplate defines the template after which the
+	// Used for cancelling a TaskTestSuiteRun
+	//
+	// +optional
+	Status TaskTestSuiteRunSpecStatus `json:"status,omitempty"`
+
+	// Time after which the suite run times out. Defaults to 1 hour.
+	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
+	//
+	// +optional
+	Timeout *metav1.Duration `json:"timeout,omitempty"`
+
+	// TaskTestRunTemplate defines the template after which the
 	// TaskTestRuns for the tests in this suite are generated. It supports the
 	// same fields as the Spec of a TaskTestRun with the exception of
 	// TaskTestRef and the SpecStatus fields.
 	//
 	// +optional
-	DefaultRunSpecTemplate *TaskTestRunTemplate `json:"defaultRunSpecTemplate,omitempty"`
+	TaskTestRunTemplate *TaskTestRunTemplate `json:"taskTestRunTemplate,omitempty"`
 
-	// RunSpecs is a list of RunSpecs, except that the
+	// Workspaces field moved to TaskTestRunTemplate/TaskTestRunSpecs
+
+	// TaskTestRunSpecs is a list of TaskTestRunSpecs, except that the
 	// SpecStatus fields are not allowed. It contains all the tests that will be
 	// executed by this run, in addition to providing the option of configuring
 	// them on a case-by-case basis. Configurations made in this field overwrite
@@ -115,7 +123,21 @@ type TaskTestSuiteRunSpec struct {
 	// +optional
 	// +listType=map
 	// +listMapKey=name
-	RunSpecs []SuiteTaskTestRun `json:"runSpecs,omitempty"`
+	TaskTestRunSpecs []SuiteTaskTestRun `json:"taskTestRunSpecs,omitempty"`
+
+	// The following fields do not have equivalents in the TaskRunSpec object
+
+	// ExecutionMode specifies, whether the tests in this run will be executed
+	// in parallel or sequentially. Valid values for this field are "Parallel"
+	// and "Sequential".
+	//
+	// +kubebuilder:validation:Enum=Parallel;Sequential
+	ExecutionMode TestSuiteExecutionMode `json:"executionMode"`
+
+	// SharedVolumes is a list of VolumeClaimTemplates with names
+	//
+	// +listType=atomic
+	SharedVolumes []NamedVolumeClaimTemplate `json:"sharedVolumes"`
 
 	// RunSpecs is a list of RunSpecs, except that the
 	// SpecStatus fields are not allowed. It contains all the tests that will be
@@ -127,27 +149,6 @@ type TaskTestSuiteRunSpec struct {
 	// +listType=map
 	// +listMapKey=name
 	RunSpecMap TaskTestRunTemplateMap `json:"-"`
-
-	// SharedVolumes is a list of VolumeClaimTemplates with names
-	//
-	// +listType=atomic
-	SharedVolumes []NamedVolumeClaimTemplate `json:"sharedVolumes"`
-
-	// Used for cancelling a TaskTestSuiteRun
-	//
-	// +optional
-	Status TaskTestSuiteRunSpecStatus `json:"status,omitempty"`
-
-	// Status message for cancellation.
-	//
-	// +optional
-	StatusMessage TaskTestRunSpecStatusMessage `json:"statusMessage,omitempty"`
-
-	// Time after which the suite run times out. Defaults to 1 hour.
-	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
-	//
-	// +optional
-	Timeout *metav1.Duration `json:"timeout,omitempty"`
 }
 
 type TaskTestRunTemplateMap map[string]*TaskTestRunTemplate

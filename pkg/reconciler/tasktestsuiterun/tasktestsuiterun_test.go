@@ -270,7 +270,7 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 					Type:    "Succeeded",
 					Status:  "False",
 					Reason:  "TaskTestSuiteRunCancelled",
-					Message: `TaskTestSuiteRun "` + tcCancelDecTts + `" was cancelled. `,
+					Message: `TaskTestSuiteRun "` + tcCancelDecTts + `" was cancelled.`,
 				}}
 				ttsr.Status.CompletionTime = &metav1.Time{Time: testClock.Now()}
 				ttsr.Spec.TaskTestSuiteSpec.TaskTests[0].TaskTestSpec = &taskTestMap["simple_task_test"].Spec

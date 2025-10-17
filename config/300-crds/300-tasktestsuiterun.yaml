@@ -43,7 +43,7 @@ spec:
                 - executionMode
                 - sharedVolumes
               properties:
-                defaultRunSpecTemplate:
+                taskTestRunTemplate:
                   description: |-
                     DefaultRunSpecTemplate defines the template after which the
                     TaskTestRuns for the tests in this suite are generated. It supports the
@@ -697,7 +697,7 @@ spec:
                   enum:
                     - Parallel
                     - Sequential
-                runSpecs:
+                taskTestRunSpecs:
                   description: |-
                     RunSpecs is a list of RunSpecs, except that the
                     SpecStatus fields are not allowed. It contains all the tests that will be

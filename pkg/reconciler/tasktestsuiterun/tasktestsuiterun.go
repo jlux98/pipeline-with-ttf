@@ -117,9 +117,8 @@ func (c *Reconciler) ReconcileKind(
 	// If the TaskTestRun is cancelled, kill resources and update status
 	if ttsr.IsCancelled() {
 		message := fmt.Sprintf(
-			"TaskTestSuiteRun %q was cancelled. %s",
+			"TaskTestSuiteRun %q was cancelled.",
 			ttsr.Name,
-			ttsr.Spec.StatusMessage,
 		)
 		err := c.failTaskRun(ctx, ttsr, v1alpha1.TaskTestSuiteRunReasonCancelled, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, ttsr, before, err)
@@ -312,6 +311,9 @@ func (c *Reconciler) prepare(ctx context.Context, ttsr *v1alpha1.TaskTestSuiteRu
 			ttsr.Status.TaskTestSuiteName = observedTaskTestSuiteName
 		}
 	}
+
+	// TODO(jlux98) add validation for TaskTestRunSpecs, i.e. complain if a SuiteTest is referenced in the TaskTestSuiteRun that is not declared by the Suite
+
 	if ttsr.Status.TaskTestSuiteSpec == nil ||
 		!cmp.Equal(*ttsr.Spec.TaskTestSuiteSpec, *observedTaskTestSuiteSpec) {
 		ttsr.Status.TaskTestSuiteSpec = observedTaskTestSuiteSpec
@@ -330,10 +332,10 @@ func (c *Reconciler) prepare(ctx context.Context, ttsr *v1alpha1.TaskTestSuiteRu
 					err,
 				)
 			}
-
 			ttsr.Status.TaskTestSuiteSpec.TaskTests[i].TaskTestSpec = &taskTest.Spec
 		}
 	}
+
 	return nil
 }
 
@@ -422,58 +424,66 @@ func (c *Reconciler) reconcile(
 
 func (c *Reconciler) reconcileSuiteTest(ctx context.Context, ttsr *v1alpha1.TaskTestSuiteRun, taskTest v1alpha1.SuiteTest, allTaskTestRunsFinished *bool) error {
 	logger := logging.FromContext(ctx)
+
+	// if mode is sequential and there is no other test running then get
+	// the lock
 	if ttsr.Spec.ExecutionMode == v1alpha1.TaskTestSuiteRunExecutionModeSequential && ttsr.Status.CurrentSuiteTest == nil {
 		ttsr.Status.CurrentSuiteTest = &taskTest.Name
 	}
-	if ttsr.Spec.ExecutionMode == v1alpha1.TaskTestSuiteRunExecutionModeParallel ||
-		*ttsr.Status.CurrentSuiteTest == taskTest.Name {
-		// Get the TaskTest's TaskTestRun if it should have one. Otherwise, create the TaskRun.
-		taskTestRun, err := c.getTaskTestRun(ctx, ttsr, taskTest)
+
+	// if mode is sequential, the lock is in use and its not by this
+	// test then skip reconciliation
+	if ttsr.Spec.ExecutionMode == v1alpha1.TaskTestSuiteRunExecutionModeSequential &&
+		*ttsr.Status.CurrentSuiteTest != taskTest.Name {
+		return nil
+	}
+
+	// Get the TaskTest's TaskTestRun if it should have one. Otherwise, create the TaskRun.
+	taskTestRun, err := c.getTaskTestRun(ctx, ttsr, taskTest)
+	if err != nil {
+		return err
+	}
+
+	if taskTestRun == nil {
+		logger.Infof(
+			"boom: Now creating TaskTestRun %q for TTSR %q",
+			ttsr.Name+"-"+taskTest.Name,
+			ttsr.Name,
+		)
+		taskTestRun, err = c.createTaskTestRun(ctx, ttsr, &taskTest, ttsr.Namespace)
 		if err != nil {
+			logger.Errorf(
+				"Failed to create task test run %q for taskTestSuiteRun %q: %v",
+				taskTest.GetTaskTestRunName(ttsr.Name),
+				ttsr.Name,
+				err,
+			)
 			return err
 		}
 
-		if taskTestRun == nil {
-			logger.Infof(
-				"boom: Now creating TaskTestRun %q for TTSR %q",
-				ttsr.Name+"-"+taskTest.Name,
-				ttsr.Name,
-			)
-			taskTestRun, err = c.createTaskTestRun(ctx, ttsr, &taskTest, ttsr.Namespace)
-			if err != nil {
-				logger.Errorf(
-					"Failed to create task test run %q for taskTestSuiteRun %q: %v",
-					taskTest.GetTaskTestRunName(ttsr.Name),
-					ttsr.Name,
-					err,
-				)
-				return err
-			}
-
-			if ttsr.Status.TaskTestRunStatuses == nil {
-				ttsr.Status.TaskTestRunStatuses = map[string]*v1alpha1.TaskTestRunStatus{}
-			}
-			ttsr.Status.TaskTestRunStatuses[taskTestRun.Name] = &taskTestRun.Status
-			ttsr.Status.StartTime = &metav1.Time{
-				Time: c.Clock.Now(),
-			}
+		if ttsr.Status.TaskTestRunStatuses == nil {
+			ttsr.Status.TaskTestRunStatuses = map[string]*v1alpha1.TaskTestRunStatus{}
 		}
-
-		if ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)] == nil ||
-			!cmp.Equal(
-				ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)],
-				taskTestRun.Status,
-			) {
-			logger.Infof("boom: Now setting task run name for TTR %s", ttsr.Name)
-			ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)] = &taskTestRun.Status
-		}
-
-		if taskTestRun.Status.CompletionTime == nil {
-			*allTaskTestRunsFinished = false
-		} else {
-			ttsr.Status.CurrentSuiteTest = nil
+		ttsr.Status.TaskTestRunStatuses[taskTestRun.Name] = &taskTestRun.Status
+		ttsr.Status.StartTime = &metav1.Time{
+			Time: c.Clock.Now(),
 		}
 	}
+
+	if ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)] == nil || !cmp.Equal(
+		ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)],
+		taskTestRun.Status,
+	) {
+		logger.Infof("boom: Now setting task run name for TTR %s", ttsr.Name)
+		ttsr.Status.TaskTestRunStatuses[taskTest.GetTaskTestRunName(ttsr.Name)] = &taskTestRun.Status
+	}
+
+	if taskTestRun.Status.CompletionTime == nil {
+		*allTaskTestRunsFinished = false
+	} else {
+		ttsr.Status.CurrentSuiteTest = nil
+	}
+
 	return nil
 }
 
@@ -617,15 +627,15 @@ func (c *Reconciler) createTaskTestRun(ctx context.Context, ttsr *v1alpha1.TaskT
 
 	taskTestRun.Spec.TaskTestSpec = suiteTest.TaskTestSpec
 
-	if ttsr.Spec.DefaultRunSpecTemplate != nil {
+	if ttsr.Spec.TaskTestRunTemplate != nil {
 		convertedWorkspaces := []v1.WorkspaceBinding{}
-		for i, ws := range ttsr.Spec.DefaultRunSpecTemplate.Workspaces {
+		for i, ws := range ttsr.Spec.TaskTestRunTemplate.Workspaces {
 			if ws.SharedVolume != nil {
 				idx := slices.IndexFunc(ttsr.Status.SharedVolumes, func(wb v1.WorkspaceBinding) bool {
 					return wb.Name == ws.SharedVolume.VolumeName
 				})
 				if idx < 0 {
-					return nil, apis.ErrInvalidValue(ws.SharedVolume.VolumeName, fmt.Sprintf("spec.defaultRunSpecTemplate[%d].name", i), fmt.Sprintf("TaskTestSuiteRun %q does not have a Shared Volume named %q", ttsr.Name, ws.SharedVolume.VolumeName))
+					return nil, apis.ErrInvalidValue(ws.SharedVolume.VolumeName, fmt.Sprintf("spec.taskTestRunTemplate[%d].name", i), fmt.Sprintf("TaskTestSuiteRun %q does not have a Shared Volume named %q", ttsr.Name, ws.SharedVolume.VolumeName))
 				}
 				binding := ttsr.Status.SharedVolumes[idx].DeepCopy()
 				binding.Name = ws.Name
@@ -635,14 +645,14 @@ func (c *Reconciler) createTaskTestRun(ctx context.Context, ttsr *v1alpha1.TaskT
 			}
 		}
 		taskTestRun.Spec.Workspaces = append(taskTestRun.Spec.Workspaces, convertedWorkspaces...)
-		taskTestRun.Spec.Volumes = append(taskTestRun.Spec.Volumes, ttsr.Spec.DefaultRunSpecTemplate.Volumes...)
+		taskTestRun.Spec.Volumes = append(taskTestRun.Spec.Volumes, ttsr.Spec.TaskTestRunTemplate.Volumes...)
 	}
 
-	if ttsr.Spec.RunSpecMap == nil && ttsr.Spec.RunSpecs != nil {
+	if ttsr.Spec.RunSpecMap == nil && ttsr.Spec.TaskTestRunSpecs != nil {
 		ttsr.Spec.RunSpecMap = v1alpha1.TaskTestRunTemplateMap{}
-		ttsr.Spec.RunSpecMap.GenerateMap(ttsr.Spec.RunSpecs)
+		ttsr.Spec.RunSpecMap.GenerateMap(ttsr.Spec.TaskTestRunSpecs)
 	}
-	if ttsr.Spec.RunSpecs != nil && ttsr.Spec.RunSpecMap[suiteTest.Name] != nil {
+	if ttsr.Spec.TaskTestRunSpecs != nil && ttsr.Spec.RunSpecMap[suiteTest.Name] != nil {
 		convertedWorkspaces := []v1.WorkspaceBinding{}
 		for i, ws := range ttsr.Spec.RunSpecMap[suiteTest.Name].Workspaces {
 			if ws.SharedVolume != nil {
@@ -650,7 +660,7 @@ func (c *Reconciler) createTaskTestRun(ctx context.Context, ttsr *v1alpha1.TaskT
 					return wb.Name == ws.SharedVolume.VolumeName
 				})
 				if idx < 0 {
-					return nil, apis.ErrInvalidValue(ws.SharedVolume.VolumeName, fmt.Sprintf("spec.runSpecs[%s].workspaces[%d].name", suiteTest.Name, i), fmt.Sprintf("TaskTestSuiteRun %q does not have a Shared Volume named %q", ttsr.Name, ws.SharedVolume.VolumeName))
+					return nil, apis.ErrInvalidValue(ws.SharedVolume.VolumeName, fmt.Sprintf("spec.taskTestRunSpecs[%s].workspaces[%d].name", suiteTest.Name, i), fmt.Sprintf("TaskTestSuiteRun %q does not have a Shared Volume named %q", ttsr.Name, ws.SharedVolume.VolumeName))
 				}
 				binding := ttsr.Status.SharedVolumes[idx].DeepCopy()
 				binding.Name = ws.Name

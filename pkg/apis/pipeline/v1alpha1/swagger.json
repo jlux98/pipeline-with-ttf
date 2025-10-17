@@ -1686,7 +1686,7 @@
         "sharedVolumes"
       ],
       "properties": {
-        "defaultRunSpecTemplate": {
+        "taskTestRunTemplate": {
           "description": "DefaultRunSpecTemplate defines the template after which the TaskTestRuns for the tests in this suite are generated. It supports the same fields as the Spec of a TaskTestRun with the exception of TaskTestRef and the SpecStatus fields.",
           "$ref": "#/definitions/v1alpha1.TaskTestRunTemplate"
         },
@@ -1695,7 +1695,7 @@
           "type": "string",
           "default": ""
         },
-        "runSpecs": {
+        "taskTestRunSpecs": {
           "description": "RunSpecs is a list of RunSpecs, except that the SpecStatus fields are not allowed. It contains all the tests that will be executed by this run, in addition to providing the option of configuring them on a case-by-case basis. Configurations made in this field overwrite the default template.",
           "type": "array",
           "items": {

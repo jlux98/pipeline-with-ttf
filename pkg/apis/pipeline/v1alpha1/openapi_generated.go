@@ -3090,13 +3090,13 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunSpec(ref common.Reference
 							Format:      "",
 						},
 					},
-					"defaultRunSpecTemplate": {
+					"taskTestRunTemplate": {
 						SchemaProps: spec.SchemaProps{
 							Description: "DefaultRunSpecTemplate defines the template after which the TaskTestRuns for the tests in this suite are generated. It supports the same fields as the Spec of a TaskTestRun with the exception of TaskTestRef and the SpecStatus fields.",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestRunTemplate"),
 						},
 					},
-					"runSpecs": {
+					"taskTestRunSpecs": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
 								"x-kubernetes-list-map-keys": []interface{}{

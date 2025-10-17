@@ -130,6 +130,13 @@ type TaskTestRunList struct {
 
 // TaskTestRunSpec defines the desired state of TaskTest.
 type TaskTestRunSpec struct {
+	// TODO(jlux98) add Debug field and patch it down to TaskRuns created by the TaskTestRun
+
+	// Params intentionally omitted
+
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
 	// TaskTestRef is a reference to a task test definition.
 	// Either this or TaskTestSpec must be set, if neither or both are set then
 	// validation of this TaskTestRun fails.
@@ -144,34 +151,7 @@ type TaskTestRunSpec struct {
 	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
-
 	TaskTestSpec *TaskTestSpec `json:"taskTestSpec,omitempty"`
-
-	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
-	//
-	// +listType=atomic
-	// +optional
-	Workspaces []v1.WorkspaceBinding `json:"workspaces,omitempty"`
-
-	// Time after which one retry attempt times out. Defaults to 1 hour.
-	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
-	// +optional
-	Timeout *metav1.Duration `json:"timeout,omitempty"`
-
-	// Retries represents how many times this TaskTestRun should be retried in
-	// the event of test failure.
-	// +optional
-	Retries int `json:"retries,omitempty"`
-
-	// The default behavior is that if out of all the tries at least one
-	// succeeds then the TaskTestRun is marked as successful. But if the field
-	// allTriesMustSucceed is set to true then the TaskTestRun is marked as
-	// successful if and only if all of its tries come up successful.
-	// +optional
-	AllTriesMustSucceed *bool `json:"allTriesMustSucceed,omitempty"`
-
-	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	// Used for cancelling a TaskTestRun (and maybe more later on)
 	// +optional
@@ -181,9 +161,38 @@ type TaskTestRunSpec struct {
 	// +optional
 	StatusMessage TaskTestRunSpecStatusMessage `json:"statusMessage,omitempty"`
 
+	// Retries represents how many times this TaskTestRun should be retried in
+	// the event of test failure.
+	// +optional
+	Retries int `json:"retries,omitempty"`
+
+	// Time after which one retry attempt times out. Defaults to 1 hour.
+	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
+	// +optional
+	Timeout *metav1.Duration `json:"timeout,omitempty"`
+
+	// TODO(jlux98) add PodTemplate field and patch it down to TaskRuns created by the TaskTestRun
+
+	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
+	//
+	// +listType=atomic
+	// +optional
+	Workspaces []v1.WorkspaceBinding `json:"workspaces,omitempty"`
+
+	// TODO(jlux98) add StepSpecs field and patch it down to TaskRuns created by the TaskTestRun
+
+	// TODO(jlux98) add SidecarSpecs field and patch it down to TaskRuns created by the TaskTestRun
+
 	// Compute resources to use for this TaskRun
 	// +optional
 	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
+
+	// The default behavior is that if out of all the tries at least one
+	// succeeds then the TaskTestRun is marked as successful. But if the field
+	// allTriesMustSucceed is set to true then the TaskTestRun is marked as
+	// successful if and only if all of its tries come up successful.
+	// +optional
+	AllTriesMustSucceed *bool `json:"allTriesMustSucceed,omitempty"`
 
 	// Volumes is a list of volumes that gets patched down to the
 	// TaskSpec of the TaskRun being provisioned by this TaskTestRun.
@@ -248,6 +257,11 @@ type TaskTestRunStatusFields struct {
 	// +kubebuilder:validation:Schemaless
 	TaskTestSpec *TaskTestSpec `json:"taskTestSpec,omitempty"`
 
+	// StepIndices the names of Steps in the Task manifest to their indices.
+	//
+	// +optional
+	StepIndices map[string]*int `json:"stepIndices,omitempty"`
+
 	// TaskTestName is the name of the referenced TaskTest if no inline TaskTest
 	// (via TaskTestSpec) is used
 	//
@@ -282,6 +296,16 @@ type TaskTestRunStatusFields struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	RetriesStatus RetriesStatus `json:"retriesStatus,omitempty"`
+}
+
+func (trs *TaskTestRunStatus) FillStepIndices(steps []v1.Step) {
+	stepMap := map[string]*int{}
+
+	for i, step := range steps {
+		stepMap[step.Name] = &i
+	}
+
+	trs.StepIndices = stepMap
 }
 
 type ObservedOutcomes struct {

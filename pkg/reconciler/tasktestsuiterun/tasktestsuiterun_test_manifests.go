@@ -211,7 +211,7 @@ metadata:
   namespace: foo
 spec:
   executionMode: %s
-  defaultRunSpecTemplate:
+  taskTestRunTemplate:
     volumes:
     - name: copy-volume
       emptyDir: {}
@@ -234,7 +234,7 @@ spec:
           successReason: Succeeded
       retries: %s
       allTriesMustSucceed: %s
-  runSpecs:
+  taskTestRunSpecs:
   - name: task-1
     workspaces:
     - name: date-workspace
@@ -250,7 +250,7 @@ metadata:
   namespace: foo
 spec:
   executionMode: Parallel
-  defaultRunSpecTemplate:
+  taskTestRunTemplate:
     workspaces:
     - name: time-workspace
       emptyDir: {}
@@ -259,7 +259,7 @@ spec:
       emptyDir: {}
   taskTestSuiteRef:
     name: suite
-  runSpecs:
+  taskTestRunSpecs:
   - name: task-1
     workspaces:
     - name: date-workspace

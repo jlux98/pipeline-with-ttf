@@ -343,10 +343,6 @@ spec:
       emptyDir: {}
     workspaces:
     - name: hello-workspace
-    stepTemplate:
-      env:
-      - name: FOO
-        value: bar
     steps:
     - computeResources: {}
       name: prepare-workspace
@@ -382,7 +378,7 @@ spec:
         envPath="/tekton/results/Testing|Environment"
         echo "The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step"
         trap 'echo "{\"stepName\": \"date-step\", \"environment\": {
-        $(printenv | grep '^HOME=')
+        $(env | grep '^HOME=')
         }}," >> "$envPath"' EXIT
 
         echo "Hello world!"
@@ -394,14 +390,19 @@ spec:
         envPath="/tekton/results/Testing|Environment"
         echo "The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step"
         trap 'echo "{\"stepName\": \"time-step\", \"environment\": {
-        $(printenv | grep '^HOME=\|^FHOME=')
+        $(env | grep '^HOME=\|^FHOME=')
         }}," >> "$envPath"' EXIT
 
         echo "Hello world!"
         date \+%%H:%%M:%%S | tee $(results.current-time.path)
   params:
   - name: "args"
-    value: "arg"`
+    value: "arg"
+  podTemplate:
+    env:
+    - name: FOO
+      value: bar
+    `
 
 const trSpecTemplateNoExpectedEnv = `
 metadata:
@@ -438,10 +439,6 @@ spec:
       emptyDir: {}
     workspaces:
     - name: hello-workspace
-    stepTemplate:
-      env:
-      - name: FOO
-        value: bar
     steps:
     - computeResources: {}
       name: prepare-workspace
@@ -483,14 +480,18 @@ spec:
         envPath="/tekton/results/Testing|Environment"
         echo "The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step"
         trap 'echo "{\"stepName\": \"time-step\", \"environment\": {
-        $(printenv | grep '^FHOME=')
+        $(env | grep '^FHOME=')
         }}," >> "$envPath"' EXIT
 
         echo "Hello world!"
         date \+%%H:%%M:%%S | tee $(results.current-time.path)
   params:
   - name: "args"
-    value: "arg"`
+    value: "arg"
+  stepTemplate:
+    env:
+    - name: FOO
+      value: bar`
 
 const trStatusRunning = `
 status:
@@ -764,6 +765,9 @@ spec:
 const ttrStatusRunning = `
 status:
   startTime:  "2025-08-15T15:17:55Z"
+  stepIndices:
+    date-step: 0
+    time-step: 1
   conditions:
   - type: Succeeded
     reason: Started
@@ -776,6 +780,9 @@ status:
   - type: Succeeded
     reason: ToBeRetried
     status: Unknown
+  stepIndices:
+    date-step: 0
+    time-step: 1
   retriesStatus:
   - conditions:
     - type: Succeeded
@@ -788,6 +795,9 @@ const ttrStatusCompletedSuccessful = `
 status:
   startTime:  "2025-08-15T15:17:55Z"
   completionTime: "2025-08-15T15:17:59Z"
+  stepIndices:
+    date-step: 0
+    time-step: 1
   conditions:
   - type: Succeeded
     status: "True"
@@ -800,6 +810,9 @@ const ttrStatusCompletedFailed = `
 status:
   startTime:  "2025-08-15T15:17:55Z"
   completionTime: "2025-08-15T15:17:59Z"
+  stepIndices:
+    date-step: 0
+    time-step: 1
   conditions:
   - type: Succeeded
     status: "False"
@@ -849,9 +862,9 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 		tcCheckRunningDecTest:                            generateTaskTestRun(t, ttrSpecTemplateDecTestExpectedEnv+fmt.Sprintf(ttrStatusRunning, tcCheckRunningDecTest+"-run"), tcCheckRunningDecTest),
 		tcCancelRunningDecTest:                           generateTaskTestRun(t, ttrSpecTemplateDecTestExpectedEnv+fmt.Sprintf(ttrStatusRunning, tcCancelRunningDecTest+"-run"), tcCancelRunningDecTest, "0", "false", "TaskTestRunCancelled"),
 		tcCancelTimeoutDecTest:                           generateTaskTestRun(t, ttrSpecTemplateDecTestExpectedEnv+fmt.Sprintf(ttrStatusRunning, tcCancelTimeoutDecTest+"-run"), tcCancelTimeoutDecTest),
-		tcCheckCompletedSuccessfulDecTest:                generateTaskTestRun(t, ttrSpecTemplateDecTestExpectedEnv+"\nstatus:\n  taskRunName: "+tcCheckCompletedSuccessfulDecTest+"-run", tcCheckCompletedSuccessfulDecTest),
-		tcCheckCompletedSuccessfulDecTestNoEnv:           generateTaskTestRun(t, ttrSpecTemplateDecTestNoExpectedEnv+"\nstatus:\n  taskRunName: "+tcCheckCompletedSuccessfulDecTestNoEnv+"-run", tcCheckCompletedSuccessfulDecTestNoEnv),
-		tcCheckCompletedSuccessfulRefTest:                parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateRefTest, tcCheckCompletedSuccessfulRefTest)),
+		tcCheckCompletedSuccessfulDecTest:                generateTaskTestRun(t, ttrSpecTemplateDecTestExpectedEnv+fmt.Sprintf(ttrStatusRunning, tcCheckCompletedSuccessfulDecTest+"-run"), tcCheckCompletedSuccessfulDecTest),
+		tcCheckCompletedSuccessfulDecTestNoEnv:           generateTaskTestRun(t, ttrSpecTemplateDecTestNoExpectedEnv+fmt.Sprintf(ttrStatusRunning, tcCheckCompletedSuccessfulDecTestNoEnv+"-run"), tcCheckCompletedSuccessfulDecTestNoEnv),
+		tcCheckCompletedSuccessfulRefTest:                parse.MustParseTaskTestRun(t, fmt.Sprintf(ttrSpecTemplateRefTest, tcCheckCompletedSuccessfulRefTest)+fmt.Sprintf(ttrStatusRunning, tcCheckCompletedSuccessfulRefTest+"-run")),
 		tcCheckCompletedSuccessDecTestRetriesMustSucceed: generateTaskTestRun(t, ttrSpecTemplateDecTestExpectedEnv+fmt.Sprintf(ttrStatusCompletedSuccessful, tcCheckCompletedSuccessDecTestRetriesMustSucceed+"-run-0"), tcCheckCompletedSuccessDecTestRetriesMustSucceed, "1", "true"),
 		tcCheckCompletedFailedDecTestNoRetries:           generateTaskTestRun(t, ttrSpecTemplateDecTestInaccurateExpectations, tcCheckCompletedFailedDecTestNoRetries),
 		tcCheckCompletedFailedDecTestRetries:             generateTaskTestRun(t, ttrSpecTemplateDecTestInaccurateExpectations+fmt.Sprintf(ttrStatusCompletedFailed, tcCheckCompletedFailedDecTestRetries+"-run-0"), tcCheckCompletedFailedDecTestRetries, "1"),
