@@ -137,6 +137,10 @@ spec:
                       description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
                       type: string
                 taskTestSpec:
+                  description: |-
+                    TaskTestSpec is a task test definition.
+                    Either this or TaskTestRef must be set, if neither or both are set then
+                    validation of this TaskTestRun fails.
                   x-kubernetes-preserve-unknown-fields: true
                 timeout:
                   description: |-
@@ -927,6 +931,11 @@ spec:
                   description: StartTime is the time the build is actually started.
                   type: string
                   format: date-time
+                stepIndices:
+                  description: StepIndices the names of Steps in the Task manifest to their indices.
+                  type: object
+                  additionalProperties:
+                    type: integer
                 taskRunName:
                   description: |-
                     TaskRunName is the name of the TaskRun responsible for executing this

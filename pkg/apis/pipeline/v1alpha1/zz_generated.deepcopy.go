@@ -1281,6 +1281,11 @@ func (in *TaskTestRunSpec) DeepCopyInto(out *TaskTestRunSpec) {
 		*out = new(TaskTestSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Timeout != nil {
+		in, out := &in.Timeout, &out.Timeout
+		*out = new(metav1.Duration)
+		**out = **in
+	}
 	if in.Workspaces != nil {
 		in, out := &in.Workspaces, &out.Workspaces
 		*out = make([]v1.WorkspaceBinding, len(*in))
@@ -1288,20 +1293,15 @@ func (in *TaskTestRunSpec) DeepCopyInto(out *TaskTestRunSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.Timeout != nil {
-		in, out := &in.Timeout, &out.Timeout
-		*out = new(metav1.Duration)
-		**out = **in
+	if in.ComputeResources != nil {
+		in, out := &in.ComputeResources, &out.ComputeResources
+		*out = new(corev1.ResourceRequirements)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.AllTriesMustSucceed != nil {
 		in, out := &in.AllTriesMustSucceed, &out.AllTriesMustSucceed
 		*out = new(bool)
 		**out = **in
-	}
-	if in.ComputeResources != nil {
-		in, out := &in.ComputeResources, &out.ComputeResources
-		*out = new(corev1.ResourceRequirements)
-		(*in).DeepCopyInto(*out)
 	}
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
@@ -1348,6 +1348,21 @@ func (in *TaskTestRunStatusFields) DeepCopyInto(out *TaskTestRunStatusFields) {
 		in, out := &in.TaskTestSpec, &out.TaskTestSpec
 		*out = new(TaskTestSpec)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.StepIndices != nil {
+		in, out := &in.StepIndices, &out.StepIndices
+		*out = make(map[string]*int, len(*in))
+		for key, val := range *in {
+			var outVal *int
+			if val == nil {
+				(*out)[key] = nil
+			} else {
+				in, out := &val, &outVal
+				*out = new(int)
+				**out = **in
+			}
+			(*out)[key] = outVal
+		}
 	}
 	if in.TaskTestName != nil {
 		in, out := &in.TaskTestName, &out.TaskTestName
@@ -1479,6 +1494,17 @@ func (in *TaskTestSpec) DeepCopyInto(out *TaskTestSpec) {
 		in, out := &in.Expects, &out.Expects
 		*out = new(ExpectedOutcomes)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.Volumes != nil {
+		in, out := &in.Volumes, &out.Volumes
+		*out = new(Volumes)
+		if **in != nil {
+			in, out := *in, *out
+			*out = make([]corev1.Volume, len(*in))
+			for i := range *in {
+				(*in)[i].DeepCopyInto(&(*out)[i])
+			}
+		}
 	}
 	return
 }
@@ -1643,6 +1669,11 @@ func (in *TaskTestSuiteRunSpec) DeepCopyInto(out *TaskTestSuiteRunSpec) {
 		*out = new(TaskTestSuiteSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Timeout != nil {
+		in, out := &in.Timeout, &out.Timeout
+		*out = new(metav1.Duration)
+		**out = **in
+	}
 	if in.TaskTestRunTemplate != nil {
 		in, out := &in.TaskTestRunTemplate, &out.TaskTestRunTemplate
 		*out = new(TaskTestRunTemplate)
@@ -1651,6 +1682,13 @@ func (in *TaskTestSuiteRunSpec) DeepCopyInto(out *TaskTestSuiteRunSpec) {
 	if in.TaskTestRunSpecs != nil {
 		in, out := &in.TaskTestRunSpecs, &out.TaskTestRunSpecs
 		*out = make([]SuiteTaskTestRun, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.SharedVolumes != nil {
+		in, out := &in.SharedVolumes, &out.SharedVolumes
+		*out = make([]NamedVolumeClaimTemplate, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -1669,18 +1707,6 @@ func (in *TaskTestSuiteRunSpec) DeepCopyInto(out *TaskTestSuiteRunSpec) {
 			}
 			(*out)[key] = outVal
 		}
-	}
-	if in.SharedVolumes != nil {
-		in, out := &in.SharedVolumes, &out.SharedVolumes
-		*out = make([]NamedVolumeClaimTemplate, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
-		}
-	}
-	if in.Timeout != nil {
-		in, out := &in.Timeout, &out.Timeout
-		*out = new(metav1.Duration)
-		**out = **in
 	}
 	return
 }

@@ -538,7 +538,9 @@ func schema_pkg_apis_pipeline_v1alpha1_ExpectedOutcomes(ref common.ReferenceCall
 					"stepExpectations": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
+								"x-kubernetes-list-type":       "atomic",
+								"x-kubernetes-patch-merge-key": "name",
+								"x-kubernetes-patch-strategy":  "merge",
 							},
 						},
 						SchemaProps: spec.SchemaProps{
@@ -575,7 +577,6 @@ func schema_pkg_apis_pipeline_v1alpha1_ExpectedOutcomes(ref common.ReferenceCall
 						},
 					},
 				},
-				Required: []string{"stepExpectations"},
 			},
 		},
 		Dependencies: []string{
@@ -2477,6 +2478,12 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunSpec(ref common.ReferenceCallb
 				Description: "TaskTestRunSpec defines the desired state of TaskTest.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"serviceAccountName": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
 					"taskTestRef": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TaskTestRef is a reference to a task test definition. Either this or TaskTestSpec must be set, if neither or both are set then validation of this TaskTestRun fails.",
@@ -2485,7 +2492,35 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunSpec(ref common.ReferenceCallb
 					},
 					"taskTestSpec": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSpec"),
+							Description: "TaskTestSpec is a task test definition. Either this or TaskTestRef must be set, if neither or both are set then validation of this TaskTestRun fails.",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Used for cancelling a TaskTestRun (and maybe more later on)",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"statusMessage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Status message for cancellation.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"retries": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Retries represents how many times this TaskTestRun should be retried in the event of test failure.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"timeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Time after which one retry attempt times out. Defaults to 1 hour. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},
 					"workspaces": {
@@ -2507,17 +2542,10 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunSpec(ref common.ReferenceCallb
 							},
 						},
 					},
-					"timeout": {
+					"computeResources": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Time after which one retry attempt times out. Defaults to 1 hour. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
-						},
-					},
-					"retries": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Retries represents how many times this TaskTestRun should be retried in the event of test failure.",
-							Type:        []string{"integer"},
-							Format:      "int32",
+							Description: "Compute resources to use for this TaskRun",
+							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
 						},
 					},
 					"allTriesMustSucceed": {
@@ -2525,32 +2553,6 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunSpec(ref common.ReferenceCallb
 							Description: "The default behavior is that if out of all the tries at least one succeeds then the TaskTestRun is marked as successful. But if the field allTriesMustSucceed is set to true then the TaskTestRun is marked as successful if and only if all of its tries come up successful.",
 							Type:        []string{"boolean"},
 							Format:      "",
-						},
-					},
-					"serviceAccountName": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"status": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Used for cancelling a TaskTestRun (and maybe more later on)",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"statusMessage": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Status message for cancellation.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"computeResources": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Compute resources to use for this TaskRun",
-							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
 						},
 					},
 					"volumes": {
@@ -2630,6 +2632,21 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunStatus(ref common.ReferenceCal
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSpec"),
 						},
 					},
+					"stepIndices": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StepIndices the names of Steps in the Task manifest to their indices.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"integer"},
+										Format: "int32",
+									},
+								},
+							},
+						},
+					},
 					"taskTestName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TaskTestName is the name of the referenced TaskTest if no inline TaskTest (via TaskTestSpec) is used",
@@ -2699,6 +2716,21 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestRunStatusFields(ref common.Refere
 						SchemaProps: spec.SchemaProps{
 							Description: "TaskTestSpec is a copy of the Spec of the referenced TaskTest.",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSpec"),
+						},
+					},
+					"stepIndices": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StepIndices the names of Steps in the Task manifest to their indices.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"integer"},
+										Format: "int32",
+									},
+								},
+							},
 						},
 					},
 					"taskTestName": {
@@ -2847,11 +2879,25 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestSpec(ref common.ReferenceCallback
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ExpectedOutcomes"),
 						},
 					},
+					"volumes": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FIXME(jlux98) Implement this field as prerequesite for copying data from volumes",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.Volume"),
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ExpectedOutcomes", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SimpleTaskRef", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestInputs"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.ExpectedOutcomes", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.SimpleTaskRef", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestInputs", "k8s.io/api/core/v1.Volume"},
 	}
 }
 
@@ -3067,7 +3113,7 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunSpec(ref common.Reference
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "TaskTestSuiteRunSpec",
+				Description: "TaskTestSuiteRunSpec defines the desired state of TaskTestSuiteRun",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"taskTestSuiteRef": {
@@ -3082,17 +3128,22 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunSpec(ref common.Reference
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestSuiteSpec"),
 						},
 					},
-					"executionMode": {
+					"status": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ExecutionMode specifies, whether the tests in this run will be executed in parallel or sequentially. Valid values for this field are \"Parallel\" and \"Sequential\".",
-							Default:     "",
+							Description: "Used for cancelling a TaskTestSuiteRun",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
+					"timeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Time after which the suite run times out. Defaults to 1 hour. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
 					"taskTestRunTemplate": {
 						SchemaProps: spec.SchemaProps{
-							Description: "DefaultRunSpecTemplate defines the template after which the TaskTestRuns for the tests in this suite are generated. It supports the same fields as the Spec of a TaskTestRun with the exception of TaskTestRef and the SpecStatus fields.",
+							Description: "TaskTestRunTemplate defines the template after which the TaskTestRuns for the tests in this suite are generated. It supports the same fields as the Spec of a TaskTestRun with the exception of TaskTestRef and the SpecStatus fields.",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1.TaskTestRunTemplate"),
 						},
 					},
@@ -3106,7 +3157,7 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunSpec(ref common.Reference
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "RunSpecs is a list of RunSpecs, except that the SpecStatus fields are not allowed. It contains all the tests that will be executed by this run, in addition to providing the option of configuring them on a case-by-case basis. Configurations made in this field overwrite the default template.",
+							Description: "TaskTestRunSpecs is a list of TaskTestRunSpecs, except that the SpecStatus fields are not allowed. It contains all the tests that will be executed by this run, in addition to providing the option of configuring them on a case-by-case basis. Configurations made in this field overwrite the default template.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -3118,14 +3169,24 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunSpec(ref common.Reference
 							},
 						},
 					},
+					"executionMode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ExecutionMode specifies, whether the tests in this run will be executed in parallel or sequentially. Valid values for this field are \"Parallel\" and \"Sequential\".",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"sharedVolumes": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
+								"x-kubernetes-list-type":       "atomic",
+								"x-kubernetes-patch-merge-key": "name",
+								"x-kubernetes-patch-strategy":  "merge",
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "SharedVolumes is a list of VolumeClaimTemplates with names,",
+							Description: "SharedVolumes is a list of VolumeClaimTemplates with names",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -3137,28 +3198,8 @@ func schema_pkg_apis_pipeline_v1alpha1_TaskTestSuiteRunSpec(ref common.Reference
 							},
 						},
 					},
-					"status": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Used for cancelling a TaskTestSuiteRun",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"statusMessage": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Status message for cancellation.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"timeout": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Time after which the suite run times out. Defaults to 1 hour. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
-						},
-					},
 				},
-				Required: []string{"executionMode", "sharedVolumes"},
+				Required: []string{"executionMode"},
 			},
 		},
 		Dependencies: []string{

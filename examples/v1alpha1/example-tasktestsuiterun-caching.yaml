@@ -30,7 +30,7 @@ spec:
             results:
               - name: computation-result
                 value: "42"
-            completionWithin: 20s
+            executionTimeBelow: 20s
       - name: task-1
         taskTestSpec:
           taskRef:
@@ -39,4 +39,4 @@ spec:
             results:
               - name: computation-result
                 value: "42"
-            completionWithin: 5s
+            executionTimeBelow: 5s

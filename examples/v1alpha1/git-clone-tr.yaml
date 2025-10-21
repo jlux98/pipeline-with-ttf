@@ -1,0 +1,25 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: git-clone-ttr-
+spec:
+  taskRef:
+    name: git-clone
+  params:
+  - name: url
+    value: https://github.com/jlux98/pipeline-with-ttf
+  - name: revision
+    value: main
+  - name: deleteExisting
+    value: false
+  - name: subdirectory
+    value: ttf-test
+  workspaces:
+  - name: output
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Mi

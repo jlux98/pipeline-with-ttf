@@ -218,9 +218,6 @@
     "v1alpha1.ExpectedOutcomes": {
       "description": "ExpectedOutcomes defines the outcomes that should be observed after executing the Task under test.",
       "type": "object",
-      "required": [
-        "stepExpectations"
-      ],
       "properties": {
         "env": {
           "description": "List of environment variables with expected values to be checked for in all of the Task's Steps.",
@@ -253,7 +250,9 @@
             "default": {},
             "$ref": "#/definitions/v1alpha1.StepExpectation"
           },
-          "x-kubernetes-list-type": "atomic"
+          "x-kubernetes-list-type": "atomic",
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge"
         },
         "successReason": {
           "description": "SuccessReason is the reason, with which the TaskRuns initiated by this test are expected to be marked upon completion.",
@@ -1382,6 +1381,7 @@
           "$ref": "#/definitions/v1alpha1.TaskTestRef"
         },
         "taskTestSpec": {
+          "description": "TaskTestSpec is a task test definition. Either this or TaskTestRef must be set, if neither or both are set then validation of this TaskTestRun fails.",
           "$ref": "#/definitions/v1alpha1.TaskTestSpec"
         },
         "timeout": {
@@ -1452,6 +1452,14 @@
           "description": "StartTime is the time the build is actually started.",
           "$ref": "#/definitions/v1.Time"
         },
+        "stepIndices": {
+          "description": "StepIndices the names of Steps in the Task manifest to their indices.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
         "taskRunName": {
           "description": "TaskRunName is the name of the TaskRun responsible for executing this test's Tasks.",
           "type": "string"
@@ -1491,6 +1499,14 @@
         "startTime": {
           "description": "StartTime is the time the build is actually started.",
           "$ref": "#/definitions/v1.Time"
+        },
+        "stepIndices": {
+          "description": "StepIndices the names of Steps in the Task manifest to their indices.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "int32"
+          }
         },
         "taskRunName": {
           "description": "TaskRunName is the name of the TaskRun responsible for executing this test's Tasks.",
@@ -1557,6 +1573,14 @@
         "taskRef": {
           "description": "TaskRef is a reference to a task definition, which must be in the same namespace as the this test.",
           "$ref": "#/definitions/v1alpha1.SimpleTaskRef"
+        },
+        "volumes": {
+          "description": "FIXME(jlux98) Implement this field as prerequesite for copying data from volumes",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Volume"
+          }
         }
       }
     },
@@ -1679,24 +1703,34 @@
       }
     },
     "v1alpha1.TaskTestSuiteRunSpec": {
-      "description": "TaskTestSuiteRunSpec",
+      "description": "TaskTestSuiteRunSpec defines the desired state of TaskTestSuiteRun",
       "type": "object",
       "required": [
-        "executionMode",
-        "sharedVolumes"
+        "executionMode"
       ],
       "properties": {
-        "taskTestRunTemplate": {
-          "description": "DefaultRunSpecTemplate defines the template after which the TaskTestRuns for the tests in this suite are generated. It supports the same fields as the Spec of a TaskTestRun with the exception of TaskTestRef and the SpecStatus fields.",
-          "$ref": "#/definitions/v1alpha1.TaskTestRunTemplate"
-        },
         "executionMode": {
           "description": "ExecutionMode specifies, whether the tests in this run will be executed in parallel or sequentially. Valid values for this field are \"Parallel\" and \"Sequential\".",
           "type": "string",
           "default": ""
         },
+        "sharedVolumes": {
+          "description": "SharedVolumes is a list of VolumeClaimTemplates with names",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.NamedVolumeClaimTemplate"
+          },
+          "x-kubernetes-list-type": "atomic",
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "status": {
+          "description": "Used for cancelling a TaskTestSuiteRun",
+          "type": "string"
+        },
         "taskTestRunSpecs": {
-          "description": "RunSpecs is a list of RunSpecs, except that the SpecStatus fields are not allowed. It contains all the tests that will be executed by this run, in addition to providing the option of configuring them on a case-by-case basis. Configurations made in this field overwrite the default template.",
+          "description": "TaskTestRunSpecs is a list of TaskTestRunSpecs, except that the SpecStatus fields are not allowed. It contains all the tests that will be executed by this run, in addition to providing the option of configuring them on a case-by-case basis. Configurations made in this field overwrite the default template.",
           "type": "array",
           "items": {
             "default": {},
@@ -1707,22 +1741,9 @@
           ],
           "x-kubernetes-list-type": "map"
         },
-        "sharedVolumes": {
-          "description": "SharedVolumes is a list of VolumeClaimTemplates with names,",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1alpha1.NamedVolumeClaimTemplate"
-          },
-          "x-kubernetes-list-type": "atomic"
-        },
-        "status": {
-          "description": "Used for cancelling a TaskTestSuiteRun",
-          "type": "string"
-        },
-        "statusMessage": {
-          "description": "Status message for cancellation.",
-          "type": "string"
+        "taskTestRunTemplate": {
+          "description": "TaskTestRunTemplate defines the template after which the TaskTestRuns for the tests in this suite are generated. It supports the same fields as the Spec of a TaskTestRun with the exception of TaskTestRef and the SpecStatus fields.",
+          "$ref": "#/definitions/v1alpha1.TaskTestRunTemplate"
         },
         "taskTestSuiteRef": {
           "description": "TaskTestSuiteRef is a reference to a task test suite definition. Either this or TaskTestSuiteSpec must be set, if neither or both are set then validation of this TaskTestSuiteRun fails.",

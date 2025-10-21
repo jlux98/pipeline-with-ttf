@@ -315,6 +315,7 @@ metadata:
   # ExpectedValuesJSON: '{"results":[{"name":"current-date","type":"string","value":"2025-08-15"},{"name":"current-time","type":"string","value":"15:17:59"}],"env":[{"name":"HOME","value":"/root"}],"stepExpectations":[{"name":"date-step","fileSystemObjects":[{"path":"/tekton/results/current-date","type":"TextFile","content":"bar"}]},{"name":"time-step","fileSystemObjects":[{"path":"/tekton/results/current-time","type":"TextFile","content":"bar"}],"env":[{"name":"FHOME","value":"/froot"}]}],"successStatus":true,"successReason":"Succeeded"'
     ExpectedValuesJSON: '{"results":[{"name":"current-date","type":"string","value":"2025-08-15"},{"name":"current-time","type":"string","value":"15:17:59"}],"env":[{"name":"HOME","value":"/root"}],"stepExpectations":[{"name":"date-step","fileSystemObjects":[{"path":"/tekton/results/current-date","type":"TextFile","content":"bar"}]},{"name":"time-step","fileSystemObjects":[{"path":"/tekton/results/current-time","type":"TextFile","content":"bar"}],"env":[{"name":"FHOME","value":"/froot"}]}],"successStatus":true,"successReason":"Succeeded"}'
   labels:
+    tekton.dev/task: hello-task
     tekton.dev/taskTestRun: %s # TaskTestsRun name
   ownerReferences:
   - apiVersion: tekton.dev/v1alpha1
@@ -411,7 +412,8 @@ metadata:
   annotations:
     ExpectedValuesJSON: '{"results":[{"name":"current-date","type":"string","value":"2025-08-15"},{"name":"current-time","type":"string","value":"15:17:59"}],"stepExpectations":[{"name":"date-step","fileSystemObjects":[{"path":"/tekton/results/current-date","type":"TextFile","content":"bar"}]},{"name":"time-step","fileSystemObjects":[{"path":"/tekton/results/current-time","type":"TextFile","content":"bar"}],"env":[{"name":"FHOME","value":"/froot"}]}],"successStatus":true,"successReason":"Succeeded"}'
   labels:
-    tekton.dev/taskTestRun: %s # TaskTestsRun name
+  tekton.dev/task: hello-task
+  tekton.dev/taskTestRun: %s # TaskTestsRun name
   ownerReferences:
   - apiVersion: tekton.dev/v1alpha1
     kind: TaskTestRun

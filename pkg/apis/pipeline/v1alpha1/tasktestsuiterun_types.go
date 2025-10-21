@@ -136,8 +136,11 @@ type TaskTestSuiteRunSpec struct {
 
 	// SharedVolumes is a list of VolumeClaimTemplates with names
 	//
+	// +optional
+	// +patchMergeKey=name
+	// +patchStrategy=merge
 	// +listType=atomic
-	SharedVolumes []NamedVolumeClaimTemplate `json:"sharedVolumes"`
+	SharedVolumes []NamedVolumeClaimTemplate `json:"sharedVolumes,omitempty" patchMergeKey:"name" patchStrategy:"merge"`
 
 	// RunSpecs is a list of RunSpecs, except that the
 	// SpecStatus fields are not allowed. It contains all the tests that will be

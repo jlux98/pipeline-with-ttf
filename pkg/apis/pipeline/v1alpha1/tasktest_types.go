@@ -304,8 +304,11 @@ type ExpectedOutcomes struct {
 	// StepExpectations take precedence over expectations defined on a
 	// Task-wide scale.
 	//
+	// +optional
+	// +patchMergeKey=name
+	// +patchStrategy=merge
 	// +listType=atomic
-	StepExpectations []StepExpectation `json:"stepExpectations"`
+	StepExpectations []StepExpectation `json:"stepExpectations,omitempty" patchMergeKey:"name" patchStrategy:"merge"`
 
 	// ExecutionTimeBelow expresses, that a test is only
 	// successful, if the time it spends executing its Steps is smaller
