@@ -339,8 +339,6 @@ spec:
     volumes:
     - name: copy-volume
       emptyDir: {}
-    - name: copy-volume-2
-      emptyDir: {}
     workspaces:
     - name: hello-workspace
     steps:
@@ -402,7 +400,9 @@ spec:
     env:
     - name: FOO
       value: bar
-    `
+    volumes:
+    - name: copy-volume-2
+      emptyDir: {}`
 
 const trSpecTemplateNoExpectedEnv = `
 metadata:
@@ -434,8 +434,6 @@ spec:
       default: ""
     volumes:
     - name: copy-volume
-      emptyDir: {}
-    - name: copy-volume-2
       emptyDir: {}
     workspaces:
     - name: hello-workspace
@@ -491,7 +489,10 @@ spec:
   stepTemplate:
     env:
     - name: FOO
-      value: bar`
+      value: bar
+    volumes:
+    - name: copy-volume-2
+      emptyDir: {}`
 
 const trStatusRunning = `
 status:
@@ -674,10 +675,8 @@ spec:
       successReason: Succeeded
       results:
       - name: current-date
-        type: string
         value: "2025-08-15"
       - name: current-time
-        type: string
         value: "15:17:59"
       stepExpectations:
       - name: date-step
@@ -1997,5 +1996,8 @@ func generateTaskTestRun(t *testing.T, yaml, taskTestRunName string, optionalArg
 		optionalArgs[2] = `""`
 	}
 
-	return parse.MustParseTaskTestRun(t, fmt.Sprintf(yaml, taskTestRunName, optionalArgs[0], optionalArgs[1], optionalArgs[2]))
+	tr := parse.MustParseTaskTestRun(t, fmt.Sprintf(yaml, taskTestRunName, optionalArgs[0], optionalArgs[1], optionalArgs[2]))
+	tr.SetDefaults(t.Context())
+
+	return tr
 }

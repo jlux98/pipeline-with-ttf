@@ -363,9 +363,9 @@ func (c *Reconciler) reconcile(
 				},
 			}
 			if err := c.pvcHandler.CreatePVCFromVolumeClaimTemplate(ctx, binding, *kmeta.NewControllerRef(ttsr), ttsr.Namespace); err != nil {
-				logger.Errorf("Failed to create PVC for TaskRun %s: %v", ttsr.Name, err)
+				logger.Errorf("Failed to create PVC for TaskTestSuiteRun %s: %v", ttsr.Name, err)
 				ttsr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
-					fmt.Errorf("failed to create PVC for TaskRun %s workspaces correctly: %w",
+					fmt.Errorf("failed to create PVC for TaskTestSuiteRun %s workspaces correctly: %w",
 						fmt.Sprintf("%s/%s", ttsr.Namespace, ttsr.Name), err))
 				return controller.NewPermanentError(err)
 			}

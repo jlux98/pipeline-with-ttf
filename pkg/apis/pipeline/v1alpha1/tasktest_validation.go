@@ -3,11 +3,13 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/apis"
 )
 
@@ -97,6 +99,7 @@ func (e *ExpectedOutcomes) Validate(ctx context.Context) *apis.FieldError {
 	var errs *apis.FieldError
 
 	errs = errs.Also(ValidateIdentifierUniqueness(extractNamesFromTaskResults(e.Results), "name").ViaField("results"))
+	errs = errs.Also(ValidateEnvVarNames(e.Env).ViaField("env"))
 	if e.StepExpectations != nil {
 		for i := range e.StepExpectations {
 			errs = errs.Also(e.StepExpectations[i].Validate(ctx).ViaFieldIndex("stepExpectations", i))
@@ -108,6 +111,8 @@ func (e *ExpectedOutcomes) Validate(ctx context.Context) *apis.FieldError {
 
 func (se *StepExpectation) Validate(ctx context.Context) *apis.FieldError {
 	var errs *apis.FieldError
+
+	errs = errs.Also(ValidateEnvVarNames(se.Env)).ViaField("env")
 
 	if se.FileSystemObjects != nil {
 		errs = errs.Also(ValidateIdentifierUniqueness(extractPathsFromFileSystemObjects(se.FileSystemObjects), "path").ViaField("fileSystemObjects"))
@@ -143,4 +148,20 @@ var AllowedFileSystemObjectTypes []FileSystemObjectType = []FileSystemObjectType
 	AnyFileType,
 	AnyObjectType,
 	None,
+}
+
+func ValidateEnvVarNames(names []corev1.EnvVar) *apis.FieldError {
+	var errs *apis.FieldError = nil
+	if names == nil {
+		return nil
+	}
+	validEnvVarName := regexp.MustCompile(`^[A-Za-z_][A-Za-z_0-9]*$`)
+
+	for i, variable := range names {
+		if !validEnvVarName.MatchString(variable.Name) {
+			errs = errs.Also(apis.ErrInvalidValue(variable.Name, "name", variable.Name+" is not a valid name for an environment variable").ViaIndex(i))
+		}
+	}
+
+	return errs
 }

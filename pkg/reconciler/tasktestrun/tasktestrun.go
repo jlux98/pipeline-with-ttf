@@ -564,10 +564,16 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 
 	}
 
-	task.Spec.Volumes = append(task.Spec.Volumes, ttr.Spec.Volumes...)
 	taskRunSpec := v1.TaskRunSpec{
 		TaskSpec:   &task.Spec,
 		Workspaces: ttr.Spec.Workspaces,
+	}
+
+	if ttr.Spec.Volumes != nil {
+		if taskRunSpec.PodTemplate == nil {
+			taskRunSpec.PodTemplate = &podtypes.PodTemplate{}
+		}
+		taskRunSpec.PodTemplate.Volumes = ttr.Spec.Volumes
 	}
 
 	if ttr.Status.TaskTestSpec.Inputs != nil {
@@ -609,6 +615,9 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 		}
 
 		if ttr.Status.TaskTestSpec.Inputs.WorkspaceContents != nil {
+			volumeList := v1.Volumes{}
+			volumeList = append(volumeList, task.Spec.Volumes...)
+			volumeList = append(volumeList, taskRunSpec.PodTemplate.Volumes...)
 			for i, workspace := range ttr.Status.TaskTestSpec.Inputs.WorkspaceContents {
 				if !slices.ContainsFunc(task.Spec.Workspaces, func(ws v1.WorkspaceDeclaration) bool {
 					return ws.Name == workspace.Name
@@ -619,7 +628,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 							fmt.Sprintf(`task %q has no Workspace named %q`, task.Name, workspace.Name)))
 				}
 				for j, object := range workspace.Objects {
-					if object.Content != nil && object.Content.CopyFrom != nil && !slices.ContainsFunc(task.Spec.Volumes, func(vol corev1.Volume) bool {
+					if object.Content != nil && object.Content.CopyFrom != nil && !slices.ContainsFunc(volumeList, func(vol corev1.Volume) bool {
 						return vol.Name == object.Content.CopyFrom.VolumeName
 					}) {
 						return nil, fmt.Errorf(`%w: %w`, apiserver.ErrReferencedObjectValidationFailed,
@@ -1015,6 +1024,7 @@ func (c *Reconciler) validateAndUpdateExpectationsForTaskRunCreation(ctx context
 	if len(stepEnvs) > 0 || ttr.Status.TaskTestSpec.Expects.Env != nil {
 		declaredSteps := task.Spec.Steps
 		expectedStepEnvs := stepEnvs.DeepCopy()
+		validEnvVarName := regexp.MustCompile(`^[A-Za-z_][A-Za-z_0-9]*$`)
 
 		for i, step := range declaredSteps {
 			envIdx := slices.IndexFunc(expectedStepEnvs, func(stepEnv v1alpha1.StepEnv) bool {
@@ -1023,16 +1033,22 @@ func (c *Reconciler) validateAndUpdateExpectationsForTaskRunCreation(ctx context
 			if envIdx >= 0 {
 				expectedStepEnvs = slices.Delete(expectedStepEnvs, envIdx, envIdx+1)
 			}
-			if ttr.Spec.TaskTestSpec.Expects.Env != nil || envIdx >= 0 {
+			if ttr.Status.TaskTestSpec.Expects.Env != nil || envIdx >= 0 {
 				if task.Spec.Steps[i].Script != "" {
 					variables := []string{}
-					if ttr.Spec.TaskTestSpec.Expects.Env != nil {
-						for _, variable := range ttr.Spec.TaskTestSpec.Expects.Env {
+					if ttr.Status.TaskTestSpec.Expects.Env != nil {
+						for j, variable := range ttr.Spec.TaskTestSpec.Expects.Env {
+							if !validEnvVarName.MatchString(variable.Name) {
+								return apis.ErrInvalidValue(variable.Name, fmt.Sprintf("status.taskTestSpec.expects.env[%d]", j), variable.Name+" is not a valid name for an environment variable")
+							}
 							variables = append(variables, "^"+variable.Name+"=")
 						}
 					}
 					if envIdx >= 0 {
-						for _, variable := range stepEnvs[envIdx].Env {
+						for j, variable := range stepEnvs[envIdx].Env {
+							if !validEnvVarName.MatchString(variable.Name) {
+								return apis.ErrInvalidValue(variable.Name, fmt.Sprintf("status.taskTestSpec.expects.stepExpectations[%d].env", j), variable.Name+" is not a valid name for an environment variable")
+							}
 							variables = append(variables, "^"+variable.Name+"=")
 						}
 					}

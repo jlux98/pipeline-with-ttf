@@ -1305,7 +1305,7 @@ func (in *TaskTestRunSpec) DeepCopyInto(out *TaskTestRunSpec) {
 	}
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
-		*out = make(Volumes, len(*in))
+		*out = make(pod.Volumes, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
