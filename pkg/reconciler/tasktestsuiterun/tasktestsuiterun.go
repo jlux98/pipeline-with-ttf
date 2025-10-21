@@ -406,11 +406,11 @@ func (c *Reconciler) reconcile(
 		// set status and emit event
 		beforeCondition := ttsr.Status.GetCondition(apis.ConditionSucceeded)
 		if len(tasksWithValidationErrors) > 0 {
-			err := fmt.Errorf("all TaskTestRuns completed executing and not all were successful:\n- %s", strings.Join(tasksWithValidationErrors, ", "))
+			err := errors.New("all TaskTestRuns completed executing and not all were successful: " + strings.Join(tasksWithValidationErrors, ", "))
 			ttsr.Status.MarkResourceFailed(v1alpha1.TaskTestSuiteRunReasonValidationFailed, err)
 		} else {
 			if len(tasksWithUnexpectedOutcomes) > 0 {
-				err := fmt.Errorf("all TaskTestRuns completed executing and not all were successful:\n- %s", strings.Join(tasksWithUnexpectedOutcomes, "\n- "))
+				err := errors.New("all TaskTestRuns completed executing and not all were successful: " + strings.Join(tasksWithUnexpectedOutcomes, ", "))
 				ttsr.Status.MarkResourceFailed(v1alpha1.TaskTestSuiteRunReasonUnexpectatedOutcomes, err)
 			} else {
 				ttsr.Status.MarkSuccessful()
@@ -556,17 +556,13 @@ func aggregateSuccessStatusOfTaskTestRuns(ctx context.Context, ttsr *v1alpha1.Ta
 		)
 		if condition.IsFalse() {
 			message := fmt.Sprintf("taskTestRun %q failed", trName)
-			conditionJSON, err := json.Marshal(condition)
-			if err != nil {
-				return nil, nil, err
-			}
 			if condition.Reason == v1alpha1.TaskTestRunReasonFailedValidation.String() {
 				message += " due to a validation error, so the whole TaskTestSuiteRun fails"
-				tasksWithValidationErrors = append(tasksWithValidationErrors, fmt.Sprintf("%s: (%s)", trName, strings.Join(ttsr.Status.TaskTestRunStatuses[trName].Outcomes.Diffs, ", ")))
+				tasksWithValidationErrors = append(tasksWithValidationErrors, fmt.Sprintf("%s (%s)", trName, strings.Join(ttsr.Status.TaskTestRunStatuses[trName].Outcomes.Diffs, ", ")))
 			} else {
 				if ttsr.Status.TaskTestSuiteSpec.TaskTests[i].OnError != "Continue" {
 					message += " due to unexpected outcomes, so the whole TaskTestSuiteRun fails"
-					tasksWithUnexpectedOutcomes = append(tasksWithUnexpectedOutcomes, fmt.Sprintf("%s: %s\n", trName, conditionJSON))
+					tasksWithUnexpectedOutcomes = append(tasksWithUnexpectedOutcomes, fmt.Sprintf("%s (%s)", trName, strings.Join(ttsr.Status.TaskTestRunStatuses[trName].Outcomes.Diffs, ", ")))
 				} else {
 					message += " but onError was set to continue, so the show will go on."
 				}

@@ -405,6 +405,11 @@ func (in *ObservedOutcomes) DeepCopyInto(out *ObservedOutcomes) {
 		*out = new(ObservedSuccessReason)
 		**out = **in
 	}
+	if in.Diffs != nil {
+		in, out := &in.Diffs, &out.Diffs
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

@@ -515,7 +515,12 @@
       "type": "object",
       "properties": {
         "diffs": {
-          "type": "string"
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "executionTime": {
           "description": "ExecutionTime",

@@ -337,6 +337,8 @@ type ObservedOutcomes struct {
 
 	SuccessReason *ObservedSuccessReason `json:"successReason,omitempty"`
 
+	// +optional
+	// +listType=atomic
 	Diffs []string `json:"diffs,omitempty"`
 }
 

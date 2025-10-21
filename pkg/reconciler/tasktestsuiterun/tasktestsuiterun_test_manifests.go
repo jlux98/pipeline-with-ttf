@@ -200,6 +200,9 @@ status:
     successReason:
       want: BOOM
       got: Succeeded
+    diffs:
+    - "observed success status did not match expectation"
+    - "observed success reason did not match expectation"
   startTime: "2025-08-15T15:17:55Z"
   completionTime: "2025-08-15T15:17:59Z"
 `
