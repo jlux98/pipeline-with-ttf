@@ -18,4 +18,5 @@ spec:
   expects:
     results:
     - name: commit
-      value: 7fd8c796fc7ae446f9cff60506768bfb5bab3473
+      value: 1e1b0658de67a229f80395b0cb4ccf922a7dd308
+    executionTimeBelow: 18s

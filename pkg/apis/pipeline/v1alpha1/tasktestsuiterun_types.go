@@ -211,7 +211,8 @@ type TaskTestRunTemplate struct {
 
 type SuiteWorkspaceBinding struct {
 	v1.WorkspaceBinding `json:",inline"`
-	SharedVolume        *SharedVolumeRef `json:"sharedVolume"`
+	// +optional
+	SharedVolume *SharedVolumeRef `json:"sharedVolume,omitempty"`
 }
 
 type SharedVolumeRef struct {

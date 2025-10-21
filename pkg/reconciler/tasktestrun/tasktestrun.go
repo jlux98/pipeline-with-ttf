@@ -387,11 +387,11 @@ func (c *Reconciler) getTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRun) 
 	return taskRun, nil
 }
 
-func (c *Reconciler) checkActualOutcomesAgainstExpectations(ctx context.Context, ttrs *v1alpha1.TaskTestRunStatus, tr *v1.TaskRun) (error, bool, string) {
+func (c *Reconciler) checkActualOutcomesAgainstExpectations(ctx context.Context, ttrs *v1alpha1.TaskTestRunStatus, tr *v1.TaskRun) (error, bool, []string) {
 	trs := &tr.Status
 	ttrs.CompletionTime = trs.CompletionTime
 	expectationsMet := true
-	diffs := ""
+	diffs := []string{}
 	var resultErr error = nil
 
 	if ttrs.TaskTestSpec.Expects != nil && ttrs.GetCondition(apis.ConditionSucceeded).IsUnknown() {
@@ -406,7 +406,7 @@ func (c *Reconciler) checkActualOutcomesAgainstExpectations(ctx context.Context,
 
 			if ttrs.Outcomes.SuccessStatus.Want != ttrs.Outcomes.SuccessStatus.Got {
 				expectationsMet = false
-				diffs += "observed success status did not match expectation\n"
+				diffs = append(diffs, "observed success status did not match expectation")
 			}
 		}
 
@@ -419,7 +419,7 @@ func (c *Reconciler) checkActualOutcomesAgainstExpectations(ctx context.Context,
 
 			if ttrs.Outcomes.SuccessReason.Want != ttrs.Outcomes.SuccessReason.Got {
 				expectationsMet = false
-				diffs += "observed success reason did not match expectation\n"
+				diffs = append(diffs, "observed success reason did not match expectation")
 			}
 		}
 
@@ -437,7 +437,7 @@ func (c *Reconciler) checkActualOutcomesAgainstExpectations(ctx context.Context,
 
 			if ttrs.Outcomes.ExecutionTime.Want.Duration < ttrs.Outcomes.ExecutionTime.Got.Duration {
 				expectationsMet = false
-				diffs += "taskRun did not complete in expected time\n"
+				diffs = append(diffs, "taskRun did not complete in expected time")
 			}
 		}
 
@@ -510,7 +510,7 @@ func (c *Reconciler) checkActualOutcomesAgainstExpectations(ctx context.Context,
 
 					if observedExecutionTime.Got.Duration > observedExecutionTime.Want.Duration {
 						expectationsMet = false
-						diffs += fmt.Sprintf("execution time for step %q: want %q, got %q\n", se.Name, observedExecutionTime.Want, observedExecutionTime.Got)
+						diffs = append(diffs, fmt.Sprintf("execution time for step %q: want %q, got %q", se.Name, observedExecutionTime.Want, observedExecutionTime.Got))
 					}
 				}
 			}
@@ -760,7 +760,7 @@ func (r *Reconciler) generateWorkspacePreparationStep(initialWorkspaceContents [
 	return preparationStep, nil
 }
 
-func checkExpectationsForResults(ttrs *v1alpha1.TaskTestRunStatus, gotResults []v1.TaskRunResult, expectationsMet *bool, diffs *string) error {
+func checkExpectationsForResults(ttrs *v1alpha1.TaskTestRunStatus, gotResults []v1.TaskRunResult, expectationsMet *bool, diffs *[]string) error {
 	ttrs.Outcomes.Results = &[]v1alpha1.ObservedResults{}
 
 	for i, expectedResult := range ttrs.TaskTestSpec.Expects.Results {
@@ -789,14 +789,14 @@ func checkExpectationsForResults(ttrs *v1alpha1.TaskTestRunStatus, gotResults []
 		}))
 		if !cmp.Equal(expectedResult.Value, gotValue) {
 			*expectationsMet = false
-			*diffs += fmt.Sprintf("Result %q: want %q, got %q\n", expectedResult.Name, expectedResult.Value.StringVal, gotValue.StringVal)
+			*diffs = append(*diffs, fmt.Sprintf("Result %q: want %q, got %q", expectedResult.Name, expectedResult.Value.StringVal, gotValue.StringVal))
 		}
 	}
 
 	return nil
 }
 
-func (c *Reconciler) checkExpectationsForEnv(ctx context.Context, ttrs *v1alpha1.TaskTestRunStatus, stepEnvs []v1alpha1.StepEnv, gotResults []v1.TaskRunResult, expectationsMet *bool, diffs *string) error {
+func (c *Reconciler) checkExpectationsForEnv(ctx context.Context, ttrs *v1alpha1.TaskTestRunStatus, stepEnvs []v1alpha1.StepEnv, gotResults []v1.TaskRunResult, expectationsMet *bool, diffs *[]string) error {
 	idx := slices.IndexFunc(gotResults, func(result v1.TaskRunResult) bool {
 		return result.Name == v1alpha1.ResultNameEnvironmentDump
 	})
@@ -855,9 +855,9 @@ func (c *Reconciler) checkExpectationsForEnv(ctx context.Context, ttrs *v1alpha1
 			if !cmp.Equal(observation.Want, observation.Got) {
 				*expectationsMet = false
 				if diffs == nil {
-					diffs = ptr.To("")
+					diffs = ptr.To([]string{})
 				}
-				*diffs += fmt.Sprintf("envVar %q in step %q: want %q, got %q\n", expectedEnvVar.Name, step.StepName, observation.Want, observation.Got)
+				*diffs = append(*diffs, fmt.Sprintf("envVar %q in step %q: want %q, got %q", expectedEnvVar.Name, step.StepName, observation.Want, observation.Got))
 			}
 			vars = append(vars, observation)
 		}
@@ -891,7 +891,7 @@ func (c *Reconciler) checkExpectationsForEnv(ctx context.Context, ttrs *v1alpha1
 	return nil
 }
 
-func checkExpectationsForFileSystemObjects(ctx context.Context, ttrs *v1alpha1.TaskTestRunStatus, stepIndex int, gotResults []v1.TaskRunResult, expectationsMet *bool, diffs *string) error {
+func checkExpectationsForFileSystemObjects(ctx context.Context, ttrs *v1alpha1.TaskTestRunStatus, stepIndex int, gotResults []v1.TaskRunResult, expectationsMet *bool, diffs *[]string) error {
 	logger := logging.FromContext(ctx)
 	idx := slices.IndexFunc(gotResults, func(result v1.TaskRunResult) bool {
 		return result.Name == v1alpha1.ResultNameFileSystemContents
@@ -930,7 +930,7 @@ func checkExpectationsForFileSystemObjects(ctx context.Context, ttrs *v1alpha1.T
 
 		if !cmp.Equal(observation.WantType, observation.GotType) {
 			*expectationsMet = false
-			*diffs += fmt.Sprintf("file system object %q type in step %q: want %q, got %q\n", observation.Path, step.Name, observation.WantType, observation.GotType)
+			*diffs = append(*diffs, fmt.Sprintf("file system object %q type in step %q: want %q, got %q", observation.Path, step.Name, observation.WantType, observation.GotType))
 		}
 
 		// we can assume, that the empty string here means,
@@ -941,7 +941,7 @@ func checkExpectationsForFileSystemObjects(ctx context.Context, ttrs *v1alpha1.T
 			if !cmp.Equal(observation.WantContent, observation.GotContent) {
 				*expectationsMet = false
 
-				*diffs += fmt.Sprintf("file system object %q content in step %q: want %q, got %q\n", observation.Path, step.Name, observation.WantContent, observation.GotContent)
+				*diffs = append(*diffs, fmt.Sprintf("file system object %q content in step %q: want %q, got %q", observation.Path, step.Name, observation.WantContent, observation.GotContent))
 			}
 		}
 

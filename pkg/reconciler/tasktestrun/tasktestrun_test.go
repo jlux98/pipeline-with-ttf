@@ -1207,15 +1207,15 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 								Want: "Failed",
 								Got:  "Succeeded",
 							},
-							Diffs: `observed success status did not match expectation
-observed success reason did not match expectation
-Result "current-date": want "2015-08-15", got "2025-08-15"
-Result "current-time": want "05:17:59", got "15:17:59"
-file system object "/tekton/results/current-date" type in step "date-step": want "Directory", got "TextFile"
-file system object "/tekton/results/current-time" content in step "time-step": want "foo", got "bar"
-envVar "HOME" in step "date-step": want "/groot", got "/root"
-envVar "HOME" in step "time-step": want "/groot", got "/root"
-`,
+							Diffs: []string{`observed success status did not match expectation`,
+								`observed success reason did not match expectation`,
+								`Result "current-date": want "2015-08-15", got "2025-08-15"`,
+								`Result "current-time": want "05:17:59", got "15:17:59"`,
+								`file system object "/tekton/results/current-date" type in step "date-step": want "Directory", got "TextFile"`,
+								`file system object "/tekton/results/current-time" content in step "time-step": want "foo", got "bar"`,
+								`envVar "HOME" in step "date-step": want "/groot", got "/root"`,
+								`envVar "HOME" in step "time-step": want "/groot", got "/root"`,
+							},
 						},
 					}
 					ttr.Status.TaskTestSpec = ttr.Spec.TaskTestSpec

@@ -364,7 +364,6 @@ spec:
                           type: object
                           required:
                             - name
-                            - sharedVolume
                           properties:
                             configMap:
                               description: ConfigMap represents a configMap that should populate this workspace.
@@ -1012,7 +1011,6 @@ spec:
                         type: object
                         required:
                           - name
-                          - sharedVolume
                         properties:
                           configMap:
                             description: ConfigMap represents a configMap that should populate this workspace.

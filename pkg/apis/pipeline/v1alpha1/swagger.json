@@ -1133,8 +1133,7 @@
     "v1alpha1.SuiteWorkspaceBinding": {
       "type": "object",
       "required": [
-        "name",
-        "sharedVolume"
+        "name"
       ],
       "properties": {
         "configMap": {

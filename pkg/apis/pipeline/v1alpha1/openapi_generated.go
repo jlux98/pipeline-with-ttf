@@ -2159,7 +2159,7 @@ func schema_pkg_apis_pipeline_v1alpha1_SuiteWorkspaceBinding(ref common.Referenc
 						},
 					},
 				},
-				Required: []string{"name", "sharedVolume"},
+				Required: []string{"name"},
 			},
 		},
 		Dependencies: []string{

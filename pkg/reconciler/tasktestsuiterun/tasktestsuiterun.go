@@ -406,7 +406,7 @@ func (c *Reconciler) reconcile(
 		// set status and emit event
 		beforeCondition := ttsr.Status.GetCondition(apis.ConditionSucceeded)
 		if len(tasksWithValidationErrors) > 0 {
-			err := fmt.Errorf("all TaskTestRuns completed executing and not all were successful:\n- %s", strings.Join(tasksWithValidationErrors, "\n- "))
+			err := fmt.Errorf("all TaskTestRuns completed executing and not all were successful:\n- %s", strings.Join(tasksWithValidationErrors, ", "))
 			ttsr.Status.MarkResourceFailed(v1alpha1.TaskTestSuiteRunReasonValidationFailed, err)
 		} else {
 			if len(tasksWithUnexpectedOutcomes) > 0 {
@@ -562,7 +562,7 @@ func aggregateSuccessStatusOfTaskTestRuns(ctx context.Context, ttsr *v1alpha1.Ta
 			}
 			if condition.Reason == v1alpha1.TaskTestRunReasonFailedValidation.String() {
 				message += " due to a validation error, so the whole TaskTestSuiteRun fails"
-				tasksWithValidationErrors = append(tasksWithValidationErrors, fmt.Sprintf("%s: %s\n", trName, conditionJSON))
+				tasksWithValidationErrors = append(tasksWithValidationErrors, fmt.Sprintf("%s: (%s)", trName, strings.Join(ttsr.Status.TaskTestRunStatuses[trName].Outcomes.Diffs, ", ")))
 			} else {
 				if ttsr.Status.TaskTestSuiteSpec.TaskTests[i].OnError != "Continue" {
 					message += " due to unexpected outcomes, so the whole TaskTestSuiteRun fails"

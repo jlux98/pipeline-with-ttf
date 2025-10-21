@@ -337,7 +337,7 @@ type ObservedOutcomes struct {
 
 	SuccessReason *ObservedSuccessReason `json:"successReason,omitempty"`
 
-	Diffs string `json:"diffs,omitempty"`
+	Diffs []string `json:"diffs,omitempty"`
 }
 
 type ObservedStepFileSystemContent struct {

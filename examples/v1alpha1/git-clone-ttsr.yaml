@@ -39,3 +39,13 @@ spec:
       - name: task-10
         taskTestRef:
           name: git-clone-tt
+  taskTestRunTemplate:
+    workspaces:
+      - name: output
+        volumeClaimTemplate:
+          spec:
+            accessModes:
+            - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Mi
