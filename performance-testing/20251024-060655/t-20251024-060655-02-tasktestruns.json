@@ -1,0 +1,3294 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:12:15Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "warmup-fork"
+                },
+                "name": "cpu-benchmark-test-run-266dh",
+                "namespace": "default",
+                "resourceVersion": "2665",
+                "uid": "347044d9-82bb-4abc-bff1-b5f1894ab044"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:15:05Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:15:05Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:12:17Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-266dh-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:15:05Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:15:05Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-266dh-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:12:17Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://ed0e4a94110760e3e8d4c294e1a4b875d07b962de21f138a4c2f250aec0f2563",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:15:05Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:12:56Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:17:44Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "t-20251024-060655-02"
+                },
+                "name": "cpu-benchmark-test-run-2bgck",
+                "namespace": "default",
+                "resourceVersion": "4097",
+                "uid": "6307320e-4b67-4e84-a2bb-3405c2d94129"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:20:06Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:20:06Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:17:45Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-2bgck-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:20:06Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:20:06Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-2bgck-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:17:45Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://9414cbcfee28a30f610a99e25d9cc16987163814afdaf76cf427aae504baa2ce",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:20:05Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:17:53Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:17:45Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "t-20251024-060655-02"
+                },
+                "name": "cpu-benchmark-test-run-4bjzp",
+                "namespace": "default",
+                "resourceVersion": "4119",
+                "uid": "c5f58b6a-819a-4015-a298-2e585c685392"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:20:08Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:20:08Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:17:47Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-4bjzp-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:20:08Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:20:08Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-4bjzp-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:17:48Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://eb0d387e2b65893637bbc03a22e47b9abe3fb2007ea160ab634f45d14bc3b3db",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:20:08Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:17:58Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:12:15Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "warmup-fork"
+                },
+                "name": "cpu-benchmark-test-run-62pdt",
+                "namespace": "default",
+                "resourceVersion": "2638",
+                "uid": "21f9cd44-8b12-42d3-a53a-2ea667fbc44a"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:15:03Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:15:03Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:12:17Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-62pdt-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:15:03Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:15:03Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-62pdt-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:12:17Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://332e126bd03ebe2f6bdd4fd8c811088ba41e153a5dde79a7b89f25614d780019",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:15:03Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:12:54Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:12:16Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "warmup-fork"
+                },
+                "name": "cpu-benchmark-test-run-6fqwl",
+                "namespace": "default",
+                "resourceVersion": "2661",
+                "uid": "3894f302-0b5f-45b4-9d9c-e2541f5da5db"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:15:05Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:15:05Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:12:18Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-6fqwl-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:15:05Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:15:05Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-6fqwl-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:12:18Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://67fbd7e743cd9759d82e483c99f29730bc808ba7d05426e8b352134043ad83eb",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:15:04Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:12:57Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:17:43Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "t-20251024-060655-02"
+                },
+                "name": "cpu-benchmark-test-run-76sjt",
+                "namespace": "default",
+                "resourceVersion": "4078",
+                "uid": "987b9ed0-714b-432e-8122-6b3de742e80e"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:20:04Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:20:04Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:17:43Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-76sjt-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:20:04Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:20:04Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-76sjt-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:17:44Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://066c94f585fc2fd1df64269834b96d3a8d74b4b2a26e283c27b54ecc75e95f9c",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:20:03Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:17:51Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:17:45Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "t-20251024-060655-02"
+                },
+                "name": "cpu-benchmark-test-run-7b8v6",
+                "namespace": "default",
+                "resourceVersion": "4122",
+                "uid": "9882ed25-19dc-47fe-9465-ac5226c25e26"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:20:08Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:20:08Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:17:46Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-7b8v6-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:20:08Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:20:08Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-7b8v6-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:17:47Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://9a9864d961a00323c3991779145b213ea8c2c25066d4cf4aaf5966158768ede4",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:20:08Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:17:57Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:17:44Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "t-20251024-060655-02"
+                },
+                "name": "cpu-benchmark-test-run-7njxb",
+                "namespace": "default",
+                "resourceVersion": "4106",
+                "uid": "d17d66c5-fd50-49f8-b0da-a45489b86c81"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:20:07Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:20:07Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:17:46Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-7njxb-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:20:07Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:20:07Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-7njxb-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:17:46Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://8811fcd4b40443fd809117fbf5014daeda6b1a06dcdb5c3e69fb7d598bf3b543",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:20:06Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:17:54Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:17:43Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "t-20251024-060655-02"
+                },
+                "name": "cpu-benchmark-test-run-88xrz",
+                "namespace": "default",
+                "resourceVersion": "4063",
+                "uid": "f7108d72-d71b-495c-ab94-e90a4409219c"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:20:02Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:20:02Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:17:44Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-88xrz-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:20:02Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:20:02Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-88xrz-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:17:44Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://4f3fd69adfe53fcf4e7ef7c8c6e3ccb4934c1d9f79214689ea43e703d8dffa7e",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:20:02Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:17:51Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:12:16Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "warmup-fork"
+                },
+                "name": "cpu-benchmark-test-run-8k7dx",
+                "namespace": "default",
+                "resourceVersion": "2673",
+                "uid": "e28da928-10c3-47b7-b35e-ac6c3a98aed9"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:15:06Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:15:06Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:12:18Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-8k7dx-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:15:06Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:15:06Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-8k7dx-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:12:18Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://a5db698630b86ed1ab385e23e0ac61f7c2842669499b7475bc9ee5fd3613433e",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:15:06Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:12:57Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:17:43Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "t-20251024-060655-02"
+                },
+                "name": "cpu-benchmark-test-run-8n645",
+                "namespace": "default",
+                "resourceVersion": "4051",
+                "uid": "ca8bace2-73c1-49d2-b061-66b159141174"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:19:59Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:19:59Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:17:43Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-8n645-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:19:59Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:19:59Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-8n645-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:17:43Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://02226e8439530b7bb719b4f0099d5c73f7340d13c36c7be364e70b983319d890",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:19:59Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:17:49Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:12:14Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "warmup-fork"
+                },
+                "name": "cpu-benchmark-test-run-9s55n",
+                "namespace": "default",
+                "resourceVersion": "2600",
+                "uid": "28b7a3b6-34ee-44d0-8b7a-4a1cc6cae7a5"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:14:57Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:14:57Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:12:14Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-9s55n-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:14:57Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:14:57Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-9s55n-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:12:14Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://d3354730d24926a0a66c8a640aa79576736a995229692e11853f83c3426cb194",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:14:56Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:12:49Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:12:14Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "warmup-fork"
+                },
+                "name": "cpu-benchmark-test-run-cd76l",
+                "namespace": "default",
+                "resourceVersion": "2580",
+                "uid": "abff33e9-4fc1-401f-97be-781850909a96"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:14:54Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:14:54Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:12:14Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-cd76l-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:14:54Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:14:54Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-cd76l-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:12:14Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://ca8e0e10d52d4f3e58a86632e9cb7c06a182aa453b4b109b13939e69d9ea5e4b",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:14:54Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:12:47Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:17:45Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "t-20251024-060655-02"
+                },
+                "name": "cpu-benchmark-test-run-d8t59",
+                "namespace": "default",
+                "resourceVersion": "4139",
+                "uid": "17264dd2-1c7b-4330-9de1-02a04b2c9398"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:20:09Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:20:09Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:17:47Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-d8t59-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:20:09Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:20:09Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-d8t59-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:17:49Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://162ece90a815192971d821734573e1bb2bb2563354d349056f6de5ddb0c03841",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:20:09Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:17:59Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:17:43Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "t-20251024-060655-02"
+                },
+                "name": "cpu-benchmark-test-run-f6bhs",
+                "namespace": "default",
+                "resourceVersion": "4084",
+                "uid": "71640c38-3f5a-4e06-86ad-38250ad6febd"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:20:05Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:20:05Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:17:45Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-f6bhs-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:20:05Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:20:05Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-f6bhs-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:17:45Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://98314af248cc327dcf9be60c6ff304c8aa7f98501f334c7b90789d2081e6052b",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:20:05Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:17:53Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:17:44Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "t-20251024-060655-02"
+                },
+                "name": "cpu-benchmark-test-run-ftbcf",
+                "namespace": "default",
+                "resourceVersion": "4093",
+                "uid": "5dbfa6bb-5fcf-4007-9752-4ec7e1f5981d"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:20:06Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:20:06Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:17:46Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-ftbcf-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:20:06Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:20:06Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-ftbcf-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:17:46Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://03da530793a8dd20875d7fe29a1654daf327089f8d4266fb5ca2c889770015b9",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:20:06Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:17:53Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:12:16Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "warmup-fork"
+                },
+                "name": "cpu-benchmark-test-run-gtqhw",
+                "namespace": "default",
+                "resourceVersion": "2682",
+                "uid": "87427a29-a1d2-4ed3-b819-e413ab68a869"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:15:07Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:15:07Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:12:19Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-gtqhw-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:15:07Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:15:07Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-gtqhw-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:12:19Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://377d8b2d1da138346499e1da3945e7e951ff7b27852a483a92f68569d5e6613d",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:15:07Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:12:58Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:12:15Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "warmup-fork"
+                },
+                "name": "cpu-benchmark-test-run-hgvhh",
+                "namespace": "default",
+                "resourceVersion": "2636",
+                "uid": "17e97f7b-a5de-436b-8c3b-300a745d5619"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:15:03Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:15:03Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:12:16Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-hgvhh-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:15:03Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:15:03Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-hgvhh-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:12:17Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://950046c171a8bd2f9e6bf5b6b9443ea26114059ceeb16fc91fac930977459d11",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:15:03Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:12:54Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:12:14Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "warmup-fork"
+                },
+                "name": "cpu-benchmark-test-run-jfl6f",
+                "namespace": "default",
+                "resourceVersion": "2626",
+                "uid": "f9472ec3-6310-4614-b66d-19daea5820bb"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:15:02Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:15:02Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:12:15Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-jfl6f-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:15:02Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:15:02Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-jfl6f-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:12:16Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://b1a9b846dbaae052a3672b1a5d75756c8104da4f7fb1f2cbce92c5af151883b3",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:15:02Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:12:52Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:17:42Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "t-20251024-060655-02"
+                },
+                "name": "cpu-benchmark-test-run-qzr9b",
+                "namespace": "default",
+                "resourceVersion": "4036",
+                "uid": "35064616-0146-4f80-8530-4c60a6c1ca57"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:19:58Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:19:58Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:17:42Z",
+                "taskRunName": "cpu-benchmark-test-run-qzr9b-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:19:58Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:19:58Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-qzr9b-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:17:42Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://c6f13c884279eefdd2472b51a80cadc3242c0afe0dd6d8a06b577a9716729ece",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:19:58Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:17:48Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:17:44Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "t-20251024-060655-02"
+                },
+                "name": "cpu-benchmark-test-run-s8fr5",
+                "namespace": "default",
+                "resourceVersion": "4107",
+                "uid": "3d2aa037-8735-4ac3-ad14-a7110a2fa891"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:20:07Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:20:07Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:17:45Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-s8fr5-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:20:07Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:20:07Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-s8fr5-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:17:46Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://0d9dd4d8027d5b00abcb40c49b0e09a79a547971fe0322d104ff2b621e4029b4",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:20:07Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:17:55Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:12:15Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "warmup-fork"
+                },
+                "name": "cpu-benchmark-test-run-xr75k",
+                "namespace": "default",
+                "resourceVersion": "2623",
+                "uid": "37d7db6d-38b7-4139-acc8-c704a4d38896"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:15:02Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:15:02Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:12:15Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-xr75k-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:15:02Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:15:02Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-xr75k-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:12:15Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://cb559ca89f1ebb940258e2f8418c4f5b7790cb2bff805ff32b89590cb8e5260f",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:15:01Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:12:51Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:12:15Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "warmup-fork"
+                },
+                "name": "cpu-benchmark-test-run-xvblt",
+                "namespace": "default",
+                "resourceVersion": "2650",
+                "uid": "1a2cd32e-a253-4fbb-b7d5-390278f005fc"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:15:04Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:15:04Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:12:16Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-xvblt-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:15:04Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:15:04Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-xvblt-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:12:16Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://bdb5efeaad1d306903272178ba280a6b71ba2b4800126a9edb49c1ae280748a7",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:15:04Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:12:53Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1alpha1",
+            "kind": "TaskTestRun",
+            "metadata": {
+                "creationTimestamp": "2025-10-24T04:12:14Z",
+                "generateName": "cpu-benchmark-test-run-",
+                "generation": 1,
+                "labels": {
+                    "bench.batchID": "warmup-fork"
+                },
+                "name": "cpu-benchmark-test-run-zrcjr",
+                "namespace": "default",
+                "resourceVersion": "2588",
+                "uid": "55fb75a6-785e-4b19-9147-babd7532dad7"
+            },
+            "spec": {
+                "allTriesMustSucceed": false,
+                "taskTestRef": {
+                    "name": "cpu-benchmark-test"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "completionTime": "2025-10-24T04:14:55Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-24T04:14:55Z",
+                        "message": "TaskRun completed executing and outcomes were as expected",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "outcomes": {
+                    "stepEnvs": [
+                        {
+                            "env": [
+                                {
+                                    "got": "/root",
+                                    "name": "HOME",
+                                    "want": "/root"
+                                }
+                            ],
+                            "stepName": "benchmark-step"
+                        }
+                    ]
+                },
+                "startTime": "2025-10-24T04:12:14Z",
+                "stepIndices": {
+                    "benchmark-step": 0
+                },
+                "taskRunName": "cpu-benchmark-test-run-zrcjr-run",
+                "taskRunStatus": {
+                    "artifacts": {},
+                    "completionTime": "2025-10-24T04:14:55Z",
+                    "conditions": [
+                        {
+                            "lastTransitionTime": "2025-10-24T04:14:55Z",
+                            "message": "All Steps have completed executing",
+                            "reason": "Succeeded",
+                            "status": "True",
+                            "type": "Succeeded"
+                        }
+                    ],
+                    "podName": "cpu-benchmark-test-run-zrcjr-run-pod",
+                    "provenance": {
+                        "featureFlags": {
+                            "awaitSidecarReadiness": true,
+                            "coschedule": "workspaces",
+                            "enableAPIFields": "alpha",
+                            "enableProvenanceInStatus": true,
+                            "enforceNonfalsifiability": "none",
+                            "maxResultSize": 4096,
+                            "resultExtractionMethod": "termination-message",
+                            "runningInEnvWithInjectedSidecars": true,
+                            "verificationNoMatchPolicy": "ignore"
+                        }
+                    },
+                    "results": [
+                        {
+                            "name": "Testing|Environment",
+                            "type": "string",
+                            "value": "{\"stepName\": \"benchmark-step\", \"environment\": {\nHOME=/root\n}},\n"
+                        }
+                    ],
+                    "startTime": "2025-10-24T04:12:14Z",
+                    "steps": [
+                        {
+                            "container": "step-benchmark-step",
+                            "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                            "name": "benchmark-step",
+                            "terminated": {
+                                "containerID": "containerd://30a961a2f372bc696773e64397c6fb10b016d930017726e7c315218dc7fb9ab7",
+                                "exitCode": 0,
+                                "finishedAt": "2025-10-24T04:14:54Z",
+                                "message": "[{\"key\":\"Testing|Environment\",\"value\":\"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\\nHOME=/root\\n}},\\n\",\"type\":1}]",
+                                "reason": "Completed",
+                                "startedAt": "2025-10-24T04:12:48Z"
+                            },
+                            "terminationReason": "Completed"
+                        }
+                    ],
+                    "taskSpec": {
+                        "steps": [
+                            {
+                                "computeResources": {},
+                                "image": "alpine",
+                                "name": "benchmark-step",
+                                "script": "#!/bin/sh\n\nenvPath=\"/tekton/results/Testing|Environment\"\necho \"The values of all environment variables will be dumped to $envPath before this script exits in order to verify the correct functioning of this step\"\ntrap 'echo \"{\\\"stepName\\\": \\\"benchmark-step\\\", \\\"environment\\\": {\n$(env | grep '^HOME=')\n}},\" \u003e\u003e \"$envPath\"' EXIT\n\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                            }
+                        ]
+                    }
+                },
+                "taskTestName": "cpu-benchmark-test",
+                "taskTestSpec": {
+                    "expects": {
+                        "env": [
+                            {
+                                "name": "HOME",
+                                "value": "/root"
+                            }
+                        ]
+                    },
+                    "inputs": {
+                        "env": [
+                            {
+                                "name": "FOO",
+                                "value": "BAR"
+                            }
+                        ]
+                    },
+                    "taskRef": {
+                        "name": "cpu-benchmark"
+                    }
+                }
+            }
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": ""
+    }
+}

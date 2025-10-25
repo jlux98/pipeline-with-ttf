@@ -1,0 +1,49 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: cpu-benchmark
+spec:
+  steps:
+  - name: benchmark-step
+    image: alpine
+    script: |
+      #!/bin/sh
+      TOTAL=20000000
+      STEP=$((TOTAL / 20))  # 5% increments
+      i=0
+      next=$STEP
+
+      echo "Starting CPU benchmark for $TOTAL iterations..."
+
+      while [ $i -lt $TOTAL ]; do
+        i=$((i + 1))
+        if [ $i -eq $next ]; then
+          percent=$((i * 100 / TOTAL))
+          j=$STEP
+          progressBar="["
+          while [ $j -le $i ]; do
+              progressBar=$(printf "%s%s" "$progressBar" "▨")
+              j=$((j + STEP))
+          done
+          while [ $j -lt $TOTAL ]; do
+              progressBar=$(printf "%s%s" "$progressBar" "◻")
+              j=$((j + STEP))
+          done
+          progressBar=$(printf "%s%s" "$progressBar" "]")
+          echo "Progress: $progressBar ${percent}%"
+          next=$((next + STEP))
+        fi
+      done
+
+      echo "Benchmark completed."
+# - name: dependent-step
+#   image: alpine
+#   script: |
+#     if [ -n -f "$(workspaces.dependency-workspace.path)/dependency-file" ]; then
+#       exit 1
+#     fi
+# workspaces:
+#   - name: dependency-workspace
+
+
+# kaf benchmarking-task.yaml; i=0; while [ $i -lt 12 ]; do kcf benchmarking-task-run.yaml; i=$((i+1)); done

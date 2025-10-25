@@ -94,8 +94,6 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 		tcCheckFailTtrsOnErrContRefTts      = "check-fail-ttrs-on-err-cont-ref-tts"
 	)
 
-	messageExpectationsNotMet := ` (observed success status did not match expectation, observed success reason did not match expectation)`
-
 	// instantiate custom resources
 	taskMap := map[string]*v1.Task{"simple_task": parse.MustParseV1Task(t, tManifest)}
 	taskTestMap := map[string]*v1alpha1.TaskTest{"simple_task_test": parse.MustParseTaskTest(t, ttManifest)}
@@ -378,11 +376,10 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 						},
 					}
 					ttsr.Status.Conditions = duckv1.Conditions{{
-						Type:   "Succeeded",
-						Status: "False",
-						Reason: "TaskTestSuiteRunUnexpectedOutcomes",
-						Message: "all TaskTestRuns completed executing and not all were successful: " +
-							ttsr.Status.TaskTestSuiteSpec.TaskTests[1].GetTaskTestRunName(ttsr.Name) + messageExpectationsNotMet,
+						Type:    "Succeeded",
+						Status:  "False",
+						Reason:  "TaskTestSuiteRunUnexpectedOutcomes",
+						Message: "1 out of 2 TaskTestRuns did not meet expectations. See status.taskTestRunStatuses for details.",
 					}}
 				},
 			),
@@ -407,11 +404,10 @@ func TestReconciler_ValidateReconcileKind(t *testing.T) {
 						},
 					}
 					ttsr.Status.Conditions = duckv1.Conditions{{
-						Type:   "Succeeded",
-						Status: "False",
-						Reason: "TaskTestSuiteRunUnexpectedOutcomes",
-						Message: "all TaskTestRuns completed executing and not all were successful: " +
-							ttsr.Status.TaskTestSuiteSpec.TaskTests[1].GetTaskTestRunName(ttsr.Name) + messageExpectationsNotMet,
+						Type:    "Succeeded",
+						Status:  "False",
+						Reason:  "TaskTestSuiteRunUnexpectedOutcomes",
+						Message: "1 out of 2 TaskTestRuns did not meet expectations. See status.taskTestRunStatuses for details.",
 					}}
 				},
 			),

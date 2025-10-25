@@ -1,0 +1,15 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskTest
+metadata:
+  name: cpu-benchmark-test
+spec:
+  taskRef:
+    name: cpu-benchmark
+  inputs:
+    env:
+    - name: FOO
+      value: BAR
+  expects:
+    env:
+    - name: HOME
+      value: /root

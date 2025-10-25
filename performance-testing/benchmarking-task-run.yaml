@@ -1,0 +1,16 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: cpu-benchmark-run-
+spec:
+  taskRef:
+    name: cpu-benchmark
+
+# - name: dependent-step
+#   image: alpine
+#   script: |
+#     if [ -n -f "$(workspaces.dependency-workspace.path)/dependency-file" ]; then
+#       exit 1
+#     fi
+# workspaces:
+#   - name: dependency-workspace

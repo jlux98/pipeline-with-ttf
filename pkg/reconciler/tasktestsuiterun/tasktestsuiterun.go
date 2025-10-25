@@ -406,11 +406,11 @@ func (c *Reconciler) reconcile(
 		// set status and emit event
 		beforeCondition := ttsr.Status.GetCondition(apis.ConditionSucceeded)
 		if len(tasksWithValidationErrors) > 0 {
-			err := errors.New("all TaskTestRuns completed executing and not all were successful: " + strings.Join(tasksWithValidationErrors, ", "))
+			err := fmt.Errorf("%d out of %d TaskTestRuns were invalid. See status.taskTestRunStatuses for details.", len(tasksWithValidationErrors), len(ttsr.Status.TaskTestRunStatuses))
 			ttsr.Status.MarkResourceFailed(v1alpha1.TaskTestSuiteRunReasonValidationFailed, err)
 		} else {
 			if len(tasksWithUnexpectedOutcomes) > 0 {
-				err := errors.New("all TaskTestRuns completed executing and not all were successful: " + strings.Join(tasksWithUnexpectedOutcomes, ", "))
+				err := fmt.Errorf("%d out of %d TaskTestRuns did not meet expectations. See status.taskTestRunStatuses for details.", len(tasksWithUnexpectedOutcomes), len(ttsr.Status.TaskTestRunStatuses))
 				ttsr.Status.MarkResourceFailed(v1alpha1.TaskTestSuiteRunReasonUnexpectatedOutcomes, err)
 			} else {
 				ttsr.Status.MarkSuccessful()

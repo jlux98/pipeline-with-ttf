@@ -1,7 +1,15 @@
+# Benchmarking Script
+# k get tasktestsuiterun/git-clone-ttsr-2lzxg -oyaml | yq '.status.taskTestRunStatuses.* | [.startTime, .completionTime, .outcomes.executionTime.got] | @tsv' | while IFS=$'\t' read -r  start end execution; do
+#   start_s=$(date -d "$start" +%s)
+#   end_s=$(date -d "$end" +%s)
+#   duration=$((end_s - start_s))
+#   echo "${duration}s (${execution})"
+# done
+
 apiVersion: tekton.dev/v1alpha1
 kind: TaskTestSuiteRun
 metadata:
-  generateName: git-clone-ttsr-
+  generateName: sequential-git-clone-ttsr-
 spec:
   executionMode: Parallel
   taskTestSuiteSpec:
@@ -37,6 +45,63 @@ spec:
         taskTestRef:
           name: git-clone-tt
       - name: task-10
+        taskTestRef:
+          name: git-clone-tt
+      - name: task-11
+        taskTestRef:
+          name: git-clone-tt
+      - name: task-12
+        taskTestRef:
+          name: git-clone-tt
+      - name: task-13
+        taskTestRef:
+          name: git-clone-tt
+      - name: task-14
+        taskTestRef:
+          name: git-clone-tt
+      - name: task-15
+        taskTestRef:
+          name: git-clone-tt
+      - name: task-16
+        taskTestRef:
+          name: git-clone-tt
+      - name: task-17
+        taskTestRef:
+          name: git-clone-tt
+      - name: task-18
+        taskTestRef:
+          name: git-clone-tt
+      - name: task-19
+        taskTestRef:
+          name: git-clone-tt
+      - name: task-20
+        taskTestRef:
+          name: git-clone-tt
+      - name: task-21
+        taskTestRef:
+          name: git-clone-tt
+      - name: task-22
+        taskTestRef:
+          name: git-clone-tt
+      - name: task-23
+        taskTestRef:
+          name: git-clone-tt
+      - name: task-24
+        taskTestRef:
+          name: git-clone-tt
+      - name: task-25
+        taskTestRef:
+          name: git-clone-tt
+      - name: task-26
+        taskTestRef:
+          name: git-clone-tt
+      - name: task-27
+        taskTestRef:
+          name: git-clone-tt
+      - name: task-28
+        taskTestRef:
+          name: git-clone-tt
+      - name: task-29
         taskTestRef:
           name: git-clone-tt
   taskTestRunTemplate:

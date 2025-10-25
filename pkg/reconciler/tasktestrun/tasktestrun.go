@@ -247,7 +247,7 @@ func (c *Reconciler) prepare(ctx context.Context, ttr *v1alpha1.TaskTestRun) err
 			ttr.Status.TaskTestName = observedTaskTestName
 		}
 	}
-	if ttr.Status.TaskTestSpec == nil || !cmp.Equal(*ttr.Spec.TaskTestSpec, *observedTaskTestSpec) {
+	if ttr.Status.TaskTestSpec == nil || !cmp.Equal(*ttr.Status.TaskTestSpec, *observedTaskTestSpec) {
 		ttr.Status.TaskTestSpec = observedTaskTestSpec
 	}
 	return nil
@@ -1037,7 +1037,7 @@ func (c *Reconciler) validateAndUpdateExpectationsForTaskRunCreation(ctx context
 				if task.Spec.Steps[i].Script != "" {
 					variables := []string{}
 					if ttr.Status.TaskTestSpec.Expects.Env != nil {
-						for j, variable := range ttr.Spec.TaskTestSpec.Expects.Env {
+						for j, variable := range ttr.Status.TaskTestSpec.Expects.Env {
 							if !validEnvVarName.MatchString(variable.Name) {
 								return apis.ErrInvalidValue(variable.Name, fmt.Sprintf("status.taskTestSpec.expects.env[%d]", j), variable.Name+" is not a valid name for an environment variable")
 							}
