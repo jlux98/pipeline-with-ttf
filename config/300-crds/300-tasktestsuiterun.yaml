@@ -4749,6 +4749,6 @@ spec:
       - tekton
       - tekton-pipelines
     shortNames:
-      - tsr
-      - tsrs
+      - ttsr
+      - ttsrs
   scope: Namespaced

@@ -1,0 +1,1005 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "tekton.dev/v1",
+            "kind": "TaskRun",
+            "metadata": {
+                "annotations": {
+                    "pipeline.tekton.dev/release": "81db63a"
+                },
+                "creationTimestamp": "2025-10-25T17:20:29Z",
+                "generateName": "cpu-benchmark-run-",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/managed-by": "tekton-pipelines",
+                    "bench.ttf/batchId": "20251025-191545-01-c",
+                    "bench.ttf/batchType": "C",
+                    "tekton.dev/task": "cpu-benchmark"
+                },
+                "name": "cpu-benchmark-run-f9792",
+                "namespace": "20251025-191545",
+                "resourceVersion": "2392",
+                "uid": "4b99cc22-a0c2-42e5-adfa-9385d014d70f"
+            },
+            "spec": {
+                "serviceAccountName": "default",
+                "taskRef": {
+                    "kind": "Task",
+                    "name": "cpu-benchmark"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "artifacts": {},
+                "completionTime": "2025-10-25T17:24:03Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-25T17:24:03Z",
+                        "message": "All Steps have completed executing",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "podName": "cpu-benchmark-run-f9792-pod",
+                "provenance": {
+                    "featureFlags": {
+                        "awaitSidecarReadiness": true,
+                        "coschedule": "workspaces",
+                        "enableAPIFields": "alpha",
+                        "enableProvenanceInStatus": true,
+                        "enforceNonfalsifiability": "none",
+                        "maxResultSize": 4096,
+                        "resultExtractionMethod": "termination-message",
+                        "runningInEnvWithInjectedSidecars": true,
+                        "verificationNoMatchPolicy": "ignore"
+                    }
+                },
+                "startTime": "2025-10-25T17:20:29Z",
+                "steps": [
+                    {
+                        "container": "step-benchmark-step",
+                        "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                        "name": "benchmark-step",
+                        "terminated": {
+                            "containerID": "containerd://80724f73a548d21adc4d3e2f5812f2150455390a81bcb778c10cc5c546effb0a",
+                            "exitCode": 0,
+                            "finishedAt": "2025-10-25T17:24:02Z",
+                            "reason": "Completed",
+                            "startedAt": "2025-10-25T17:21:03Z"
+                        },
+                        "terminationReason": "Completed"
+                    }
+                ],
+                "taskSpec": {
+                    "steps": [
+                        {
+                            "computeResources": {},
+                            "image": "alpine",
+                            "name": "benchmark-step",
+                            "script": "#!/bin/sh\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1",
+            "kind": "TaskRun",
+            "metadata": {
+                "annotations": {
+                    "pipeline.tekton.dev/release": "81db63a"
+                },
+                "creationTimestamp": "2025-10-25T17:20:28Z",
+                "generateName": "cpu-benchmark-run-",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/managed-by": "tekton-pipelines",
+                    "bench.ttf/batchId": "20251025-191545-01-c",
+                    "bench.ttf/batchType": "C",
+                    "tekton.dev/task": "cpu-benchmark"
+                },
+                "name": "cpu-benchmark-run-g8mwk",
+                "namespace": "20251025-191545",
+                "resourceVersion": "2374",
+                "uid": "62dc16b8-6978-4c18-8d01-fb4fff0b1471"
+            },
+            "spec": {
+                "serviceAccountName": "default",
+                "taskRef": {
+                    "kind": "Task",
+                    "name": "cpu-benchmark"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "artifacts": {},
+                "completionTime": "2025-10-25T17:24:01Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-25T17:24:01Z",
+                        "message": "All Steps have completed executing",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "podName": "cpu-benchmark-run-g8mwk-pod",
+                "provenance": {
+                    "featureFlags": {
+                        "awaitSidecarReadiness": true,
+                        "coschedule": "workspaces",
+                        "enableAPIFields": "alpha",
+                        "enableProvenanceInStatus": true,
+                        "enforceNonfalsifiability": "none",
+                        "maxResultSize": 4096,
+                        "resultExtractionMethod": "termination-message",
+                        "runningInEnvWithInjectedSidecars": true,
+                        "verificationNoMatchPolicy": "ignore"
+                    }
+                },
+                "startTime": "2025-10-25T17:20:28Z",
+                "steps": [
+                    {
+                        "container": "step-benchmark-step",
+                        "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                        "name": "benchmark-step",
+                        "terminated": {
+                            "containerID": "containerd://eba31c3aff5b02b65325e8ba1cc292f4769e8dbe945548d6cdfb9754bdec807e",
+                            "exitCode": 0,
+                            "finishedAt": "2025-10-25T17:24:00Z",
+                            "reason": "Completed",
+                            "startedAt": "2025-10-25T17:20:59Z"
+                        },
+                        "terminationReason": "Completed"
+                    }
+                ],
+                "taskSpec": {
+                    "steps": [
+                        {
+                            "computeResources": {},
+                            "image": "alpine",
+                            "name": "benchmark-step",
+                            "script": "#!/bin/sh\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1",
+            "kind": "TaskRun",
+            "metadata": {
+                "annotations": {
+                    "pipeline.tekton.dev/release": "81db63a"
+                },
+                "creationTimestamp": "2025-10-25T17:20:28Z",
+                "generateName": "cpu-benchmark-run-",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/managed-by": "tekton-pipelines",
+                    "bench.ttf/batchId": "20251025-191545-01-c",
+                    "bench.ttf/batchType": "C",
+                    "tekton.dev/task": "cpu-benchmark"
+                },
+                "name": "cpu-benchmark-run-hdmd6",
+                "namespace": "20251025-191545",
+                "resourceVersion": "2383",
+                "uid": "7bac5ca0-2c0f-41fa-9f97-f191e469fc32"
+            },
+            "spec": {
+                "serviceAccountName": "default",
+                "taskRef": {
+                    "kind": "Task",
+                    "name": "cpu-benchmark"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "artifacts": {},
+                "completionTime": "2025-10-25T17:24:02Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-25T17:24:02Z",
+                        "message": "All Steps have completed executing",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "podName": "cpu-benchmark-run-hdmd6-pod",
+                "provenance": {
+                    "featureFlags": {
+                        "awaitSidecarReadiness": true,
+                        "coschedule": "workspaces",
+                        "enableAPIFields": "alpha",
+                        "enableProvenanceInStatus": true,
+                        "enforceNonfalsifiability": "none",
+                        "maxResultSize": 4096,
+                        "resultExtractionMethod": "termination-message",
+                        "runningInEnvWithInjectedSidecars": true,
+                        "verificationNoMatchPolicy": "ignore"
+                    }
+                },
+                "startTime": "2025-10-25T17:20:28Z",
+                "steps": [
+                    {
+                        "container": "step-benchmark-step",
+                        "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                        "name": "benchmark-step",
+                        "terminated": {
+                            "containerID": "containerd://062fa27b2ae17b2ab4621096fad62b1195c8139ebfd2de6c246ea5269f851880",
+                            "exitCode": 0,
+                            "finishedAt": "2025-10-25T17:24:02Z",
+                            "reason": "Completed",
+                            "startedAt": "2025-10-25T17:21:01Z"
+                        },
+                        "terminationReason": "Completed"
+                    }
+                ],
+                "taskSpec": {
+                    "steps": [
+                        {
+                            "computeResources": {},
+                            "image": "alpine",
+                            "name": "benchmark-step",
+                            "script": "#!/bin/sh\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1",
+            "kind": "TaskRun",
+            "metadata": {
+                "annotations": {
+                    "pipeline.tekton.dev/release": "81db63a"
+                },
+                "creationTimestamp": "2025-10-25T17:20:27Z",
+                "generateName": "cpu-benchmark-run-",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/managed-by": "tekton-pipelines",
+                    "bench.ttf/batchId": "20251025-191545-01-c",
+                    "bench.ttf/batchType": "C",
+                    "tekton.dev/task": "cpu-benchmark"
+                },
+                "name": "cpu-benchmark-run-l25gl",
+                "namespace": "20251025-191545",
+                "resourceVersion": "2375",
+                "uid": "a1eb7594-2f2b-4f02-94ab-2209034837ee"
+            },
+            "spec": {
+                "serviceAccountName": "default",
+                "taskRef": {
+                    "kind": "Task",
+                    "name": "cpu-benchmark"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "artifacts": {},
+                "completionTime": "2025-10-25T17:24:01Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-25T17:24:01Z",
+                        "message": "All Steps have completed executing",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "podName": "cpu-benchmark-run-l25gl-pod",
+                "provenance": {
+                    "featureFlags": {
+                        "awaitSidecarReadiness": true,
+                        "coschedule": "workspaces",
+                        "enableAPIFields": "alpha",
+                        "enableProvenanceInStatus": true,
+                        "enforceNonfalsifiability": "none",
+                        "maxResultSize": 4096,
+                        "resultExtractionMethod": "termination-message",
+                        "runningInEnvWithInjectedSidecars": true,
+                        "verificationNoMatchPolicy": "ignore"
+                    }
+                },
+                "startTime": "2025-10-25T17:20:28Z",
+                "steps": [
+                    {
+                        "container": "step-benchmark-step",
+                        "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                        "name": "benchmark-step",
+                        "terminated": {
+                            "containerID": "containerd://114785e4757c65c18f8d491619ec47ae3ffb17644b9ba5101afe0fc7e3b733e8",
+                            "exitCode": 0,
+                            "finishedAt": "2025-10-25T17:24:00Z",
+                            "reason": "Completed",
+                            "startedAt": "2025-10-25T17:21:00Z"
+                        },
+                        "terminationReason": "Completed"
+                    }
+                ],
+                "taskSpec": {
+                    "steps": [
+                        {
+                            "computeResources": {},
+                            "image": "alpine",
+                            "name": "benchmark-step",
+                            "script": "#!/bin/sh\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1",
+            "kind": "TaskRun",
+            "metadata": {
+                "annotations": {
+                    "pipeline.tekton.dev/release": "81db63a"
+                },
+                "creationTimestamp": "2025-10-25T17:20:29Z",
+                "generateName": "cpu-benchmark-run-",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/managed-by": "tekton-pipelines",
+                    "bench.ttf/batchId": "20251025-191545-01-c",
+                    "bench.ttf/batchType": "C",
+                    "tekton.dev/task": "cpu-benchmark"
+                },
+                "name": "cpu-benchmark-run-lvl82",
+                "namespace": "20251025-191545",
+                "resourceVersion": "2408",
+                "uid": "62d6ce2b-6b01-49ba-84a1-a557dbecb945"
+            },
+            "spec": {
+                "serviceAccountName": "default",
+                "taskRef": {
+                    "kind": "Task",
+                    "name": "cpu-benchmark"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "artifacts": {},
+                "completionTime": "2025-10-25T17:24:05Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-25T17:24:05Z",
+                        "message": "All Steps have completed executing",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "podName": "cpu-benchmark-run-lvl82-pod",
+                "provenance": {
+                    "featureFlags": {
+                        "awaitSidecarReadiness": true,
+                        "coschedule": "workspaces",
+                        "enableAPIFields": "alpha",
+                        "enableProvenanceInStatus": true,
+                        "enforceNonfalsifiability": "none",
+                        "maxResultSize": 4096,
+                        "resultExtractionMethod": "termination-message",
+                        "runningInEnvWithInjectedSidecars": true,
+                        "verificationNoMatchPolicy": "ignore"
+                    }
+                },
+                "startTime": "2025-10-25T17:20:29Z",
+                "steps": [
+                    {
+                        "container": "step-benchmark-step",
+                        "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                        "name": "benchmark-step",
+                        "terminated": {
+                            "containerID": "containerd://f631087996a76c0d62712da5c43ac05dbe60a22d793fe94736895dbb0776ffa1",
+                            "exitCode": 0,
+                            "finishedAt": "2025-10-25T17:24:04Z",
+                            "reason": "Completed",
+                            "startedAt": "2025-10-25T17:21:02Z"
+                        },
+                        "terminationReason": "Completed"
+                    }
+                ],
+                "taskSpec": {
+                    "steps": [
+                        {
+                            "computeResources": {},
+                            "image": "alpine",
+                            "name": "benchmark-step",
+                            "script": "#!/bin/sh\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1",
+            "kind": "TaskRun",
+            "metadata": {
+                "annotations": {
+                    "pipeline.tekton.dev/release": "81db63a"
+                },
+                "creationTimestamp": "2025-10-25T17:20:26Z",
+                "generateName": "cpu-benchmark-run-",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/managed-by": "tekton-pipelines",
+                    "bench.ttf/batchId": "20251025-191545-01-c",
+                    "bench.ttf/batchType": "C",
+                    "tekton.dev/task": "cpu-benchmark"
+                },
+                "name": "cpu-benchmark-run-mqqxd",
+                "namespace": "20251025-191545",
+                "resourceVersion": "2343",
+                "uid": "1c870b5f-dc4e-40da-98d7-4125b5725019"
+            },
+            "spec": {
+                "serviceAccountName": "default",
+                "taskRef": {
+                    "kind": "Task",
+                    "name": "cpu-benchmark"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "artifacts": {},
+                "completionTime": "2025-10-25T17:23:54Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-25T17:23:54Z",
+                        "message": "All Steps have completed executing",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "podName": "cpu-benchmark-run-mqqxd-pod",
+                "provenance": {
+                    "featureFlags": {
+                        "awaitSidecarReadiness": true,
+                        "coschedule": "workspaces",
+                        "enableAPIFields": "alpha",
+                        "enableProvenanceInStatus": true,
+                        "enforceNonfalsifiability": "none",
+                        "maxResultSize": 4096,
+                        "resultExtractionMethod": "termination-message",
+                        "runningInEnvWithInjectedSidecars": true,
+                        "verificationNoMatchPolicy": "ignore"
+                    }
+                },
+                "startTime": "2025-10-25T17:20:26Z",
+                "steps": [
+                    {
+                        "container": "step-benchmark-step",
+                        "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                        "name": "benchmark-step",
+                        "terminated": {
+                            "containerID": "containerd://e1cbb6460012f95b92f2edf0c5261c60dfdf378a0f3e7f09fd0dd9dc8c7f4bc2",
+                            "exitCode": 0,
+                            "finishedAt": "2025-10-25T17:23:53Z",
+                            "reason": "Completed",
+                            "startedAt": "2025-10-25T17:20:54Z"
+                        },
+                        "terminationReason": "Completed"
+                    }
+                ],
+                "taskSpec": {
+                    "steps": [
+                        {
+                            "computeResources": {},
+                            "image": "alpine",
+                            "name": "benchmark-step",
+                            "script": "#!/bin/sh\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1",
+            "kind": "TaskRun",
+            "metadata": {
+                "annotations": {
+                    "pipeline.tekton.dev/release": "81db63a"
+                },
+                "creationTimestamp": "2025-10-25T17:20:27Z",
+                "generateName": "cpu-benchmark-run-",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/managed-by": "tekton-pipelines",
+                    "bench.ttf/batchId": "20251025-191545-01-c",
+                    "bench.ttf/batchType": "C",
+                    "tekton.dev/task": "cpu-benchmark"
+                },
+                "name": "cpu-benchmark-run-nwplb",
+                "namespace": "20251025-191545",
+                "resourceVersion": "2326",
+                "uid": "4c6a4d5d-dc55-41a1-8576-322f05279c72"
+            },
+            "spec": {
+                "serviceAccountName": "default",
+                "taskRef": {
+                    "kind": "Task",
+                    "name": "cpu-benchmark"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "artifacts": {},
+                "completionTime": "2025-10-25T17:23:53Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-25T17:23:53Z",
+                        "message": "All Steps have completed executing",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "podName": "cpu-benchmark-run-nwplb-pod",
+                "provenance": {
+                    "featureFlags": {
+                        "awaitSidecarReadiness": true,
+                        "coschedule": "workspaces",
+                        "enableAPIFields": "alpha",
+                        "enableProvenanceInStatus": true,
+                        "enforceNonfalsifiability": "none",
+                        "maxResultSize": 4096,
+                        "resultExtractionMethod": "termination-message",
+                        "runningInEnvWithInjectedSidecars": true,
+                        "verificationNoMatchPolicy": "ignore"
+                    }
+                },
+                "startTime": "2025-10-25T17:20:27Z",
+                "steps": [
+                    {
+                        "container": "step-benchmark-step",
+                        "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                        "name": "benchmark-step",
+                        "terminated": {
+                            "containerID": "containerd://00bc5112690507ea7fdd9fcd9e973aadaa3ae18a55d0a4b77e8a2089ab0fb21c",
+                            "exitCode": 0,
+                            "finishedAt": "2025-10-25T17:23:53Z",
+                            "reason": "Completed",
+                            "startedAt": "2025-10-25T17:20:53Z"
+                        },
+                        "terminationReason": "Completed"
+                    }
+                ],
+                "taskSpec": {
+                    "steps": [
+                        {
+                            "computeResources": {},
+                            "image": "alpine",
+                            "name": "benchmark-step",
+                            "script": "#!/bin/sh\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1",
+            "kind": "TaskRun",
+            "metadata": {
+                "annotations": {
+                    "pipeline.tekton.dev/release": "81db63a"
+                },
+                "creationTimestamp": "2025-10-25T17:20:27Z",
+                "generateName": "cpu-benchmark-run-",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/managed-by": "tekton-pipelines",
+                    "bench.ttf/batchId": "20251025-191545-01-c",
+                    "bench.ttf/batchType": "C",
+                    "tekton.dev/task": "cpu-benchmark"
+                },
+                "name": "cpu-benchmark-run-p2r4c",
+                "namespace": "20251025-191545",
+                "resourceVersion": "2348",
+                "uid": "123dea92-ca52-4e5f-af5d-fe3a891444ee"
+            },
+            "spec": {
+                "serviceAccountName": "default",
+                "taskRef": {
+                    "kind": "Task",
+                    "name": "cpu-benchmark"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "artifacts": {},
+                "completionTime": "2025-10-25T17:23:55Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-25T17:23:55Z",
+                        "message": "All Steps have completed executing",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "podName": "cpu-benchmark-run-p2r4c-pod",
+                "provenance": {
+                    "featureFlags": {
+                        "awaitSidecarReadiness": true,
+                        "coschedule": "workspaces",
+                        "enableAPIFields": "alpha",
+                        "enableProvenanceInStatus": true,
+                        "enforceNonfalsifiability": "none",
+                        "maxResultSize": 4096,
+                        "resultExtractionMethod": "termination-message",
+                        "runningInEnvWithInjectedSidecars": true,
+                        "verificationNoMatchPolicy": "ignore"
+                    }
+                },
+                "startTime": "2025-10-25T17:20:27Z",
+                "steps": [
+                    {
+                        "container": "step-benchmark-step",
+                        "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                        "name": "benchmark-step",
+                        "terminated": {
+                            "containerID": "containerd://831aa7500e59b189684db83ec6cb4355537e1f9eaf8fbf71cd0392caf10be4cf",
+                            "exitCode": 0,
+                            "finishedAt": "2025-10-25T17:23:55Z",
+                            "reason": "Completed",
+                            "startedAt": "2025-10-25T17:20:57Z"
+                        },
+                        "terminationReason": "Completed"
+                    }
+                ],
+                "taskSpec": {
+                    "steps": [
+                        {
+                            "computeResources": {},
+                            "image": "alpine",
+                            "name": "benchmark-step",
+                            "script": "#!/bin/sh\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1",
+            "kind": "TaskRun",
+            "metadata": {
+                "annotations": {
+                    "pipeline.tekton.dev/release": "81db63a"
+                },
+                "creationTimestamp": "2025-10-25T17:20:28Z",
+                "generateName": "cpu-benchmark-run-",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/managed-by": "tekton-pipelines",
+                    "bench.ttf/batchId": "20251025-191545-01-c",
+                    "bench.ttf/batchType": "C",
+                    "tekton.dev/task": "cpu-benchmark"
+                },
+                "name": "cpu-benchmark-run-phhbq",
+                "namespace": "20251025-191545",
+                "resourceVersion": "2356",
+                "uid": "25ec56ab-e172-45a8-9bcb-ab8aceeea019"
+            },
+            "spec": {
+                "serviceAccountName": "default",
+                "taskRef": {
+                    "kind": "Task",
+                    "name": "cpu-benchmark"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "artifacts": {},
+                "completionTime": "2025-10-25T17:23:56Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-25T17:23:56Z",
+                        "message": "All Steps have completed executing",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "podName": "cpu-benchmark-run-phhbq-pod",
+                "provenance": {
+                    "featureFlags": {
+                        "awaitSidecarReadiness": true,
+                        "coschedule": "workspaces",
+                        "enableAPIFields": "alpha",
+                        "enableProvenanceInStatus": true,
+                        "enforceNonfalsifiability": "none",
+                        "maxResultSize": 4096,
+                        "resultExtractionMethod": "termination-message",
+                        "runningInEnvWithInjectedSidecars": true,
+                        "verificationNoMatchPolicy": "ignore"
+                    }
+                },
+                "startTime": "2025-10-25T17:20:28Z",
+                "steps": [
+                    {
+                        "container": "step-benchmark-step",
+                        "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                        "name": "benchmark-step",
+                        "terminated": {
+                            "containerID": "containerd://e1eb89c422017117ed03c04142d268c2aea2bbac326d505dab0e8177fdedddd4",
+                            "exitCode": 0,
+                            "finishedAt": "2025-10-25T17:23:56Z",
+                            "reason": "Completed",
+                            "startedAt": "2025-10-25T17:20:56Z"
+                        },
+                        "terminationReason": "Completed"
+                    }
+                ],
+                "taskSpec": {
+                    "steps": [
+                        {
+                            "computeResources": {},
+                            "image": "alpine",
+                            "name": "benchmark-step",
+                            "script": "#!/bin/sh\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1",
+            "kind": "TaskRun",
+            "metadata": {
+                "annotations": {
+                    "pipeline.tekton.dev/release": "81db63a"
+                },
+                "creationTimestamp": "2025-10-25T17:20:29Z",
+                "generateName": "cpu-benchmark-run-",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/managed-by": "tekton-pipelines",
+                    "bench.ttf/batchId": "20251025-191545-01-c",
+                    "bench.ttf/batchType": "C",
+                    "tekton.dev/task": "cpu-benchmark"
+                },
+                "name": "cpu-benchmark-run-qkk5z",
+                "namespace": "20251025-191545",
+                "resourceVersion": "2379",
+                "uid": "259b9a7b-1d54-476c-893f-2f5b983cd9aa"
+            },
+            "spec": {
+                "serviceAccountName": "default",
+                "taskRef": {
+                    "kind": "Task",
+                    "name": "cpu-benchmark"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "artifacts": {},
+                "completionTime": "2025-10-25T17:24:01Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-25T17:24:01Z",
+                        "message": "All Steps have completed executing",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "podName": "cpu-benchmark-run-qkk5z-pod",
+                "provenance": {
+                    "featureFlags": {
+                        "awaitSidecarReadiness": true,
+                        "coschedule": "workspaces",
+                        "enableAPIFields": "alpha",
+                        "enableProvenanceInStatus": true,
+                        "enforceNonfalsifiability": "none",
+                        "maxResultSize": 4096,
+                        "resultExtractionMethod": "termination-message",
+                        "runningInEnvWithInjectedSidecars": true,
+                        "verificationNoMatchPolicy": "ignore"
+                    }
+                },
+                "startTime": "2025-10-25T17:20:29Z",
+                "steps": [
+                    {
+                        "container": "step-benchmark-step",
+                        "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                        "name": "benchmark-step",
+                        "terminated": {
+                            "containerID": "containerd://8e2ab4a80f8d94f7810f68d004afb9783c43356fe094d11b118b1bc06ea9f366",
+                            "exitCode": 0,
+                            "finishedAt": "2025-10-25T17:24:01Z",
+                            "reason": "Completed",
+                            "startedAt": "2025-10-25T17:21:01Z"
+                        },
+                        "terminationReason": "Completed"
+                    }
+                ],
+                "taskSpec": {
+                    "steps": [
+                        {
+                            "computeResources": {},
+                            "image": "alpine",
+                            "name": "benchmark-step",
+                            "script": "#!/bin/sh\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1",
+            "kind": "TaskRun",
+            "metadata": {
+                "annotations": {
+                    "pipeline.tekton.dev/release": "81db63a"
+                },
+                "creationTimestamp": "2025-10-25T17:20:27Z",
+                "generateName": "cpu-benchmark-run-",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/managed-by": "tekton-pipelines",
+                    "bench.ttf/batchId": "20251025-191545-01-c",
+                    "bench.ttf/batchType": "C",
+                    "tekton.dev/task": "cpu-benchmark"
+                },
+                "name": "cpu-benchmark-run-vrbgr",
+                "namespace": "20251025-191545",
+                "resourceVersion": "2358",
+                "uid": "b44ff0ff-e2f7-4111-ace0-a5259f696c9c"
+            },
+            "spec": {
+                "serviceAccountName": "default",
+                "taskRef": {
+                    "kind": "Task",
+                    "name": "cpu-benchmark"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "artifacts": {},
+                "completionTime": "2025-10-25T17:23:56Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-25T17:23:56Z",
+                        "message": "All Steps have completed executing",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "podName": "cpu-benchmark-run-vrbgr-pod",
+                "provenance": {
+                    "featureFlags": {
+                        "awaitSidecarReadiness": true,
+                        "coschedule": "workspaces",
+                        "enableAPIFields": "alpha",
+                        "enableProvenanceInStatus": true,
+                        "enforceNonfalsifiability": "none",
+                        "maxResultSize": 4096,
+                        "resultExtractionMethod": "termination-message",
+                        "runningInEnvWithInjectedSidecars": true,
+                        "verificationNoMatchPolicy": "ignore"
+                    }
+                },
+                "startTime": "2025-10-25T17:20:27Z",
+                "steps": [
+                    {
+                        "container": "step-benchmark-step",
+                        "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                        "name": "benchmark-step",
+                        "terminated": {
+                            "containerID": "containerd://f24c79801e3be99cbe67e2538ca99e42a3361f470bd48b15e5d8ae79468eec7c",
+                            "exitCode": 0,
+                            "finishedAt": "2025-10-25T17:23:56Z",
+                            "reason": "Completed",
+                            "startedAt": "2025-10-25T17:20:56Z"
+                        },
+                        "terminationReason": "Completed"
+                    }
+                ],
+                "taskSpec": {
+                    "steps": [
+                        {
+                            "computeResources": {},
+                            "image": "alpine",
+                            "name": "benchmark-step",
+                            "script": "#!/bin/sh\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "apiVersion": "tekton.dev/v1",
+            "kind": "TaskRun",
+            "metadata": {
+                "annotations": {
+                    "pipeline.tekton.dev/release": "81db63a"
+                },
+                "creationTimestamp": "2025-10-25T17:20:26Z",
+                "generateName": "cpu-benchmark-run-",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/managed-by": "tekton-pipelines",
+                    "bench.ttf/batchId": "20251025-191545-01-c",
+                    "bench.ttf/batchType": "C",
+                    "tekton.dev/task": "cpu-benchmark"
+                },
+                "name": "cpu-benchmark-run-xzd28",
+                "namespace": "20251025-191545",
+                "resourceVersion": "2318",
+                "uid": "e572f8c9-b00b-4029-8691-5325eff14128"
+            },
+            "spec": {
+                "serviceAccountName": "default",
+                "taskRef": {
+                    "kind": "Task",
+                    "name": "cpu-benchmark"
+                },
+                "timeout": "1h0m0s"
+            },
+            "status": {
+                "artifacts": {},
+                "completionTime": "2025-10-25T17:23:50Z",
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2025-10-25T17:23:50Z",
+                        "message": "All Steps have completed executing",
+                        "reason": "Succeeded",
+                        "status": "True",
+                        "type": "Succeeded"
+                    }
+                ],
+                "podName": "cpu-benchmark-run-xzd28-pod",
+                "provenance": {
+                    "featureFlags": {
+                        "awaitSidecarReadiness": true,
+                        "coschedule": "workspaces",
+                        "enableAPIFields": "alpha",
+                        "enableProvenanceInStatus": true,
+                        "enforceNonfalsifiability": "none",
+                        "maxResultSize": 4096,
+                        "resultExtractionMethod": "termination-message",
+                        "runningInEnvWithInjectedSidecars": true,
+                        "verificationNoMatchPolicy": "ignore"
+                    }
+                },
+                "startTime": "2025-10-25T17:20:26Z",
+                "steps": [
+                    {
+                        "container": "step-benchmark-step",
+                        "imageID": "docker.io/library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
+                        "name": "benchmark-step",
+                        "terminated": {
+                            "containerID": "containerd://67dca7f27f95662c6301581a8e1d974a8367736a0fd51c2254e0e30706c57102",
+                            "exitCode": 0,
+                            "finishedAt": "2025-10-25T17:23:50Z",
+                            "reason": "Completed",
+                            "startedAt": "2025-10-25T17:20:55Z"
+                        },
+                        "terminationReason": "Completed"
+                    }
+                ],
+                "taskSpec": {
+                    "steps": [
+                        {
+                            "computeResources": {},
+                            "image": "alpine",
+                            "name": "benchmark-step",
+                            "script": "#!/bin/sh\nTOTAL=20000000\nSTEP=$((TOTAL / 20))  # 5% increments\ni=0\nnext=$STEP\n\necho \"Starting CPU benchmark for $TOTAL iterations...\"\n\nwhile [ $i -lt $TOTAL ]; do\n  i=$((i + 1))\n  if [ $i -eq $next ]; then\n    percent=$((i * 100 / TOTAL))\n    j=$STEP\n    progressBar=\"[\"\n    while [ $j -le $i ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"▨\")\n        j=$((j + STEP))\n    done\n    while [ $j -lt $TOTAL ]; do\n        progressBar=$(printf \"%s%s\" \"$progressBar\" \"◻\")\n        j=$((j + STEP))\n    done\n    progressBar=$(printf \"%s%s\" \"$progressBar\" \"]\")\n    echo \"Progress: $progressBar ${percent}%\"\n    next=$((next + STEP))\n  fi\ndone\n\necho \"Benchmark completed.\"\n"
+                        }
+                    ]
+                }
+            }
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": ""
+    }
+}

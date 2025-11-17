@@ -560,9 +560,6 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 	if err != nil {
 		return nil, err
 	}
-	if ttr.Status.TaskTestSpec.Expects != nil {
-
-	}
 
 	taskRunSpec := v1.TaskRunSpec{
 		TaskSpec:   &task.Spec,
@@ -593,9 +590,9 @@ func (c *Reconciler) createTaskRun(ctx context.Context, ttr *v1alpha1.TaskTestRu
 
 		if ttr.Status.TaskTestSpec.Inputs.Env != nil {
 			if taskRunSpec.PodTemplate == nil {
-				taskRunSpec.PodTemplate = &podtypes.PodTemplate{}
+				taskRunSpec.PodTemplate = &podtypes.PodTemplate{Env: []corev1.EnvVar{}}
 			}
-			taskRunSpec.PodTemplate.Env = ttr.Status.TaskTestSpec.Inputs.Env
+			taskRunSpec.PodTemplate.Env = append(taskRunSpec.PodTemplate.Env, ttr.Status.TaskTestSpec.Inputs.Env...)
 		}
 
 		if ttr.Status.TaskTestSpec.Inputs.StepEnvs != nil {
@@ -987,8 +984,11 @@ func init() {
 }
 
 func (c *Reconciler) validateAndUpdateExpectationsForTaskRunCreation(ctx context.Context, ttr *v1alpha1.TaskTestRun, task *v1.Task) error {
-	expected := ttr.Status.TaskTestSpec.Expects
-	if expected.Results != nil {
+	if ttr.Status.TaskTestSpec.Expects == nil {
+		return nil
+	}
+
+	if ttr.Status.TaskTestSpec.Expects.Results != nil {
 		declaredResults := task.Spec.Results
 		for i, expectedResult := range ttr.Status.TaskTestSpec.Expects.Results {
 			if !slices.ContainsFunc(declaredResults, func(result v1.TaskResult) bool {

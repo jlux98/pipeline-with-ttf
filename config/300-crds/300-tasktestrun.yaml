@@ -970,6 +970,9 @@ spec:
         - name: CompletionTime
           type: date
           jsonPath: .status.completionTime
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
       # Opt into the status subresource so metadata.generation
       # starts to increment
       subresources:

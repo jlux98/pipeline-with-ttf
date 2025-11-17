@@ -424,10 +424,24 @@ func (c *Reconciler) reconcile(
 
 func (c *Reconciler) reconcileSuiteTest(ctx context.Context, ttsr *v1alpha1.TaskTestSuiteRun, taskTest v1alpha1.SuiteTest, allTaskTestRunsFinished *bool) error {
 	logger := logging.FromContext(ctx)
+	var err error
 
 	// if mode is sequential and there is no other test running then get
 	// the lock
 	if ttsr.Spec.ExecutionMode == v1alpha1.TaskTestSuiteRunExecutionModeSequential && ttsr.Status.CurrentSuiteTest == nil {
+		ttsrFresh, err := c.PipelineClientSet.TektonV1alpha1().TaskTestSuiteRuns(ttsr.Namespace).Get(ctx, ttsr.Name, metav1.GetOptions{})
+
+		if err != nil {
+			logger.Errorf("error while getting suite run %q for unsetting mutex lock for suite test %q: %v", ttsr.Name, &taskTest.Name, err)
+			return err
+		}
+
+		ttsrFresh.Status.CurrentSuiteTest = &taskTest.Name
+		_, err = c.PipelineClientSet.TektonV1alpha1().TaskTestSuiteRuns(ttsr.Namespace).UpdateStatus(ctx, ttsrFresh, metav1.UpdateOptions{})
+		if err != nil {
+			logger.Errorf("error while setting mutex lock for suite test %q: %v", &taskTest.Name, err)
+			return err
+		}
 		ttsr.Status.CurrentSuiteTest = &taskTest.Name
 	}
 
@@ -481,6 +495,19 @@ func (c *Reconciler) reconcileSuiteTest(ctx context.Context, ttsr *v1alpha1.Task
 	if taskTestRun.Status.CompletionTime == nil {
 		*allTaskTestRunsFinished = false
 	} else {
+		ttsrFresh, err := c.PipelineClientSet.TektonV1alpha1().TaskTestSuiteRuns(ttsr.Namespace).Get(ctx, ttsr.Name, metav1.GetOptions{})
+
+		if err != nil {
+			logger.Errorf("error while getting suite run %q for unsetting mutex lock for suite test %q: %v", ttsr.Name, &taskTest.Name, err)
+			return err
+		}
+
+		ttsrFresh.Status.CurrentSuiteTest = nil
+		_, err = c.PipelineClientSet.TektonV1alpha1().TaskTestSuiteRuns(ttsr.Namespace).UpdateStatus(ctx, ttsrFresh, metav1.UpdateOptions{})
+		if err != nil {
+			logger.Errorf("error while unsetting mutex lock for suite test %q: %v", &taskTest.Name, err)
+			return err
+		}
 		ttsr.Status.CurrentSuiteTest = nil
 	}
 
@@ -551,23 +578,26 @@ func aggregateSuccessStatusOfTaskTestRuns(ctx context.Context, ttsr *v1alpha1.Ta
 
 	for i, suiteTest := range ttsr.Status.TaskTestSuiteSpec.TaskTests {
 		trName := suiteTest.GetTaskTestRunName(ttsr.Name)
-		condition := ttsr.Status.TaskTestRunStatuses[trName].GetCondition(
-			apis.ConditionSucceeded,
-		)
-		if condition.IsFalse() {
-			message := fmt.Sprintf("taskTestRun %q failed", trName)
-			if condition.Reason == v1alpha1.TaskTestRunReasonFailedValidation.String() {
-				message += " due to a validation error, so the whole TaskTestSuiteRun fails"
-				tasksWithValidationErrors = append(tasksWithValidationErrors, fmt.Sprintf("%s (%s)", trName, strings.Join(ttsr.Status.TaskTestRunStatuses[trName].Outcomes.Diffs, ", ")))
-			} else {
-				if ttsr.Status.TaskTestSuiteSpec.TaskTests[i].OnError != "Continue" {
-					message += " due to unexpected outcomes, so the whole TaskTestSuiteRun fails"
-					tasksWithUnexpectedOutcomes = append(tasksWithUnexpectedOutcomes, fmt.Sprintf("%s (%s)", trName, strings.Join(ttsr.Status.TaskTestRunStatuses[trName].Outcomes.Diffs, ", ")))
+		status := ttsr.Status.TaskTestRunStatuses[trName]
+		if status != nil {
+			condition := status.GetCondition(
+				apis.ConditionSucceeded,
+			)
+			if condition.IsFalse() {
+				message := fmt.Sprintf("taskTestRun %q failed", trName)
+				if condition.Reason == v1alpha1.TaskTestRunReasonFailedValidation.String() {
+					message += " due to a validation error, so the whole TaskTestSuiteRun fails"
+					tasksWithValidationErrors = append(tasksWithValidationErrors, fmt.Sprintf("%s (%s)", trName, strings.Join(ttsr.Status.TaskTestRunStatuses[trName].Outcomes.Diffs, ", ")))
 				} else {
-					message += " but onError was set to continue, so the show will go on."
+					if ttsr.Status.TaskTestSuiteSpec.TaskTests[i].OnError != "Continue" {
+						message += " due to unexpected outcomes, so the whole TaskTestSuiteRun fails"
+						tasksWithUnexpectedOutcomes = append(tasksWithUnexpectedOutcomes, fmt.Sprintf("%s (%s)", trName, strings.Join(ttsr.Status.TaskTestRunStatuses[trName].Outcomes.Diffs, ", ")))
+					} else {
+						message += " but onError was set to continue, so the show will go on."
+					}
 				}
+				logger.Error(message)
 			}
-			logger.Error(message)
 		}
 	}
 

@@ -12,7 +12,8 @@ import (
 func (t *TaskTestSuiteRun) Validate(ctx context.Context) *apis.FieldError {
 	// FIXME(jlux98) implement this
 	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
-	return errs.Also(t.Spec.Validate(ctx).ViaField("spec"))
+	errs = errs.Also(t.Spec.Validate(ctx).ViaField("spec"))
+	return errs.Also(t.Status.Validate(ctx).ViaField("status"))
 }
 
 var _ apis.Validatable = (*TaskTestSuiteRun)(nil)
@@ -46,4 +47,22 @@ var _ apis.Validatable = (*TaskTestSuiteRunSpec)(nil)
 var AllowedTestSuiteExecutionModes []TestSuiteExecutionMode = []TestSuiteExecutionMode{
 	TaskTestSuiteRunExecutionModeParallel,
 	TaskTestSuiteRunExecutionModeSequential,
+}
+
+func (t *TaskTestSuiteRunStatus) Validate(ctx context.Context) *apis.FieldError {
+	var errs *apis.FieldError
+	if !apis.IsInUpdate(ctx) {
+		return errs
+	}
+	oldObj, ok := apis.GetBaseline(ctx).(*TaskTestSuiteRun)
+	if !ok || oldObj == nil {
+		return errs
+	}
+	old := &oldObj.Status
+	if old.CurrentSuiteTest != nil && t.CurrentSuiteTest != nil {
+		if *old.CurrentSuiteTest != *t.CurrentSuiteTest {
+			errs = apis.ErrInvalidValue(*t.CurrentSuiteTest, "currentSuiteTest", "field currentSuiteTest must first be unset before a new test can be started.")
+		}
+	}
+	return errs
 }

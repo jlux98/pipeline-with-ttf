@@ -544,7 +544,9 @@ func GetControllingTaskTestRun(meta metav1.ObjectMeta) *metav1.OwnerReference {
 }
 
 func IsControlledByTaskTestRun(meta metav1.ObjectMeta) bool {
-	return GetControllingTaskTestRun(meta) != nil
+	return slices.ContainsFunc(meta.OwnerReferences, func(ref metav1.OwnerReference) bool {
+		return ref.Kind == "TaskTestRun"
+	})
 }
 
 type StepEnvironmentList []StepEnvironment

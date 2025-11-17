@@ -2534,6 +2534,5 @@ spec:
       - tekton
       - tekton-pipelines
     shortNames:
-      - ts
-      - tss
+      - tts
   scope: Namespaced
